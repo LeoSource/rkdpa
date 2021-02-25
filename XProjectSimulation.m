@@ -11,6 +11,11 @@ mdh_table = [      0,   0,   0,       0,    0,   0
                             0,    0,   0,    pi/2,   0,   0];
                     
 rbt = SerialLink(mdh_table,'modified','name','CleanRobot');
+rbt.links(1).qlim = [-pi/2, pi/2];
+rbt.links(2).qlim = [0.5, 1.5];
+rbt.links(3).qlim = [-pi/2, pi/2];
+rbt.links(4).qlim = [0.2, 1];
+rbt.links(5).qlim = [-2*pi, 2*pi];
 
 %% validation for robot model by simscape
 %%there is lag in Simulink_PS Converter block because of the filter
@@ -71,10 +76,27 @@ legend('position error');
 %}
 
 %% trajector plan
-tmp_interp = [-1, 1, 1, -1]*0.5; 
-interp_pos(:,1) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, -0.5, 0.5];
-interp_pos(:,2) = 0.7;
-interp_pos(:,3) = [0.5, 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0, 1.0, 1.1, 1.1, 1.2, 1.2, 1.3, 1.3, 1.4, 1.4, 1.5, 1.5];
+clean_task = {'mirror', 'table', 'washbasin'};
+task = 'table';
+% wipe the mirror
+if strcmp(task,clean_task(1))
+    tmp_interp = [-1, 1, 1, -1]*0.5; 
+    interp_pos(:,1) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
+    interp_pos(:,2) = 0.7;
+    interp_pos(:,3) = [0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0, 1.0, 1.1, 1.1, 1.2, 1.2, 1.3, 1.3, 1.4, 1.4, 1.5, 1.5, 1.6, 1.6, 1.7, 1.7, 1.8, 1.8];   
+    ik_option = 'vertical';
+elseif strcmp(task, clean_task(2))    
+    % wipe the table
+    interp_pos(:,1) = [-0.5, -0.5, -0.4, -0.4, -0.3, -0.3, -0.2, -0.2, -0.1, -0.1, 0, 0, 0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6];
+    tmp_interp = [0.3, 0.8, 0.8, 0.3];
+    interp_pos(:,2) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
+    interp_pos(:,3) = 0.5;
+    ik_option = 'horizontal';
+elseif strcmp(task, clean_task(3))
+    % wipe the washbasin 
+else
+    error('CleanRobot can not accomplish the task');
+end
 
 sim_cart_pos = [];
 sim_q = [];
@@ -84,11 +106,29 @@ for idx=1:size(interp_pos,1)-1
     else
         interp_num = 10;
     end
-    initial_frame = SE3; initial_frame.t = interp_pos(idx,:)';
-    end_frame = SE3; end_frame.t = interp_pos(idx+1,:)';
+    initial_frame = transl(interp_pos(idx,:)');
+    end_frame = transl(interp_pos(idx+1,:)');
     tmp_frame = ctraj(initial_frame, end_frame, interp_num);
     sim_cart_pos = [sim_cart_pos; transl(tmp_frame)];
-    tmp_q = rbt.ikine(tmp_frame, 'mask', [1, 1, 1, 0, 0, 1]);
+end
+
+height_limit = rbt.links(2).qlim;
+for idx=1:size(sim_cart_pos,1)
+    pitch = 0;
+    if sim_cart_pos(idx,3)<height_limit(1)
+        pitch = atan((sim_cart_pos(idx,3) - height_limit(1)) / sim_cart_pos(idx,2));
+    elseif sim_cart_pos(idx,3)>height_limit(2)
+        pitch = atan((sim_cart_pos(idx,3) - height_limit(2)) / sim_cart_pos(idx,2));
+    else
+        pitch = 0;
+    end    
+    
+    tmp_frame1 = transl(sim_cart_pos(idx,:)');
+    tmp_frame2 = SE3.Rx(pitch*180/pi);
+    tmp_frame = SE3(tmp_frame1)*tmp_frame2;
+    tmp_q = IKSolve(tmp_frame, ik_option);
+%     there is problem when using ikine method under the 4 or 5 DOF
+%     tmp_q = rbt.ikine(tmp_frame, 'mask', [1, 1, 1, 1, 0, 1], 'quiet');
     sim_q = [sim_q; tmp_q];
 end
 sample_time = 0.01;
@@ -102,7 +142,7 @@ plot2(interp_pos,'r');
 grid on
 hold on
 plot2(sim_cart_pos,'--');
-legned('interp_pos', 'trajectory');
+legend('interp\_pos', 'trajectory');
 hold off
 
 figure(2)
