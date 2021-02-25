@@ -88,18 +88,21 @@ for idx=1:size(interp_pos,1)-1
     end_frame = SE3; end_frame.t = interp_pos(idx+1,:)';
     tmp_frame = ctraj(initial_frame, end_frame, interp_num);
     sim_cart_pos = [sim_cart_pos; transl(tmp_frame)];
-    tmp_q = rbt.ikine(tmp_frame, 'mask', [1, 1, 1, 0, 0, 0]);
+    tmp_q = rbt.ikine(tmp_frame, 'mask', [1, 1, 1, 0, 0, 1]);
     sim_q = [sim_q; tmp_q];
 end
 sample_time = 0.01;
 t = [0:sample_time:sample_time*(size(sim_q,1)-1)]';
 sim_q(:,2) = sim_q(:,2) - 0.75;
 
+sim('x_project_g3.slx');
+
 figure(1)
 plot2(interp_pos,'r');
 grid on
 hold on
 plot2(sim_cart_pos,'--');
+legned('interp_pos', 'trajectory');
 hold off
 
 figure(2)
