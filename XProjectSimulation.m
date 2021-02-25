@@ -77,7 +77,7 @@ legend('position error');
 
 %% trajector plan
 clean_task = {'mirror', 'table', 'washbasin'};
-task = 'table';
+task = 'washbasin';
 % wipe the mirror
 if strcmp(task,clean_task(1))
     tmp_interp = [-1, 1, 1, -1]*0.5; 
@@ -94,25 +94,40 @@ elseif strcmp(task, clean_task(2))
     ik_option = 'horizontal';
 elseif strcmp(task, clean_task(3))
     % wipe the washbasin 
+    interp_pos = circle([0,0.5,0.5], 0.3);
+    interp_pos = interp_pos';
+    ik_option = 'washbasin';
 else
     error('CleanRobot can not accomplish the task');
 end
 
+sample_time = 0.01;
+tf = 20;
 sim_cart_pos = [];
-sim_q = [];
-for idx=1:size(interp_pos,1)-1
-    if mod(idx,2)==1
-        interp_num = 100;
-    else
-        interp_num = 10;
+alpha = [];
+if strcmp(task, clean_task(3))
+    for t=0:sample_time:tf
+        tmp_alpha = 2*pi/tf*t;
+        alpha = [alpha, tmp_alpha];
+        tmp_cart_pos = [0.3*sin(tmp_alpha), 0.5+0.3*cos(tmp_alpha), 0.5];
+        sim_cart_pos = [sim_cart_pos; tmp_cart_pos];
     end
-    initial_frame = transl(interp_pos(idx,:)');
-    end_frame = transl(interp_pos(idx+1,:)');
-    tmp_frame = ctraj(initial_frame, end_frame, interp_num);
-    sim_cart_pos = [sim_cart_pos; transl(tmp_frame)];
+else
+    for idx=1:size(interp_pos,1)-1
+        if mod(idx,2)==1
+            interp_num = 100;
+        else
+            interp_num = 10;
+        end
+        initial_frame = transl(interp_pos(idx,:)');
+        end_frame = transl(interp_pos(idx+1,:)');
+        tmp_frame = ctraj(initial_frame, end_frame, interp_num);
+        sim_cart_pos = [sim_cart_pos; transl(tmp_frame)];
+    end    
 end
 
 height_limit = rbt.links(2).qlim;
+sim_q = [];
 for idx=1:size(sim_cart_pos,1)
     pitch = 0;
     if sim_cart_pos(idx,3)<height_limit(1)
@@ -126,22 +141,21 @@ for idx=1:size(sim_cart_pos,1)
     tmp_frame1 = transl(sim_cart_pos(idx,:)');
     tmp_frame2 = SE3.Rx(pitch*180/pi);
     tmp_frame = SE3(tmp_frame1)*tmp_frame2;
-    tmp_q = IKSolve(tmp_frame, ik_option);
+    tmp_q = IKSolve(tmp_frame, ik_option, alpha(idx));
 %     there is problem when using ikine method under the 4 or 5 DOF
 %     tmp_q = rbt.ikine(tmp_frame, 'mask', [1, 1, 1, 1, 0, 1], 'quiet');
     sim_q = [sim_q; tmp_q];
 end
-sample_time = 0.01;
 t = [0:sample_time:sample_time*(size(sim_q,1)-1)]';
 sim_q(:,2) = sim_q(:,2) - 0.75;
 
 sim('x_project_g3.slx');
 
 figure(1)
-plot2(interp_pos,'r');
+plot2(interp_pos, '--');
 grid on
 hold on
-plot2(sim_cart_pos,'--');
+plot2(sim_cart_pos, 'r');
 legend('interp\_pos', 'trajectory');
 hold off
 
