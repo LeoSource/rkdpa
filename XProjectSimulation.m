@@ -141,7 +141,8 @@ for idx=1:size(sim_cart_pos,1)
     tmp_frame1 = transl(sim_cart_pos(idx,:)');
     tmp_frame2 = SE3.Rx(pitch*180/pi);
     tmp_frame = SE3(tmp_frame1)*tmp_frame2;
-    tmp_q = IKSolve(tmp_frame, ik_option, alpha(idx));
+%     tmp_q = IKSolve(tmp_frame, ik_option, alpha(idx));
+    tmp_q = IKSolve1(tmp_frame.t, ik_option, alpha(idx));
 %     there is problem when using ikine method under the 4 or 5 DOF
 %     tmp_q = rbt.ikine(tmp_frame, 'mask', [1, 1, 1, 1, 0, 1], 'quiet');
     sim_q = [sim_q; tmp_q];
@@ -157,6 +158,7 @@ grid on
 hold on
 plot2(sim_cart_pos, 'r');
 legend('interp\_pos', 'trajectory');
+xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 hold off
 
 figure(2)
