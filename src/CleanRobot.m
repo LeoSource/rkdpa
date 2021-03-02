@@ -67,7 +67,7 @@ classdef CleanRobot
                     elseif pos(3)<height_limit(1)
                         q(2) = height_limit(1);
                     else
-                        q(2) = pos(3);
+                        q(2) = pos(3)-tz;
                     end        
                     q(1) = atan(pos(1)/(ty-pos(2)));
                     a = sin(q(1))*(pos(3)-q(2));
