@@ -77,7 +77,7 @@ legend('position error');
 
 %% trajector plan
 clean_task = {'mirror', 'table', 'washbasin'};
-task = 'washbasin';
+task = 'table';
 % wipe the mirror
 if strcmp(task,clean_task(1))
     tmp_interp = [-1, 1, 1, -1]*0.5; 
@@ -96,7 +96,7 @@ elseif strcmp(task, clean_task(3))
     % wipe the washbasin 
     interp_pos = circle([0,0.5,0.5], 0.3);
     interp_pos = interp_pos';
-    ik_option = 'washbasin';
+    ik_option = 'circle';
 else
     error('CleanRobot can not accomplish the task');
 end
@@ -141,8 +141,8 @@ for idx=1:size(sim_cart_pos,1)
     tmp_frame1 = transl(sim_cart_pos(idx,:)');
     tmp_frame2 = SE3.Rx(pitch*180/pi);
     tmp_frame = SE3(tmp_frame1)*tmp_frame2;
+    tmp_q = IKSolveSimple(tmp_frame.t, ik_option, 0);
 %     tmp_q = IKSolve(tmp_frame, ik_option, alpha(idx));
-    tmp_q = IKSolve1(tmp_frame.t, ik_option, alpha(idx));
 %     there is problem when using ikine method under the 4 or 5 DOF
 %     tmp_q = rbt.ikine(tmp_frame, 'mask', [1, 1, 1, 1, 0, 1], 'quiet');
     sim_q = [sim_q; tmp_q];
