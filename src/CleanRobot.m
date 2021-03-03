@@ -33,8 +33,11 @@ classdef CleanRobot
         end
         
         %% inverse kinematics with analytical solution
-        function q = IKSolveCircle(obj, pos, option, alpha)
-            h = 0.6; r = 0.3;
+        function q = IKSolveCircle(obj, pos, option, circle_params)
+            h = circle_params.origin(2);
+            r = circle_params.radius;
+            alpha = circle_params.alpha;
+%             h = 0.6; r = 0.3;
             ty = obj.tool(2); tz = obj.tool(3);
             switch option
                 case 'horizontal'                    
@@ -49,13 +52,13 @@ classdef CleanRobot
                     q(5) = alpha-q(1);
                     tmp_value = h+r*cos(alpha)+ty*sin(q(1))*sin(q(5));
                     q(4) = tmp_value/(cos(q(1))*cos(q(3)))-ty*cos(q(5));
-                    q(2) = cart_pos(3)-sin(q(3))*(q(4)+ty*cos(q(5)));
+                    q(2) = pos(3)-sin(q(3))*(q(4)+ty*cos(q(5)));
                 otherwise
                     error('IKSolver can not slove the circle trajectory');
             end
         end
         
-        function q = IKSolveSimple(obj, pos, option, alpha)
+        function q = IKSolveSimple(obj, pos, option, circle_params)
             %%to simplify the problem of end-effector's pose: theta5 = -theta1
             q = zeros(1,5);
             height_limit = obj.arm.qlim(2,:);
@@ -96,7 +99,7 @@ classdef CleanRobot
                     q(5) = -q(1);            
                 case 'circle'
                     circle_option = 'slope';
-                    q = IKSolveCircle(pos, circle_option, alpha);
+                    q = obj.IKSolveCircle(pos, circle_option, circle_params);
                 otherwise
                     error('IKSolver dose not work');
             end       

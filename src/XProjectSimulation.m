@@ -30,7 +30,7 @@ switch task
     case clean_task(4)
         %wipe the washbasin 
         for pos_z=0.5:-0.05:0.2
-            interp_pos_tmp = circle([0, 0.5, pos_z], sqrt(0.3^2-(pos_z-0.5)^2));
+            interp_pos_tmp = circle([0, 0.5, pos_z], sqrt(abs(0.3^2-(pos_z-0.5)^2)));
             interp_pos = [interp_pos, interp_pos_tmp];
         end             
         interp_pos = interp_pos';
@@ -46,34 +46,37 @@ end
 %% trajectory plan
 sample_time = 0.01;
 tf = 20;
-sim_cart_pos = [];
+pos = [];
 alpha = [];
+radius_store = [];
 if strcmp(task, clean_task(3))
     step_alpha = 2*pi*sample_time/tf;
     alpha = 0: step_alpha: 2*pi;
-    sim_cart_pos = [0.3*sin(alpha); 0.5+0.3*cos(alpha); 0.5*ones(1,length(alpha))];
-    sim_cart_pos = sim_cart_pos';
+    pos = [0.3*sin(alpha); 0.5+0.3*cos(alpha); 0.5*ones(1,length(alpha))];
+    pos = pos';
 elseif strcmp(task, clean_task(4))
     step = 1*pi/180;
     origin = [0; 0.5; 0.5];
     radius = 0.3;
-    sim_cart_pos = [0; origin(2)+radius; origin(3)];
+    pos = [0; origin(2)+radius; origin(3)];
     interp_phi = [0:-15:-90]*pi/180;
     for idx=1:length(interp_phi)-1
-        pos_z = sim_cart_pos(3,end);
+        pos_z = pos(3,end);
         tmp_alpha = 0:pi/180:2*pi;
         alpha = [alpha, tmp_alpha];
         r = sqrt(radius^2-(pos_z-origin(3))^2);
         tmp_pos = [-sin(tmp_alpha)*r; 0.5+cos(tmp_alpha)*r; pos_z*ones(1,length(tmp_alpha))];
-        sim_cart_pos = [sim_cart_pos, tmp_pos];
+        pos = [pos, tmp_pos];
+        radius_store = [radius_store, r*ones(1,length(tmp_alpha))];
         
         phi = interp_phi(idx):-step:interp_phi(idx+1);
         tmp_pos = [zeros(1,length(phi)); 0.5+0.3*cos(phi); 0.5+0.3*sin(phi)];
-        sim_cart_pos = [sim_cart_pos, tmp_pos];
+        pos = [pos, tmp_pos];
         alpha = [alpha, zeros(1,length(phi))];
+        radius_store = [radius_store, zeros(1,length(phi))];
     end
-    sim_cart_pos = sim_cart_pos(:,2:end);
-    sim_cart_pos = sim_cart_pos';
+    pos = pos(:,2:end);
+    pos = pos';
 else
     for idx=1:size(interp_pos,1)-1
         if mod(idx,2)==1
@@ -84,18 +87,29 @@ else
         initial_frame = transl(interp_pos(idx,:)');
         end_frame = transl(interp_pos(idx+1,:)');
         tmp_frame = ctraj(initial_frame, end_frame, interp_num);
-        sim_cart_pos = [sim_cart_pos; transl(tmp_frame)];
+        pos = [pos; transl(tmp_frame)];
     end    
 end
 
 height_limit = rbt.arm.links(2).qlim;
 sim_q = [];
-for idx=1:size(sim_cart_pos,1)    
-%     tmp_q = rbt.IKSolveSimple(sim_cart_pos(idx,:), ik_option, 0);
-    tmp_q = rbt.IKSolveSimple(sim_cart_pos(idx,:), ik_option, alpha(idx));
+sim_pos = [];
+for idx=1:size(pos,1)    
+%     tmp_q = rbt.IKSolveSimple(pos(idx,:), ik_option, 0);
+    circle_params.origin = [0; 0.5; 0.5];
+    circle_params.radius = radius_store(idx);
+    circle_params.alpha = alpha(idx);
+    if abs(circle_params.alpha)<eps
+        tmp_q = rbt.IKSolveSimple(pos(idx,:), 'horizontal', 0);
+    else
+        tmp_q = rbt.IKSolveSimple(pos(idx,:), ik_option, circle_params);
+    end
+    
 %     there is problem when using ikine method under the 4 or 5 DOF
 %     tmp_q = rbt.ikine(tmp_frame, 'mask', [1, 1, 1, 1, 0, 1], 'quiet');
     sim_q = [sim_q; tmp_q];
+    tmp_pose = rbt.FKSolve(tmp_q);
+    sim_pos = [sim_pos; tmp_pose.t'];
 end
 t = [0:sample_time:sample_time*(size(sim_q,1)-1)]';
 sim_q(:,2) = sim_q(:,2) - 0.75;
@@ -103,11 +117,11 @@ sim_q(:,2) = sim_q(:,2) - 0.75;
 sim('x_project_g3.slx');
 
 figure(1)
-plot2(interp_pos, '--');
+plot2(pos, '--');
 grid on
 hold on
-plot2(sim_cart_pos, 'r');
-legend('interp\_pos', 'trajectory');
+plot2(sim_pos, 'r');
+legend('cmd\_pos', 'sim\_pos');
 xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 hold off
 
