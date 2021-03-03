@@ -3,43 +3,77 @@ close all
 clc
 
 rbt = CleanRobot;
-%% trajector plan
-clean_task = {'mirror', 'table', 'washbasin'};
-task = 'washbasin';
-% wipe the mirror
-if strcmp(task,clean_task(1))
-    tmp_interp = [-1, 1, 1, -1]*0.5; 
-    interp_pos(:,1) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
-    interp_pos(:,2) = 0.7;
-    interp_pos(:,3) = [0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0, 1.0, 1.1, 1.1, 1.2, 1.2, 1.3, 1.3, 1.4, 1.4, 1.5, 1.5, 1.6, 1.6, 1.7, 1.7, 1.8, 1.8];   
-    ik_option = 'vertical';
-elseif strcmp(task, clean_task(2))    
-    % wipe the table
-    interp_pos(:,1) = [-0.5, -0.5, -0.4, -0.4, -0.3, -0.3, -0.2, -0.2, -0.1, -0.1, 0, 0, 0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6];
-    tmp_interp = [0.3, 0.8, 0.8, 0.3];
-    interp_pos(:,2) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
-    interp_pos(:,3) = 0.5;
-    ik_option = 'horizontal';
-elseif strcmp(task, clean_task(3))
-    % wipe the washbasin 
-    interp_pos = circle([0,0.5,0.5], 0.3);
-    interp_pos = interp_pos';
-    ik_option = 'circle';
-else
-    error('CleanRobot can not accomplish the task');
+%% task plan
+clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
+task = 'sphere';
+interp_pos = [];
+switch task
+    case clean_task(1)
+        % wipe the mirror
+        tmp_interp = [-1, 1, 1, -1]*0.5; 
+        interp_pos(:,1) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
+        interp_pos(:,2) = 0.7;
+        interp_pos(:,3) = [0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0, 1.0, 1.1, 1.1, 1.2, 1.2, 1.3, 1.3, 1.4, 1.4, 1.5, 1.5, 1.6, 1.6, 1.7, 1.7, 1.8, 1.8];   
+        ik_option = 'vertical';
+    case clean_task(2)
+        % wipe the table
+        interp_pos(:,1) = [-0.5, -0.5, -0.4, -0.4, -0.3, -0.3, -0.2, -0.2, -0.1, -0.1, 0, 0, 0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6];
+        tmp_interp = [0.3, 0.8, 0.8, 0.3];
+        interp_pos(:,2) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
+        interp_pos(:,3) = 0.5;
+        ik_option = 'horizontal';
+    case clean_task(3)
+        % wipe the washbasin 
+        interp_pos = circle([0,0.5,0.5], 0.3);
+        interp_pos = interp_pos';
+        ik_option = 'circle';
+    case clean_task(4)
+        %wipe the washbasin 
+        for pos_z=0.5:-0.05:0.2
+            interp_pos_tmp = circle([0, 0.5, pos_z], sqrt(0.3^2-(pos_z-0.5)^2));
+            interp_pos = [interp_pos, interp_pos_tmp];
+        end             
+        interp_pos = interp_pos';
+        ik_option = 'circle';
+    case clean_task(5)
+        %wipe the washbasin 
+        ik_option = 'circle';
+    otherwise
+        error('CleanRobot can not accomplish the task');
 end
 
+
+%% trajectory plan
 sample_time = 0.01;
 tf = 20;
 sim_cart_pos = [];
 alpha = [];
 if strcmp(task, clean_task(3))
-    for t=0:sample_time:tf
-        tmp_alpha = 2*pi/tf*t;
+    step_alpha = 2*pi*sample_time/tf;
+    alpha = 0: step_alpha: 2*pi;
+    sim_cart_pos = [0.3*sin(alpha); 0.5+0.3*cos(alpha); 0.5*ones(1,length(alpha))];
+    sim_cart_pos = sim_cart_pos';
+elseif strcmp(task, clean_task(4))
+    step = 1*pi/180;
+    origin = [0; 0.5; 0.5];
+    radius = 0.3;
+    sim_cart_pos = [0; origin(2)+radius; origin(3)];
+    interp_phi = [0:-15:-90]*pi/180;
+    for idx=1:length(interp_phi)-1
+        pos_z = sim_cart_pos(3,end);
+        tmp_alpha = 0:pi/180:2*pi;
         alpha = [alpha, tmp_alpha];
-        tmp_cart_pos = [0.3*sin(tmp_alpha), 0.5+0.3*cos(tmp_alpha), 0.5];
-        sim_cart_pos = [sim_cart_pos; tmp_cart_pos];
+        r = sqrt(radius^2-(pos_z-origin(3))^2);
+        tmp_pos = [-sin(tmp_alpha)*r; 0.5+cos(tmp_alpha)*r; pos_z*ones(1,length(tmp_alpha))];
+        sim_cart_pos = [sim_cart_pos, tmp_pos];
+        
+        phi = interp_phi(idx):-step:interp_phi(idx+1);
+        tmp_pos = [zeros(1,length(phi)); 0.5+0.3*cos(phi); 0.5+0.3*sin(phi)];
+        sim_cart_pos = [sim_cart_pos, tmp_pos];
+        alpha = [alpha, zeros(1,length(phi))];
     end
+    sim_cart_pos = sim_cart_pos(:,2:end);
+    sim_cart_pos = sim_cart_pos';
 else
     for idx=1:size(interp_pos,1)-1
         if mod(idx,2)==1
@@ -56,21 +90,9 @@ end
 
 height_limit = rbt.arm.links(2).qlim;
 sim_q = [];
-for idx=1:size(sim_cart_pos,1)
-    pitch = 0;
-    if sim_cart_pos(idx,3)<height_limit(1)
-        pitch = atan((sim_cart_pos(idx,3) - height_limit(1)) / sim_cart_pos(idx,2));
-    elseif sim_cart_pos(idx,3)>height_limit(2)
-        pitch = atan((sim_cart_pos(idx,3) - height_limit(2)) / sim_cart_pos(idx,2));
-    else
-        pitch = 0;
-    end    
-    
-    tmp_frame1 = transl(sim_cart_pos(idx,:)');
-    tmp_frame2 = SE3.Rx(pitch*180/pi);
-    tmp_frame = SE3(tmp_frame1)*tmp_frame2;
-%     tmp_q = rbt.IKSolveSimple(tmp_frame.t, ik_option, 0);
-    tmp_q = rbt.IKSolveSimple(tmp_frame.t, ik_option, alpha(idx));
+for idx=1:size(sim_cart_pos,1)    
+%     tmp_q = rbt.IKSolveSimple(sim_cart_pos(idx,:), ik_option, 0);
+    tmp_q = rbt.IKSolveSimple(sim_cart_pos(idx,:), ik_option, alpha(idx));
 %     there is problem when using ikine method under the 4 or 5 DOF
 %     tmp_q = rbt.ikine(tmp_frame, 'mask', [1, 1, 1, 1, 0, 1], 'quiet');
     sim_q = [sim_q; tmp_q];

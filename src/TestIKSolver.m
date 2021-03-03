@@ -3,6 +3,7 @@ close all
 clc
 
 %% tests for iksolver
+% to do: random position to test
 q = IKSolveSimple([-0.7, 0.7, 1.8], 'vertical', 0);
 rot = tr2rt(rbt.fkine(q));
 pos = rbt.fkine(q).t + rot*[0;0.2;0]
