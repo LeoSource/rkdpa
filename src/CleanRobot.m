@@ -57,13 +57,21 @@ classdef CleanRobot
             end
         end
         
-        function q = IKSolve(obj, pos, option, circle_params)
-            %%to simplify the problem of end-effector's pose: theta5 = -theta1
+        
+        function q = IKSolve(obj, pos, option, alpha)
+             %%to simplify the problem of end-effector's pose: theta5 = alpha-theta1
             q = zeros(1,5);
-            ty = obj.tool(2); tz = obj.tool(3);            
+            ty = obj.tool(2); tz = obj.tool(3);
             height_limit = obj.arm.qlim(2,:)+tz;
             switch option
-                case 'vertical'
+                case 'q3first'
+                    q(3) = -pi/6;
+                    q(1) = atan((pos(1)+sin(alpha)*ty)/(cos(alpha)*ty-pos(2)));
+                    q(5) = alpha-q(1); 
+                    tmp_value = pos(2)-ty*(-sin(q(1))*sin(q(5))+cos(q(1))*cos(q(3))*cos(q(5)))+cos(q(1))*sin(q(3))*tz;
+                    q(4) = tmp_value/(cos(q(1))*cos(q(3)));
+                    q(2) = pos(3)-cos(q(5))*sin(q(3))*ty-cos(q(3))*tz-sin(q(3))*q(4);                               
+                case 'q2first'
                     if pos(3)>height_limit(2)
                         q(2) = obj.arm.qlim(2,2);
                     elseif pos(3)<height_limit(1)
@@ -71,7 +79,8 @@ classdef CleanRobot
                     else
                         q(2) = pos(3)-tz;
                     end        
-                    q(1) = atan(pos(1)/(ty-pos(2)));
+                    q(1) = atan((pos(1)+sin(alpha)*ty)/(cos(alpha)*ty-pos(2)));
+                    q(5) = alpha-q(1);
                     a = sin(q(1))*(pos(3)-q(2));
                     b = pos(1)-sin(q(1))*cos(q(1))*ty;
                     c = sin(q(1))*tz;
@@ -87,22 +96,11 @@ classdef CleanRobot
                             q(3) = q3_tmp1;
                         end
                     end
-                    tmp_value = pos(2)-ty*((sin(q(1)))^2+(cos(q(1)))^2*cos(q(3)))+cos(q(1))*sin(q(3))*tz;
-                    q(4) = tmp_value/(cos(q(1))*cos(q(3)));
-                    q(5) = -q(1);
-                case 'horizontal'
-                    q(3) = -pi/6;
-                    q(1) = atan(pos(1)/(ty-pos(2)));
-                    tmp_value = pos(2)-ty*((sin(q(1)))^2+(cos(q(1)))^2*cos(q(3)))+cos(q(1))*sin(q(3))*tz;
-                    q(4) = tmp_value/(cos(q(1))*cos(q(3)));
-                    q(2) = pos(3)-cos(q(1))*sin(q(3))*ty-cos(q(3))*tz-sin(q(3))*q(4);
-                    q(5) = -q(1);            
-                case 'circle'
-                    circle_option = 'slope';
-                    q = obj.IKSolveCircle(pos, circle_option, circle_params);
+                    tmp_value = pos(2)-ty*(-sin(q(1))*sin(q(5))+cos(q(1))*cos(q(3))*cos(q(5)))+cos(q(1))*sin(q(3))*tz;
+                    q(4) = tmp_value/(cos(q(1))*cos(q(3)));                    
                 otherwise
-                    error('IKSolver dose not work');
-            end       
+                    error('put the right option to inverse kinematics solver');
+            end
         end
         
         %% inverse kinematics with numerical solution

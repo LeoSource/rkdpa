@@ -5,7 +5,7 @@ clc
 rbt = CleanRobot;
 %% task plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'circle';
+task = 'sphere';
 interp_pos = [];
 switch task
     case clean_task(1)
@@ -14,19 +14,19 @@ switch task
         interp_pos(:,1) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
         interp_pos(:,2) = 0.7;
         interp_pos(:,3) = [0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0, 1.0, 1.1, 1.1, 1.2, 1.2, 1.3, 1.3, 1.4, 1.4, 1.5, 1.5, 1.6, 1.6, 1.7, 1.7, 1.8, 1.8];   
-        ik_option = 'vertical';
+        ik_option = 'q2first';
     case clean_task(2)
         % wipe the table
         interp_pos(:,1) = [-0.5, -0.5, -0.4, -0.4, -0.3, -0.3, -0.2, -0.2, -0.1, -0.1, 0, 0, 0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6];
         tmp_interp = [0.3, 0.8, 0.8, 0.3];
         interp_pos(:,2) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
         interp_pos(:,3) = 0.5;
-        ik_option = 'horizontal';
+        ik_option = 'q3first';
     case clean_task(3)
         % wipe the washbasin 
         interp_pos = circle([0,0.5,0.5], 0.3);
         interp_pos = interp_pos';
-        ik_option = 'circle';
+        ik_option = 'q3first';
     case clean_task(4)
         %wipe the washbasin 
         for pos_z=0.5:-0.05:0.2
@@ -34,7 +34,7 @@ switch task
             interp_pos = [interp_pos, interp_pos_tmp];
         end             
         interp_pos = interp_pos';
-        ik_option = 'circle';
+        ik_option = 'q3first';
     case clean_task(5)
         %wipe the washbasin 
         ik_option = 'circle';
@@ -115,15 +115,7 @@ end
 sim_q = [];
 sim_pos = [];
 for idx=1:size(pos,1)    
-%     tmp_q = rbt.IKSolve(pos(idx,:), ik_option, 0);
-    circle_params.origin = [0; 0.5; 0.5];
-    circle_params.radius = radius_store(idx);
-    circle_params.alpha = alpha(idx);
-    if abs(circle_params.alpha)<eps
-        tmp_q = rbt.IKSolve(pos(idx,:), 'horizontal', 0);
-    else
-        tmp_q = rbt.IKSolve(pos(idx,:), ik_option, circle_params);
-    end
+    tmp_q = rbt.IKSolve1(pos(idx,:), ik_option, alpha(idx));
     
     sim_q = [sim_q; tmp_q];
     tmp_pose = rbt.FKSolve(tmp_q);
