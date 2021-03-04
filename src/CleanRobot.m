@@ -23,7 +23,7 @@ classdef CleanRobot
             for idx=1:size(mdh_table,1)
                 obj.arm.links(idx).qlim = qlimit(idx,:);
             end            
-            obj.tool = [0, 0.2, 0]';
+            obj.tool = [0, 0.2*cos(-pi/6), 0.2*sin(-pi/6)]';
         end
         
         %% forward kinematics using robotics toolbox
@@ -37,7 +37,6 @@ classdef CleanRobot
             h = circle_params.origin(2);
             r = circle_params.radius;
             alpha = circle_params.alpha;
-%             h = 0.6; r = 0.3;
             ty = obj.tool(2); tz = obj.tool(3);
             switch option
                 case 'horizontal'                    
@@ -58,17 +57,17 @@ classdef CleanRobot
             end
         end
         
-        function q = IKSolveSimple(obj, pos, option, circle_params)
+        function q = IKSolve(obj, pos, option, circle_params)
             %%to simplify the problem of end-effector's pose: theta5 = -theta1
             q = zeros(1,5);
-            height_limit = obj.arm.qlim(2,:);
-            ty = obj.tool(2); tz = obj.tool(3);
+            ty = obj.tool(2); tz = obj.tool(3);            
+            height_limit = obj.arm.qlim(2,:)+tz;
             switch option
                 case 'vertical'
                     if pos(3)>height_limit(2)
-                        q(2) = height_limit(2);
+                        q(2) = obj.arm.qlim(2,2);
                     elseif pos(3)<height_limit(1)
-                        q(2) = height_limit(1);
+                        q(2) = obj.arm.qlim(2,1);
                     else
                         q(2) = pos(3)-tz;
                     end        
@@ -87,13 +86,13 @@ classdef CleanRobot
                             q(3) = q3_tmp1;
                         end
                     end
-                    tmp_value = pos(2)-ty*((sin(q(1)))^2+(cos(q(1)))^2*cos(q(3)))+cos(q(1))*cos(q(3))*tz;
+                    tmp_value = pos(2)-ty*((sin(q(1)))^2+(cos(q(1)))^2*cos(q(3)))+cos(q(1))*sin(q(3))*tz;
                     q(4) = tmp_value/(cos(q(1))*cos(q(3)));
                     q(5) = -q(1);
                 case 'horizontal'
                     q(3) = -pi/6;
                     q(1) = atan(pos(1)/(ty-pos(2)));
-                    tmp_value = pos(2)-ty*((sin(q(1)))^2+(cos(q(1)))^2*cos(q(3)))+cos(q(1))*cos(q(3))*tz;
+                    tmp_value = pos(2)-ty*((sin(q(1)))^2+(cos(q(1)))^2*cos(q(3)))+cos(q(1))*sin(q(3))*tz;
                     q(4) = tmp_value/(cos(q(1))*cos(q(3)));
                     q(2) = pos(3)-cos(q(1))*sin(q(3))*ty-cos(q(3))*tz-sin(q(3))*q(4);
                     q(5) = -q(1);            
@@ -105,7 +104,8 @@ classdef CleanRobot
             end       
         end
         
-        function q = IKSolve(obj, pos, option, alpha)
+        %% inverse kinematics with numerical solution
+        function q = IKSolveOptimize(obj, pos, option, alpha)
             %%to guarantee that the end-effector's pose is perpendicular to
             %%vertical surface, but it is very hard to get a analytical value
             q = zeros(1,5);

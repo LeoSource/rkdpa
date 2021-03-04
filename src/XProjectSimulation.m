@@ -5,7 +5,7 @@ clc
 rbt = CleanRobot;
 %% task plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'sphere';
+task = 'mirror';
 interp_pos = [];
 switch task
     case clean_task(1)
@@ -49,64 +49,79 @@ tf = 20;
 pos = [];
 alpha = [];
 radius_store = [];
-if strcmp(task, clean_task(3))
-    step_alpha = 2*pi*sample_time/tf;
-    alpha = 0: step_alpha: 2*pi;
-    pos = [0.3*sin(alpha); 0.5+0.3*cos(alpha); 0.5*ones(1,length(alpha))];
-    pos = pos';
-elseif strcmp(task, clean_task(4))
-    step = 1*pi/180;
-    origin = [0; 0.5; 0.5];
-    radius = 0.3;
-    pos = [0; origin(2)+radius; origin(3)];
-    interp_phi = [0:-15:-90]*pi/180;
-    for idx=1:length(interp_phi)-1
-        pos_z = pos(3,end);
-        tmp_alpha = 0:pi/180:2*pi;
-        alpha = [alpha, tmp_alpha];
-        r = sqrt(radius^2-(pos_z-origin(3))^2);
-        tmp_pos = [-sin(tmp_alpha)*r; 0.5+cos(tmp_alpha)*r; pos_z*ones(1,length(tmp_alpha))];
-        pos = [pos, tmp_pos];
-        radius_store = [radius_store, r*ones(1,length(tmp_alpha))];
-        
-        phi = interp_phi(idx):-step:interp_phi(idx+1);
-        tmp_pos = [zeros(1,length(phi)); 0.5+0.3*cos(phi); 0.5+0.3*sin(phi)];
-        pos = [pos, tmp_pos];
-        alpha = [alpha, zeros(1,length(phi))];
-        radius_store = [radius_store, zeros(1,length(phi))];
-    end
-    pos = pos(:,2:end);
-    pos = pos';
-else
-    for idx=1:size(interp_pos,1)-1
-        if mod(idx,2)==1
-            interp_num = 100;
-        else
-            interp_num = 10;
+switch task
+    case clean_task(3)
+        step_alpha = 2*pi*sample_time/tf;
+        alpha = 0: step_alpha: 2*pi;
+        pos = [0.3*sin(alpha); 0.5+0.3*cos(alpha); 0.5*ones(1,length(alpha))];
+        pos = pos';        
+    case clean_task(4)
+        step = 1*pi/180;
+        origin = [0; 0.5; 0.5];
+        radius = 0.3;
+        pos = [0; origin(2)+radius; origin(3)];
+        interp_phi = [0:-15:-90]*pi/180;
+        for idx=1:length(interp_phi)-1
+            pos_z = pos(3,end);
+            tmp_alpha = 0:pi/180:2*pi;
+            alpha = [alpha, tmp_alpha];
+            r = sqrt(radius^2-(pos_z-origin(3))^2);
+            tmp_pos = [-sin(tmp_alpha)*r; origin(2)+cos(tmp_alpha)*r; pos_z*ones(1,length(tmp_alpha))];
+            pos = [pos, tmp_pos];
+            radius_store = [radius_store, r*ones(1,length(tmp_alpha))];
+
+            phi = interp_phi(idx):-step:interp_phi(idx+1);
+            tmp_pos = [zeros(1,length(phi)); 0.5+0.3*cos(phi); 0.5+0.3*sin(phi)];
+            pos = [pos, tmp_pos];
+            alpha = [alpha, zeros(1,length(phi))];
+            radius_store = [radius_store, zeros(1,length(phi))];
         end
-        initial_frame = transl(interp_pos(idx,:)');
-        end_frame = transl(interp_pos(idx+1,:)');
-        tmp_frame = ctraj(initial_frame, end_frame, interp_num);
-        pos = [pos; transl(tmp_frame)];
-    end    
+        pos = pos(:,2:end);
+        pos = pos';        
+    case clean_task(5)
+        step = 1*pi/180;
+        origin = [0; 0.5; 0.5];
+        a = 0.4; b = 0.5; c = 0.3;
+        pos = [0; origin(2)+b; origin(3)];
+        interp_phi = [0: -15: -90]*pi/180;
+        for idx=1:length(interp_phi)-1
+            pos_z = pos(3,end);
+            tmp_alpha = 0:step:2*pi;
+            alpha = [alpha, tmp_alpha];
+            rs_value = sqrt(1-(pos_z-origin(3))^2/c^2);
+            a_new = a*rs_value; b_new = b*rs_value;
+            tmp_pos = [-a_new*sin(alpha); b_new*cos(alpha)+origin(2); pos_z*ones(1,length(tmp_alpha))];
+            pos = [pos, tmp_pos];
+            
+        end
+    otherwise
+        for idx=1:size(interp_pos,1)-1
+           if mod(idx,2)==1
+               interp_num = 100;
+           else
+               interp_num = 10;
+           end
+           initial_frame = transl(interp_pos(idx,:)');
+           end_frame = transl(interp_pos(idx+1,:)');
+           tmp_frame = ctraj(initial_frame, end_frame, interp_num);
+           pos = [pos; transl(tmp_frame)];
+        end           
 end
 
-height_limit = rbt.arm.links(2).qlim;
+
 sim_q = [];
 sim_pos = [];
 for idx=1:size(pos,1)    
-%     tmp_q = rbt.IKSolveSimple(pos(idx,:), ik_option, 0);
-    circle_params.origin = [0; 0.5; 0.5];
-    circle_params.radius = radius_store(idx);
-    circle_params.alpha = alpha(idx);
-    if abs(circle_params.alpha)<eps
-        tmp_q = rbt.IKSolveSimple(pos(idx,:), 'horizontal', 0);
-    else
-        tmp_q = rbt.IKSolveSimple(pos(idx,:), ik_option, circle_params);
-    end
+    tmp_q = rbt.IKSolve(pos(idx,:), ik_option, 0);
+%     circle_params.origin = [0; 0.5; 0.5];
+%     circle_params.radius = radius_store(idx);
+%     circle_params.alpha = alpha(idx);
+%     if abs(circle_params.alpha)<eps
+%         tmp_q = rbt.IKSolve(pos(idx,:), 'horizontal', 0);
+%     else
+%         tmp_q = rbt.IKSolve(pos(idx,:), ik_option, circle_params);
+%     end
     
-%     there is problem when using ikine method under the 4 or 5 DOF
-%     tmp_q = rbt.ikine(tmp_frame, 'mask', [1, 1, 1, 1, 0, 1], 'quiet');
     sim_q = [sim_q; tmp_q];
     tmp_pose = rbt.FKSolve(tmp_q);
     sim_pos = [sim_pos; tmp_pose.t'];
