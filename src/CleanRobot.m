@@ -82,7 +82,7 @@ classdef CleanRobot
                     q(1) = atan((pos(1)+sin(alpha)*ty)/(cos(alpha)*ty-pos(2)));
                     q(5) = alpha-q(1);
                     a = sin(q(1))*(pos(3)-q(2));
-                    b = pos(1)-sin(q(1))*cos(q(1))*ty;
+                    b = pos(1)+sin(q(5))*cos(q(1))*ty;
                     c = sin(q(1))*tz;
                     if abs(a+c)<1e-5
                         u = (c-a)/(2*b);
