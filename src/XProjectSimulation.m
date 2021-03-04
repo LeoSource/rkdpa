@@ -5,7 +5,7 @@ clc
 rbt = CleanRobot;
 %% task plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'mirror';
+task = 'sphere';
 interp_pos = [];
 switch task
     case clean_task(1)
@@ -112,15 +112,15 @@ end
 sim_q = [];
 sim_pos = [];
 for idx=1:size(pos,1)    
-    tmp_q = rbt.IKSolve(pos(idx,:), ik_option, 0);
-%     circle_params.origin = [0; 0.5; 0.5];
-%     circle_params.radius = radius_store(idx);
-%     circle_params.alpha = alpha(idx);
-%     if abs(circle_params.alpha)<eps
-%         tmp_q = rbt.IKSolve(pos(idx,:), 'horizontal', 0);
-%     else
-%         tmp_q = rbt.IKSolve(pos(idx,:), ik_option, circle_params);
-%     end
+%     tmp_q = rbt.IKSolve(pos(idx,:), ik_option, 0);
+    circle_params.origin = [0; 0.5; 0.5];
+    circle_params.radius = radius_store(idx);
+    circle_params.alpha = alpha(idx);
+    if abs(circle_params.alpha)<eps
+        tmp_q = rbt.IKSolve(pos(idx,:), 'horizontal', 0);
+    else
+        tmp_q = rbt.IKSolve(pos(idx,:), ik_option, circle_params);
+    end
     
     sim_q = [sim_q; tmp_q];
     tmp_pose = rbt.FKSolve(tmp_q);

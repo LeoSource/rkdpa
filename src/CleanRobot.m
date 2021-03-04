@@ -75,7 +75,7 @@ classdef CleanRobot
                     a = sin(q(1))*(pos(3)-q(2));
                     b = pos(1)-sin(q(1))*cos(q(1))*ty;
                     c = sin(q(1))*tz;
-                    if abs(a+c)<eps
+                    if abs(a+c)<1e-5
                         u = (c-a)/(2*b);
                         q(3) = 2*atan(u);
                     else
