@@ -16,10 +16,10 @@ pos2 = rbt.FKSolve(q2).t;
 circle_params.origin = [0; 0.5; 0.5];
 circle_params.radius = 0.3;
 circle_params.alpha = 20*pi/180;
-cmd_pos = [-sin(circle_params.alpha)*circle_params.radius, circle_params.origin(2)+cos(circle_params.alpha)*circle_params.radius, circle_params.origin(3)]
+cmd_pos = [-sin(circle_params.alpha)*circle_params.radius, circle_params.origin(2)+cos(circle_params.alpha)*circle_params.radius, circle_params.origin(3)];
 q3 = rbt.IKSolve(cmd_pos, 'q3first', circle_params.alpha);
-pos3 = rbt.FKSolve(q3).t
+pos3 = rbt.FKSolve(q3).t;
 
 
-
-
+frame = SE3(transl(0, 0.8, 0.5));
+q4 = rbt.IKSolveCon(frame,[0, 0, 0, 0, 0])
