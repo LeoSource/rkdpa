@@ -79,19 +79,19 @@ classdef CleanRobot
         end
         
         %% inverse kinematics with numerical solution
-        function q = IKSolveCon(obj, pose, q0)
+        function [q, qerr, exitflag] = IKSolveCon(obj, pose, q0)
             %%to guarantee that the end-effector's pose is perpendicular to
             %%vertical surface, but it is very hard to get a analytical value
-            q = zeros(1,5);
+%             q = zeros(1,5);
             A = [];
             b = [];
             Aeq = [];
             beq = [];
             lb = obj.arm.qlim(:,1);
             ub = obj.arm.qlim(:,2);
-            nonlcon = @(q)obj.PosCond(q0);
-            objfunc = @(q)obj.ObjFunc(q, tr2rt(pose));
-            q = fmincon(objfunc, q0, A, b, Aeq, beq, lb, ub, nonlcon);           
+            nonlcon = @(x) obj.PosCond(x, pose.t);
+            objfunc = @(x) obj.ObjFunc(x, tr2rt(pose));
+            [q, qerr, exitflag] = fmincon(objfunc, q0, A, b, Aeq, beq, lb, ub, nonlcon);           
         end
         
         function objective = ObjFunc(obj, q, cmd_rot)
@@ -99,8 +99,7 @@ classdef CleanRobot
             objective = norm(cmd_rot-fdb_rot);
         end
         
-        function [c, ceq] = PosCond(q)
-            pos = [0,0,0];
+        function [c, ceq] = PosCond(obj, q, pos)
             ty = obj.tool(2); tz = obj.tool(3);
             s1 = sin(q(1)); c1 = cos(q(1));
             s3 = sin(q(3)); c3 = cos(q(3));
