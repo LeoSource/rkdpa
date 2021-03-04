@@ -76,7 +76,8 @@ classdef CleanRobot
                     b = pos(1)-sin(q(1))*cos(q(1))*ty;
                     c = sin(q(1))*tz;
                     if abs(a+c)<eps
-                        q(3) = 0;
+                        u = (c-a)/(2*b);
+                        q(3) = 2*atan(u);
                     else
                         q3_tmp1 = 2*atan((b+sqrt(b^2+a^2-c^2))/(a+c));
                         q3_tmp2 = 2*atan((b-sqrt(b^2+a^2-c^2))/(a+c));

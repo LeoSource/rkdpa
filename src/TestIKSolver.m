@@ -6,11 +6,11 @@ clc
 % to do: random position to test
 rbt = CleanRobot;
 
-q = rbt.IKSolve([-0.7, 0.7, 1.8], 'vertical', 0);
+q = rbt.IKSolve([-0.2, 0.7, 1.6], 'vertical', 0);
 pos = rbt.FKSolve(q).t
 
 
-q2 = rbt.IKSolve([-0.6, 0.5, 0.8], 'horizontal', 0);
+q2 = rbt.IKSolve([-0.2, 0.7, 1.60], 'horizontal', 0);
 pos = rbt.FKSolve(q2).t
 
 
