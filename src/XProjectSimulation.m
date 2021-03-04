@@ -5,7 +5,7 @@ clc
 rbt = CleanRobot;
 %% task plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'sphere';
+task = 'circle';
 interp_pos = [];
 switch task
     case clean_task(1)
@@ -53,6 +53,9 @@ switch task
     case clean_task(3)
         step_alpha = 2*pi*sample_time/tf;
         alpha = 0: step_alpha: 2*pi;
+        origin = [0; 0.5; 0.5];
+        radius = 0.3;
+        radius_store = radius*ones(1,length(alpha));
         pos = [0.3*sin(alpha); 0.5+0.3*cos(alpha); 0.5*ones(1,length(alpha))];
         pos = pos';        
     case clean_task(4)
