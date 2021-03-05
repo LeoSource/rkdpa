@@ -82,7 +82,7 @@ classdef CleanRobot
         function [q, qerr, exitflag] = IKSolveCon(obj, pose, q0)
             %%to guarantee that the end-effector's pose is perpendicular to
             %%vertical surface, but it is very hard to get a analytical value
-%             q = zeros(1,5);
+            %%to do: set tolerance, set iteration times
             A = [];
             b = [];
             Aeq = [];
