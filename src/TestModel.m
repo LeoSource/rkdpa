@@ -2,10 +2,11 @@ clear
 close all
 clc
 
-
+rbt = CleanRobot;
+test_mode = 'workspace';
+if strcmp(test_mode, 'dhmodel')
 %% validation for robot model by simscape
 %%there is lag in Simulink_PS Converter block because of the filter
-rbt = CleanRobot;
 sample_time = 0.001;
 tf = 10;
 t = [0:sample_time:tf]';
@@ -60,3 +61,9 @@ subplot(2,1,2)
 plot(t, sim_pos_z - cart_pos(3,:)');
 legend('position error');
 
+
+elseif strcmp(test_mode, 'workspace')
+%% validation for the workspace of cleanrobot    
+rbt.PlotWorkspace;
+
+end

@@ -121,6 +121,7 @@ pos_err = pos-sim_pos;
 t = [0:sample_time:sample_time*(size(sim_q,1)-1)]';
 sim_q(:,2) = sim_q(:,2) - 0.75;
 
+%% simulation with simscape and plot
 sim('x_project_g3.slx');
 
 figure(1)
