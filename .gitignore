@@ -1,0 +1,7 @@
+# 忽略simulink仿真过程临时文件
+src/slprj/
+src/*.slxc
+src/*.asv
+
+# 暂时忽略solidworks模型文件
+model/
