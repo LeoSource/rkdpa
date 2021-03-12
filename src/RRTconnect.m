@@ -821,13 +821,24 @@ function plotRobotMotion(frame, rbt, path, option)
     end
     M = moviein(60);
     figure;
+    pic_num = 1;
     for idx=1:num
         plotFrame(frame);
         hold on
         plotRobot(rbt, q(idx,:));
         hold off
         M(:,end+1) = getframe;
+        
+        I = frame2im(M(:,end));
+        [I, map] = rgb2ind(I, 256);
+        if pic_num==1
+            imwrite(I,map, 'RobotMotion.gif', 'gif', 'Loopcount', inf, 'DelayTime', 0.02);
+        else
+            imwrite(I, map, 'RobotMotion.gif', 'gif', 'WriteMode', 'append', 'DelayTime', 0.02);
+        end
+        pic_num = pic_num+1;
     end
+%     movie(M,1,5);
 end
 
 function pos = fk(rbt, q)
