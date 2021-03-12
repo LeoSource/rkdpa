@@ -3,7 +3,7 @@ close all
 clc
 
 dim = 2;
-step_size = [5]*pi/180;
+step_size = [8]*pi/180;
 random_world = 0;
 show_output = 1;
 num_of_runs = 1;

@@ -77,22 +77,10 @@ sizePath = size(path,1);
 b = clock;
 run_time = 3600*(b(4)-a(4)) + 60 * (b(5)-a(5)) + (b(6) - a(6));
 
-figure;
-plot([0:size(path,1)-1], path(:,1)*180/pi, [0:size(path,1)-1], path(:,2)*180/pi);
-grid on
-legend('q1', 'q2');
-
-M = moviein(20);
-figure;
-for idx=1:size(path,1)
-    plotFrame(frame);
-    hold on
-    q = path(idx,1:2);
-    plotRobot(rbt, q);
-    hold off
-    M(:,end+1) = getframe;
-end
-movie(M,2,10);
+plotJntAVP(path, 1);
+plotJntAVP(path, 2);
+plotRobotMotion(frame, rbt, path, 'original');
+plotRobotMotion(frame, rbt, path, 'spline');
 
 return;%return for test
 
@@ -610,18 +598,6 @@ end
 end
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 function e_dist = sqr_eucl_dist(array,dim)
 
 sqr_e_dist = zeros(size(array,1),dim);
@@ -796,9 +772,6 @@ function rbt = creatRobot()
 end
 
 function plotFrame(frame)
-
-%     hold on
-    
     num = 20;
     alpha = linspace(0,2*pi,num);
     for idx=1:frame.numobstacle
@@ -808,9 +781,8 @@ function plotFrame(frame)
         y = origin(2)+sin(alpha)*radius;
         fill(x, y, 'black');
     end
-        axis([frame.origincorner(1),frame.endcorner(1),...
-            frame.origincorner(2), frame.endcorner(2)]);
-%     hold off
+    axis([frame.origincorner(1),frame.endcorner(1),...
+        frame.origincorner(2), frame.endcorner(2)]);
 end
 
 function plotRobot(rbt, q)
@@ -819,8 +791,46 @@ function plotRobot(rbt, q)
     plot([base(1), pos{1}(1), pos{2}(1)], [base(2), pos{1}(2), pos{2}(2)], 'k', 'LineWidth', 3);
 end
 
+function plotJntAVP(path, idx)
+    figure;
+    dt = 0.1;
+    subplot(3,1,1)
+    t = 0:dt:size(path,1)-1;
+    q = interp1([0:size(path,1)-1], path(:,idx)*180/pi, t, 'spline');
+    plot([0:size(path,1)-1], path(:,idx)*180/pi, 'o', t, q);
+    ylabel('pos(degree)');
+    subplot(3,1,2)
+    dq = diff(q)/dt;
+    plot(t(1:end-1), dq);
+    ylabel('vel(degree/s)');
+    subplot(3,1,3)
+    ddq = diff(dq)/dt;
+    plot(t(1:end-2), ddq);
+    ylabel('acc(degree/s^2)');
+end
+
+function plotRobotMotion(frame, rbt, path, option)
+    dt = 0.1;
+    t = 0:dt:size(path,1)-1;
+    if strcmp(option, 'original')
+        num = size(path,1);
+        q = path(:,1:2);
+    else
+        num = length(t);
+        q = interp1([0:size(path,1)-1], path(:,1:2), t, 'spline');
+    end
+    M = moviein(60);
+    figure;
+    for idx=1:num
+        plotFrame(frame);
+        hold on
+        plotRobot(rbt, q(idx,:));
+        hold off
+        M(:,end+1) = getframe;
+    end
+end
+
 function pos = fk(rbt, q)
-    %define two-link
     base = rbt.base;
     linklength = rbt.linklength;
     
@@ -874,7 +884,7 @@ function [new_tree, flag] = extendRandTree(frame, tree, rbt, q_goal, segmentLeng
     % find leaf on node that is closest to randomPoint
     tmp = tree(:,1:dim)-ones(size(tree,1),1)*randq;
     sqrd_dist = sqr_eucl_dist(tmp,dim);
-    [min_dist,idx] = min(sqrd_dist);
+    [~, idx] = min(sqrd_dist);
     
     min_parent_idx = idx;
     new_q = tree(idx,1:dim);
