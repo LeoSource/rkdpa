@@ -81,6 +81,7 @@ plotJntAVP(path, 1);
 plotJntAVP(path, 2);
 % plotRobotMotion(frame, rbt, path, 'original');
 plotRobotMotion(frame, rbt, path, 'spline');
+% plotRobotMotion(frame, rbt, path, 'traj');
 
 return;%return for test
 
@@ -797,16 +798,21 @@ function plotJntAVP(path, idx)
     subplot(3,1,1)
     t = 0:dt:size(path,1)-1;
     q = interp1([0:size(path,1)-1], path(:,idx)*180/pi, t, 'spline');
-    plot([0:size(path,1)-1], path(:,idx)*180/pi, 'o', t, q);
+    planner = TrajPlanner(path(:,idx)*180/pi, size(path,1)-1);
+    [q_traj, vel_traj] = planner.GenerateTraj(dt);
+    plot([0:size(path,1)-1], path(:,idx)*180/pi, 'o', t, q, 'b--', t, q_traj, 'r-');
     ylabel('pos(degree)');
+    grid on
     subplot(3,1,2)
     dq = diff(q)/dt;
-    plot(t(1:end-1), dq);
+    plot(t(1:end-1), dq, 'b--', t, vel_traj, 'r-');
     ylabel('vel(degree/s)');
+    grid on
     subplot(3,1,3)
     ddq = diff(dq)/dt;
     plot(t(1:end-2), ddq);
     ylabel('acc(degree/s^2)');
+    grid on
 end
 
 function plotRobotMotion(frame, rbt, path, option)
@@ -815,9 +821,17 @@ function plotRobotMotion(frame, rbt, path, option)
     if strcmp(option, 'original')
         num = size(path,1);
         q = path(:,1:2);
-    else
+    elseif strcmp(option, 'spline')
         num = length(t);
         q = interp1([0:size(path,1)-1], path(:,1:2), t, 'spline');
+    else
+        tf = 10;
+        planner(1) = TrajPlanner(path(:,1)*180/pi, 10);
+        planner(2) = TrajPlanner(path(:,2)*180/pi, 10);
+        num = tf/planner(1).dt-1;
+        pos1 = planner(1).GenerateTraj();
+        pos2 = planner(2).GenerateTraj();
+        q = [pos1', pos2']*pi/180;
     end
     M = moviein(60);
     figure;
