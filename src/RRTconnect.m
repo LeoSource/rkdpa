@@ -79,7 +79,7 @@ run_time = 3600*(b(4)-a(4)) + 60 * (b(5)-a(5)) + (b(6) - a(6));
 
 plotJntAVP(path, 1);
 plotJntAVP(path, 2);
-plotRobotMotion(frame, rbt, path, 'original');
+% plotRobotMotion(frame, rbt, path, 'original');
 plotRobotMotion(frame, rbt, path, 'spline');
 
 return;%return for test
@@ -759,7 +759,7 @@ function frame = creatKnownFrame(origincorner, endcorner)
     frame.endcorner = endcorner;
     frame.numobstacle = 1;
     
-    frame.obstacle.origin = [50; 50];
+    frame.obstacle.origin = [60; 50];
     frame.obstacle.radius = 10;
     
 end
@@ -844,17 +844,19 @@ function collision = robotCollision(frame, rbt, q)
     pos = fk(rbt, q);
     for lidx=1:numlinks
         if q(lidx)<rbt.qlim(lidx,1) || q(lidx)>rbt.qlim(lidx,2) ||...
-                pos{lidx}(1)<frame.origincorner(1) || pos{lidx}(2)>frame.endcorner(2) 
+                pos{lidx}(1)<frame.origincorner(1) || pos{lidx}(1)>frame.endcorner(1) ||...
+                pos{lidx}(2)<frame.origincorner(2) || pos{lidx}(2)>frame.endcorner(2)
             collision = collision+1;
         end
     end
     
+    dis_tol = 2;
     if collision==0
         for dt=0:0.2:1
             p = rbt.base+(pos{1}-rbt.base)*dt;
             for idx=1:frame.numobstacle
                 dis = norm(p-frame.obstacle(idx).origin);
-                if dis<frame.obstacle(idx).radius
+                if dis<(frame.obstacle(idx).radius+dis_tol)
                     collision = collision+1;
                     break;
                 end
@@ -863,7 +865,7 @@ function collision = robotCollision(frame, rbt, q)
             p = pos{1}+(pos{2}-pos{1})*dt;
             for idx=1:frame.numobstacle
                 dis = norm(p-frame.obstacle(idx).origin);
-                if dis<frame.obstacle(idx).radius
+                if dis<(frame.obstacle(idx).radius+dis_tol)
                     collision = collision+1;
                     break;
                 end
