@@ -803,7 +803,7 @@ function plotJntAVP(path, idx)
     subplot(3,1,1)
     t = 0:dt:size(path,1)-1;
     q = interp1([0:size(path,1)-1], path(:,idx)*180/pi, t, 'spline');
-    planner = TrajPlanner(path(:,idx)*180/pi, size(path,1)-1);
+    planner = PolyTrajPlanner(path(:,idx)*180/pi, size(path,1)-1, 3);
     [q_traj, vel_traj, acc_traj] = planner.GenerateTraj(dt);
     plot([0:size(path,1)-1], path(:,idx)*180/pi, 'o', t, q, 'b--', t, q_traj, 'r-');
     ylabel('pos(degree)');
@@ -832,7 +832,7 @@ function plotRobotMotion(frame, rbt, path, option)
     else
         num = length(t);
         for idx=1:rbt.numlinks
-            traj_planner(idx) = TrajPlanner(path(:,idx), size(path,1)-1);
+            traj_planner(idx) = PolyTrajPlanner(path(:,idx), size(path,1)-1, 3);
             q(idx,:) = traj_planner(idx).GenerateTraj(dt);
         end
         q = q';
