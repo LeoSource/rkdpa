@@ -49,8 +49,8 @@ function [nIterations,sizePath,run_time] =  RRTconnect(dim,segmentLength,random_
 frame = creatKnownFrame([0,0], [100,100]);
 rbt = creatRobot();
 
-q_start = [10, 30]*pi/180;
-q_goal = [80, -50]*pi/180;
+q_start = [10, 30, 0]*pi/180;
+q_goal = [80, -50, 20]*pi/180;
 
 start_node = [q_start, 0, 0, 0];
 end_node = [q_goal, 0, 0, 0];
@@ -79,9 +79,10 @@ run_time = 3600*(b(4)-a(4)) + 60 * (b(5)-a(5)) + (b(6) - a(6));
 
 plotJntAVP(path, 1);
 plotJntAVP(path, 2);
+plotJntAVP(path, 3);
 % plotRobotMotion(frame, rbt, path, 'original');
 plotRobotMotion(frame, rbt, path, 'spline');
-% plotRobotMotion(frame, rbt, path, 'traj');
+plotRobotMotion(frame, rbt, path, 'traj');
 
 return;%return for test
 
@@ -758,18 +759,21 @@ end
 function frame = creatKnownFrame(origincorner, endcorner)
     frame.origincorner = origincorner;
     frame.endcorner = endcorner;
-    frame.numobstacle = 1;
+    frame.numobstacle = 2;
     
-    frame.obstacle.origin = [60; 50];
-    frame.obstacle.radius = 10;
+    frame.obstacle(1).origin = [60; 50];
+    frame.obstacle(1).radius = 10;
+    
+    frame.obstacle(2).origin = [10; 70];
+    frame.obstacle(2).radius = 10;
     
 end
 
 function rbt = creatRobot()
     rbt.base = [0; 0];
-    rbt.numlinks = 2;
-    rbt.linklength = [40, 40];
-    rbt.qlim = [0, pi/2; -pi, pi];
+    rbt.numlinks = 3;
+    rbt.linklength = [30, 30, 30];
+    rbt.qlim = [0, pi/2; -pi, pi; -pi, pi];
 end
 
 function plotFrame(frame)
@@ -781,6 +785,7 @@ function plotFrame(frame)
         x = origin(1)+cos(alpha)*radius;
         y = origin(2)+sin(alpha)*radius;
         fill(x, y, 'black');
+        hold on
     end
     axis([frame.origincorner(1),frame.endcorner(1),...
         frame.origincorner(2), frame.endcorner(2)]);
@@ -789,7 +794,7 @@ end
 function plotRobot(rbt, q)
     base = rbt.base;
     pos = fk(rbt, q);
-    plot([base(1), pos{1}(1), pos{2}(1)], [base(2), pos{1}(2), pos{2}(2)], 'k', 'LineWidth', 3);
+    plot([base(1), pos{1}(1), pos{2}(1), pos{3}(1)], [base(2), pos{1}(2), pos{2}(2), pos{3}(2)], 'k', 'LineWidth', 3);
 end
 
 function plotJntAVP(path, idx)
@@ -820,18 +825,17 @@ function plotRobotMotion(frame, rbt, path, option)
     t = 0:dt:size(path,1)-1;
     if strcmp(option, 'original')
         num = size(path,1);
-        q = path(:,1:2);
+        q = path(:,1:rbt.numlinks);
     elseif strcmp(option, 'spline')
         num = length(t);
-        q = interp1([0:size(path,1)-1], path(:,1:2), t, 'spline');
+        q = interp1([0:size(path,1)-1], path(:,1:rbt.numlinks), t, 'spline');
     else
-        tf = 10;
-        planner(1) = TrajPlanner(path(:,1)*180/pi, 10);
-        planner(2) = TrajPlanner(path(:,2)*180/pi, 10);
-        num = tf/planner(1).dt-1;
-        pos1 = planner(1).GenerateTraj();
-        pos2 = planner(2).GenerateTraj();
-        q = [pos1', pos2']*pi/180;
+        num = length(t);
+        for idx=1:rbt.numlinks
+            traj_planner(idx) = TrajPlanner(path(:,idx), size(path,1)-1);
+            q(idx,:) = traj_planner(idx).GenerateTraj(dt);
+        end
+        q = q';
     end
     M = moviein(60);
     figure;
@@ -861,6 +865,7 @@ function pos = fk(rbt, q)
     
     pos{1} = [cos(q(1))*linklength(1); sin(q(1))*linklength(1)] + base;
     pos{2} = pos{1}+[cos(q(1)+q(2))*linklength(2); sin(q(1)+q(2))*linklength(2)];
+    pos{3} = pos{2}+[cos(sum(q))*linklength(3); sin(sum(q))*linklength(3)];
 end
 
 function collision = robotCollision(frame, rbt, q)
@@ -895,6 +900,15 @@ function collision = robotCollision(frame, rbt, q)
                     break;
                 end
             end            
+            
+            p = pos{2}+(pos{3}-pos{2})*dt;
+            for idx=1:frame.numobstacle
+                dis = norm(p-frame.obstacle(idx).origin);
+                if dis<(frame.obstacle(idx).radius+dis_tol)
+                    collision = collision+1;
+                    break;
+                end
+            end
         end
         
     end
@@ -903,9 +917,9 @@ end
 
 function [new_tree, flag] = extendRandTree(frame, tree, rbt, q_goal, segmentLength)
     flag = 0;
-    dim = 2;
+    dim = 3;
     % select a random point
-    randq = rbt.qlim(:,1)+(rbt.qlim(:,2)-rbt.qlim(:,1)).*rand(2,1);
+    randq = rbt.qlim(:,1)+(rbt.qlim(:,2)-rbt.qlim(:,1)).*rand(rbt.numlinks,1);
     randq = randq';
 
     % find leaf on node that is closest to randomPoint
@@ -965,7 +979,7 @@ end
 
 function path = findPath(tree, end_node)
 
-    dim = 2;
+    dim = 3;
     connectingnodes = [];
     for i=1:size(tree,1)
         if tree(i,dim+1)==1
