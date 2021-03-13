@@ -804,7 +804,7 @@ function plotJntAVP(path, idx)
     t = 0:dt:size(path,1)-1;
     q = interp1([0:size(path,1)-1], path(:,idx)*180/pi, t, 'spline');
     planner = TrajPlanner(path(:,idx)*180/pi, size(path,1)-1);
-    [q_traj, vel_traj] = planner.GenerateTraj(dt);
+    [q_traj, vel_traj, acc_traj] = planner.GenerateTraj(dt);
     plot([0:size(path,1)-1], path(:,idx)*180/pi, 'o', t, q, 'b--', t, q_traj, 'r-');
     ylabel('pos(degree)');
     grid on
@@ -815,7 +815,7 @@ function plotJntAVP(path, idx)
     grid on
     subplot(3,1,3)
     ddq = diff(dq)/dt;
-    plot(t(1:end-2), ddq);
+    plot(t(1:end-2), ddq, 'b--', t, acc_traj, 'r-');
     ylabel('acc(degree/s^2)');
     grid on
 end

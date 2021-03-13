@@ -1,5 +1,6 @@
 classdef TrajPlanner < handle
-    
+    %   third order polynomial for trajectory plan(for now)
+    %   to do: add other trajectory plan type 
     properties
         num
         dt
@@ -36,20 +37,22 @@ classdef TrajPlanner < handle
             end
         end
         
-        function [pos, vel] = GenerateTraj(obj, dt)
-            pos = []; vel = [];
+        function [pos, vel, acc] = GenerateTraj(obj, dt)
+            pos = []; vel = []; acc = [];
             for t=0:dt:obj.tf
-                [p, v] = obj.GenerateMotionState(t);
+                [p, v, a] = obj.GenerateMotionState(t);
                 pos = [pos, p];
                 vel = [vel, v];
+                acc = [acc, a];
             end
         end
         
-        function [pos, vel] = GenerateMotionState(obj, t)
+        function [pos, vel, acc] = GenerateMotionState(obj, t)
             time = 0:obj.dt:obj.tf;
             idx = discretize(t, time);
             pos = obj.PolyPos(t)*obj.poly_params(:,idx);
             vel = obj.PolyVel(t)*obj.poly_params(:,idx);
+            acc = obj.PolyAcc(t)*obj.poly_params(:,idx);
         end
         
         function res = PolyPos(obj, t)
@@ -58,6 +61,10 @@ classdef TrajPlanner < handle
         
         function res = PolyVel(obj, t)
             res = [0, 1, 2*t, 3*t^2];
+        end
+        
+        function res = PolyAcc(obj, t)
+            res = [0, 0, 2, 6*t];
         end
         
         function res = LhsMat(obj, t0, tf)
