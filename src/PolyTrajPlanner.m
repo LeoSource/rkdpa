@@ -1,5 +1,5 @@
 classdef PolyTrajPlanner < handle
-    %   third order polynomial for trajectory plan(for now)
+    %   third and fifth order polynomial for trajectory plan(for now)
     %   to do: add other trajectory plan type 
     properties
         num
@@ -76,24 +76,7 @@ classdef PolyTrajPlanner < handle
         
         function params = PolyParams(obj, pos, tf)
             if obj.order==3
-                n = obj.num;
-                for idx=1:n-1
-                    vel(1) = 0;
-                    if idx==n-1
-                        vel(idx+1) = 0;
-                    else
-                        k1 = (pos(idx+1)-pos(idx))/obj.dt;
-                        k2 = (pos(idx+2)-pos(idx+1))/obj.dt;
-                        if sign(k1*k2)==1
-                            vel(idx+1) = 0.5*(k1+k2);
-                        else
-                            vel(idx+1) = 0;
-                        end
-                    end
-                    rhs = [pos(idx); pos(idx+1); vel(idx); vel(idx+1)];
-                    lhs = obj.LhsMat(t(idx), t(idx+1));
-                    params(:,idx) = lhs\rhs;
-                end 
+                params = obj.PolyContiAcc(pos, tf);
             elseif obj.order==5
                 rhs = [pos(1); pos(2); 0; 0; 0; 0];
                 lhs = obj.LhsMat(0, tf);
@@ -101,6 +84,60 @@ classdef PolyTrajPlanner < handle
             end
         end
         
+        
+        function params = PolyAutoVel(obj, pos ,tf)
+            t = 0:obj.dt:tf;
+            n = obj.num;
+            for idx=1:n-1
+                vel(1) = 0;
+                if idx==n-1
+                    vel(idx+1) = 0;
+                else
+                    k1 = (pos(idx+1)-pos(idx))/obj.dt;
+                    k2 = (pos(idx+2)-pos(idx+1))/obj.dt;
+                    if sign(k1*k2)==1
+                        vel(idx+1) = 0.5*(k1+k2);
+                    else
+                        vel(idx+1) = 0;
+                    end
+                end
+                rhs = [pos(idx); pos(idx+1); vel(idx); vel(idx+1)];
+                lhs = obj.LhsMat(t(idx), t(idx+1));
+                params(:,idx) = lhs\rhs;
+            end                         
+        end
+        
+        function params = PolyContiAcc(obj, pos, tf)
+            n = obj.num;
+            rhs = zeros(4*(n-1), 1);
+            lhs = zeros(4*(n-1), 4*(n-1));
+            params = zeros(4*(n-1), 1);
+            t = 0:obj.dt:tf;
+            if obj.num>2
+                rhs(1) = pos(1);
+                rhs(2*(n-1)) = pos(n);
+                lhs(2*(n-1)+1, 1:4) = obj.PolyVel(t(1));
+                lhs(2*(n-1)+n, 4*n-7:4*n-4) = obj.PolyVel(t(n));
+                for idx=2:n-1
+                    rhs(2*idx-2) = pos(idx);
+                    rhs(2*idx-1) = pos(idx);
+                    lhs(2*(n-1)+idx, 4*idx-7:4*idx-4) = obj.PolyVel(t(idx));
+                    lhs(2*(n-1)+idx, 4*idx-3:4*idx) = -obj.PolyVel(t(idx));
+                    lhs(3*n-3+idx, 4*idx-7:4*idx-4) = obj.PolyAcc(t(idx));
+                    lhs(3*n-3+idx, 4*idx-3:4*idx) = -obj.PolyAcc(t(idx));
+                end
+                
+                for idx=1:n-1
+                    lhs(2*idx-1, 4*idx-3:4*idx) = obj.PolyPos(t(idx));
+                    lhs(2*idx, 4*idx-3:4*idx) = obj.PolyPos(t(idx)+1);
+                end
+                params = lhs\rhs;
+                params = reshape(params, 4, n-1);
+            else
+                error('error input position');
+            end
+            
+        end
         
     end
     
