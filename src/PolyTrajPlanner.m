@@ -76,7 +76,11 @@ classdef PolyTrajPlanner < handle
         
         function params = PolyParams(obj, pos, tf)
             if obj.order==3
-                params = obj.PolyContiAcc(pos, tf);
+                if obj.num>2
+                    params = obj.PolyContiAcc(pos, tf);
+                else
+                    params = obj.PolyAutoVel(pos, tf);
+                end
             elseif obj.order==5
                 rhs = [pos(1); pos(2); 0; 0; 0; 0];
                 lhs = obj.LhsMat(0, tf);
