@@ -849,10 +849,11 @@ function plotRobotMotion(frame, rbt, path, option)
         
         I = frame2im(M(:,end));
         [I, map] = rgb2ind(I, 256);
+        str = ['RobotMotion_',option, '.gif'];
         if pic_num==1
-            imwrite(I,map, 'RobotMotion.gif', 'gif', 'Loopcount', inf, 'DelayTime', 0.02);
+            imwrite(I,map, str, 'gif', 'Loopcount', inf, 'DelayTime', 0.02);
         else
-            imwrite(I, map, 'RobotMotion.gif', 'gif', 'WriteMode', 'append', 'DelayTime', 0.02);
+            imwrite(I, map, str, 'gif', 'WriteMode', 'append', 'DelayTime', 0.02);
         end
         pic_num = pic_num+1;
     end
