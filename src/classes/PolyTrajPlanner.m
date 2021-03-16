@@ -3,8 +3,8 @@ classdef PolyTrajPlanner < handle
     %   to do: add other trajectory plan type 
     properties
         num
-        dt
         tf
+        dt
         
         poly_params
         order
@@ -17,12 +17,11 @@ classdef PolyTrajPlanner < handle
             obj.num = n;
             if length(tf)==n || length(tf)==1
                 obj.tf = tf;
+                obj.dt = tf(end)/(n-1);
             else
                 error('dimension of positoin and time mismatch');
             end
             obj.poly_params = zeros(order+1, n-1);
-            dt = tf/(n-1);
-            obj.dt = dt;
             obj.poly_params = obj.PolyParams(pos, tf);
         end
         
@@ -126,7 +125,7 @@ classdef PolyTrajPlanner < handle
             rhs = zeros(4*(n-1), 1);
             lhs = zeros(4*(n-1), 4*(n-1));
             params = zeros(4*(n-1), 1);
-            if length(obj.tf)==1
+            if length(obj.tf)==1                
                 t = 0:obj.dt:tf;
             else
                 t = tf;
