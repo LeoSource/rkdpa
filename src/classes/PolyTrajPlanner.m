@@ -90,6 +90,7 @@ classdef PolyTrajPlanner < handle
         
         
         function params = PolyAutoVel(obj, pos ,tf)
+            % calculate the velocity automatically 
             t = 0:obj.dt:tf;
             n = obj.num;
             for idx=1:n-1
@@ -112,6 +113,7 @@ classdef PolyTrajPlanner < handle
         end
         
         function params = PolyContiAcc(obj, pos, tf)
+            % make the acceleration continuous
             n = obj.num;
             rhs = zeros(4*(n-1), 1);
             lhs = zeros(4*(n-1), 4*(n-1));

@@ -2,6 +2,9 @@ clear
 close all
 clc
 
+addpath('classes');
+addpath('tools');
+
 rbt = CleanRobot;
 test_mode = 'workspace';
 if strcmp(test_mode, 'dhmodel')

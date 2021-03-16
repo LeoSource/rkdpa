@@ -2,6 +2,9 @@ clear
 close all
 clc
 
+addpath('classes');
+addpath('tools');
+
 %% tests for iksolver
 % to do: random position to test
 rbt = CleanRobot;

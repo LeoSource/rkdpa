@@ -81,7 +81,7 @@ plotJntAVP(path, 1);
 plotJntAVP(path, 2);
 plotJntAVP(path, 3);
 % plotRobotMotion(frame, rbt, path, 'original');
-plotRobotMotion(frame, rbt, path, 'spline');
+% plotRobotMotion(frame, rbt, path, 'spline');
 plotRobotMotion(frame, rbt, path, 'traj');
 
 return;%return for test

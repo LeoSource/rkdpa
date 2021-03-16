@@ -2,6 +2,9 @@ clear
 close all
 clc
 
+addpath('classes');
+addpath('tools');
+
 dim = 2;
 step_size = [8]*pi/180;
 random_world = 0;
