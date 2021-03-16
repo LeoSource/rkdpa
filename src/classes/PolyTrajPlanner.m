@@ -13,9 +13,13 @@ classdef PolyTrajPlanner < handle
     methods
         function obj = PolyTrajPlanner(pos, tf, order)
             obj.order = order;
-            obj.tf = tf;
             n = length(pos);
             obj.num = n;
+            if length(tf)==n || length(tf)==1
+                obj.tf = tf;
+            else
+                error('dimension of positoin and time mismatch');
+            end
             obj.poly_params = zeros(order+1, n-1);
             dt = tf/(n-1);
             obj.dt = dt;
@@ -24,7 +28,7 @@ classdef PolyTrajPlanner < handle
         
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
-            for t=0:dt:obj.tf
+            for t=0:dt:obj.tf(end)
                 [p, v, a] = obj.GenerateMotionState(t);
                 pos = [pos, p];
                 vel = [vel, v];
@@ -33,7 +37,11 @@ classdef PolyTrajPlanner < handle
         end
         
         function [pos, vel, acc] = GenerateMotionState(obj, t)
-            time = 0:obj.dt:obj.tf;
+            if length(obj.tf)==1
+                time = 0:obj.dt:obj.tf;
+            else
+                time = obj.tf;
+            end
             idx = discretize(t, time);
             pos = obj.PolyPos(t)*obj.poly_params(:,idx);
             vel = obj.PolyVel(t)*obj.poly_params(:,idx);
@@ -118,7 +126,11 @@ classdef PolyTrajPlanner < handle
             rhs = zeros(4*(n-1), 1);
             lhs = zeros(4*(n-1), 4*(n-1));
             params = zeros(4*(n-1), 1);
-            t = 0:obj.dt:tf;
+            if length(obj.tf)==1
+                t = 0:obj.dt:tf;
+            else
+                t = tf;
+            end
             if obj.num>2
                 rhs(1) = pos(1);
                 rhs(2*(n-1)) = pos(n);
@@ -143,6 +155,22 @@ classdef PolyTrajPlanner < handle
                 error('error input position');
             end
             
+        end
+        
+        function PlotAVP(obj, dt)
+            [pos, vel, acc] = obj.GenerateTraj(dt);
+            t = 0:dt:obj.tf(end);
+            plot(t, pos);
+            ylabel('position');
+            
+            figure;
+            plot(t, vel);
+            ylabel('velocity');
+            
+            figure
+            plot(t,acc);
+            ylabel('acceleration');
+                        
         end
         
     end
