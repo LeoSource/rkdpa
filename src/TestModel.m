@@ -71,9 +71,9 @@ rbt.PlotWorkspace;
 
 elseif strcmp(test_mode, 'trajplan')
 %% validation for the trajectory planner
-pos = [0,10, 5];
-planner = PolyTrajPlanner(pos, [0, 0.5, 2], 3);
+% pos = [0,10, 5];
+% planner = PolyTrajPlanner(pos, [0, 1.8, 2], 3);
+% planner.PlotAVP(0.01);
+planner = LsqbTrajPlanner([0,10], 2, 10, 20);
 planner.PlotAVP(0.01);
-% planner = LsqbTrajPlanner([0,10], 2, 10, 20);
-% planner.GenerateTraj(0.1);
 end
