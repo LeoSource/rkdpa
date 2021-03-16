@@ -6,8 +6,9 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-test_mode = 'trajplan';
-if strcmp(test_mode, 'dhmodel')
+test_mode = 'ctrajcircle';
+switch test_mode
+    case 'dhmodel'
 %% validation for robot model by simscape
 %%there is lag in Simulink_PS Converter block because of the filter
 sample_time = 0.001;
@@ -65,15 +66,71 @@ plot(t, sim_pos_z - cart_pos(3,:)');
 legend('position error');
 
 
-elseif strcmp(test_mode, 'workspace')
+    case  'workspace'
 %% validation for the workspace of cleanrobot    
 rbt.PlotWorkspace;
 
-elseif strcmp(test_mode, 'trajplan')
-%% validation for the trajectory planner
-% pos = [0,10, 5];
-% planner = PolyTrajPlanner(pos, [0, 1.8, 2], 3);
-% planner.PlotAVP(0.01);
+    case 'jtrajpoly'
+%% joint trajectory plan using polynomial trajectory
+pos = [0,10, 5];
+planner = PolyTrajPlanner(pos, [0, 1.2, 2], 3);
+planner.PlotAVP(0.01);
+
+    case 'jtrajlspb'
+%% joint trajectory plan using lspb 
 planner = LsqbTrajPlanner([15,2], 2, 9, 10, 'limitvel');
 planner.PlotAVP(0.01);
+
+    case 'ctrajline'
+%% cartesian line trajectory plan using lsqb
+pos_initial = [0, 0, 0];
+pos_goal = [3, 4, 5];
+line_length = norm(pos_goal-pos_initial);
+planner = LsqbTrajPlanner([0, line_length], 2, 5, 5, 'limitvel');
+[p, v, ~] = planner.GenerateTraj(0.01);
+pos = pos_initial+p'.*(pos_goal-pos_initial)/line_length;
+vel = v'.*(pos_goal-pos_initial)/line_length;
+plot2(pos);
+grid on
+xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+
+figure
+time = 0:0.01:2;
+subplot(3,1,1)
+plot(time, pos(:,1));
+xlabel('x\_position');
+subplot(3,1,2)
+plot(time, pos(:,2));
+xlabel('y\_position');
+subplot(3,1,3)
+plot(time, pos(:,3));
+xlabel('z\_position');
+
+figure
+subplot(3,1,1)
+plot(time, vel(:,1));
+xlabel('x\_velocity');
+subplot(3,1,2)
+plot(time, vel(:,2));
+xlabel('y\_velocity');
+subplot(3,1,3)
+plot(time, vel(:,3));
+xlabel('z\_velocity');
+
+
+    case 'ctrajcircle'
+%% cartesian circle trajectory plan using lsqb
+pos1 = [0, 0, 0];
+pos2 = [1, 1, 1];
+pos3 = [2, 2, 4];
+[center, radius, theta] = CalcArc(pos1, pos2, pos3);
+alp = 0:0.01:theta;% to do: lspb plan
+
+
+plot3([pos1(1); pos2(1); pos3(1)], [pos1(2); pos2(2); pos3(2)], [pos1(3); pos2(3); pos3(3)], 'ro');
+grid on
+xlabel('x'); ylabel('y'); zlabel('z');
+hold on
+
+
 end
