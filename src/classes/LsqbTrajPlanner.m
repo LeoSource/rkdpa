@@ -1,6 +1,7 @@
 classdef LsqbTrajPlanner < handle
     % lsqb trajectory(trapezoidal velocity profile)    
     % to do: add arbitrary position value
+    % to do: add S style velocity profile
     
     properties
         max_vel
@@ -14,28 +15,34 @@ classdef LsqbTrajPlanner < handle
     end
     
     methods
-        function obj = LsqbTrajPlanner(pos, tf, max_vel, max_acc, max_jerk)
+        function obj = LsqbTrajPlanner(pos, tf, max_vel, max_acc, option)
             obj.tf = tf;
             obj.pos = pos;
             obj.np = length(pos);
-            obj.max_vel = max_vel;
+            obj.max_vel = abs(max_vel)*sign(pos(2)-pos(1));
             obj.max_acc = abs(max_acc)*sign(pos(2)-pos(1));
-            if nargin==5
-                obj.max_jerk = max_jerk;
+            obj.max_jerk = 100;
+            if strcmp(option, 'limitacc')
+                tmp_value = 4*abs(pos(2) - pos(1))/tf^2;
+                if abs(max_acc)<tmp_value
+                    error('robot cannot arrive at the goal in the time');
+                end
+                obj.tc = tf/2-0.5*sqrt((tf^2*obj.max_acc-4*(pos(2)-pos(1)))/obj.max_acc);
+            elseif strcmp(option, 'limitvel')
+                low_value = abs(pos(2)-pos(1))/tf;
+                up_value = 2*low_value;
+                if abs(max_vel)>low_value && abs(max_vel)<=up_value
+                    obj.tc = (pos(1)-pos(2)+obj.max_vel*tf)/obj.max_vel;
+                    obj.max_acc = (obj.max_vel)^2/(pos(1)-pos(2)+obj.max_vel*tf);
+                else
+                    error('input the right maximum velocity')
+                end
             else
-                obj.max_jerk = 100;
+                error('input the right option');
             end
-            
-            tmp_value = 4*abs(pos(2) - pos(1))/tf^2;
-            if abs(max_acc)<tmp_value
-                error('robot cannot arrive at the goal in the time');
-            end
-            obj.tc = tf/2-0.5*sqrt((tf^2*obj.max_acc-4*(pos(2)-pos(1)))/obj.max_acc);
         end
         
-        
-        
-        
+      
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
             for t = 0:dt:obj.tf
@@ -55,8 +62,7 @@ classdef LsqbTrajPlanner < handle
                 pos = [pos, q];
                 vel = [vel, v];
                 acc = [acc, a];
-            end
-            
+            end            
         end
         
         function PlotAVP(obj, dt)

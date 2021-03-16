@@ -74,6 +74,6 @@ elseif strcmp(test_mode, 'trajplan')
 % pos = [0,10, 5];
 % planner = PolyTrajPlanner(pos, [0, 1.8, 2], 3);
 % planner.PlotAVP(0.01);
-planner = LsqbTrajPlanner([0,9], 2, 10, 10);
+planner = LsqbTrajPlanner([15,2], 2, 9, 10, 'limitvel');
 planner.PlotAVP(0.01);
 end
