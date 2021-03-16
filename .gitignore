@@ -2,6 +2,8 @@
 src/slprj/
 src/*.slxc
 src/*.asv
+src/classes/*.asv
+src/tools/*.asv
 
 # 暂时忽略solidworks模型文件
 model/
