@@ -6,7 +6,7 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-test_mode = 'workspace';
+test_mode = 'trajplan';
 if strcmp(test_mode, 'dhmodel')
 %% validation for robot model by simscape
 %%there is lag in Simulink_PS Converter block because of the filter
@@ -69,4 +69,11 @@ elseif strcmp(test_mode, 'workspace')
 %% validation for the workspace of cleanrobot    
 rbt.PlotWorkspace;
 
+elseif strcmp(test_mode, 'trajplan')
+%% validation for the trajectory planner
+pos = [0,10, 5];
+planner = PolyTrajPlanner(pos, [0, 0.5, 2], 3);
+planner.PlotAVP(0.01);
+% planner = LsqbTrajPlanner([0,10], 2, 10, 20);
+% planner.GenerateTraj(0.1);
 end

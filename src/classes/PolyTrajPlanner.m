@@ -147,7 +147,7 @@ classdef PolyTrajPlanner < handle
                 
                 for idx=1:n-1
                     lhs(2*idx-1, 4*idx-3:4*idx) = obj.PolyPos(t(idx));
-                    lhs(2*idx, 4*idx-3:4*idx) = obj.PolyPos(t(idx)+1);
+                    lhs(2*idx, 4*idx-3:4*idx) = obj.PolyPos(t(idx+1));
                 end
                 params = lhs\rhs;
                 params = reshape(params, 4, n-1);
