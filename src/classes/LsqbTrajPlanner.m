@@ -19,7 +19,7 @@ classdef LsqbTrajPlanner < handle
             obj.pos = pos;
             obj.np = length(pos);
             obj.max_vel = max_vel;
-            obj.max_acc = max_acc;
+            obj.max_acc = abs(max_acc)*sign(pos(2)-pos(1));
             if nargin==5
                 obj.max_jerk = max_jerk;
             else
@@ -27,10 +27,10 @@ classdef LsqbTrajPlanner < handle
             end
             
             tmp_value = 4*abs(pos(2) - pos(1))/tf^2;
-            if max_acc<tmp_value
+            if abs(max_acc)<tmp_value
                 error('robot cannot arrive at the goal in the time');
             end
-            obj.tc = tf/2-0.5*sqrt((tf^2*max_acc-4*(pos(2)-pos(1)))/max_acc);
+            obj.tc = tf/2-0.5*sqrt((tf^2*obj.max_acc-4*(pos(2)-pos(1)))/obj.max_acc);
         end
         
         
