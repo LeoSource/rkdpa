@@ -1,4 +1,4 @@
-classdef LsqbTrajPlanner < handle
+classdef LspbTrajPlanner < handle
     % lsqb trajectory(trapezoidal velocity profile)    
     % to do: add arbitrary position value
     % to do: add S style velocity profile
@@ -7,6 +7,7 @@ classdef LsqbTrajPlanner < handle
         max_vel
         max_acc
         max_jerk
+        uniform_vel
         
         np
         tf
@@ -15,7 +16,7 @@ classdef LsqbTrajPlanner < handle
     end
     
     methods
-        function obj = LsqbTrajPlanner(pos, tf, max_vel, max_acc, option)
+        function obj = LspbTrajPlanner(pos, tf, max_vel, max_acc, option)
             obj.tf = tf;
             obj.pos = pos;
             obj.np = length(pos);
@@ -31,9 +32,15 @@ classdef LsqbTrajPlanner < handle
             elseif strcmp(option, 'limitvel')
                 low_value = abs(pos(2)-pos(1))/tf;
                 up_value = 2*low_value;
-                if abs(max_vel)>low_value && abs(max_vel)<=up_value
+                if abs(max_vel)>low_value && abs(max_vel)<up_value
+                    obj.uniform_vel = 1;
                     obj.tc = (pos(1)-pos(2)+obj.max_vel*tf)/obj.max_vel;
                     obj.max_acc = (obj.max_vel)^2/(pos(1)-pos(2)+obj.max_vel*tf);
+                elseif abs(max_vel)>up_value
+                    obj.uniform_vel = 0;
+                    obj.tc = 0.5*tf;
+                    obj.max_vel = 2*(pos(2)-pos(1))/tf;
+                    obj.max_acc = obj.max_vel/obj.tc;
                 else
                     error('input the right maximum velocity')
                 end
@@ -46,18 +53,30 @@ classdef LsqbTrajPlanner < handle
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
             for t = 0:dt:obj.tf
-                if t>=0 && t<=obj.tc
-                    q = obj.pos(1)+0.5*obj.max_acc*t^2;
-                    v = obj.max_acc*t;
-                    a = obj.max_acc;
-                elseif t>obj.tc && t<=(obj.tf-obj.tc)
-                    q = obj.pos(1)+obj.max_acc*obj.tc*(t-0.5*obj.tc);
-                    v = obj.max_acc*obj.tc;
-                    a = 0;
-                elseif t>(obj.tf-obj.tc) && t<=obj.tf
-                    q = obj.pos(2)-0.5*obj.max_acc*(obj.tf-t)^2;
-                    v = obj.max_acc*(obj.tf-t);
-                    a = -obj.max_acc;
+                if obj.uniform_vel==1
+                    if t>=0 && t<=obj.tc
+                        q = obj.pos(1)+0.5*obj.max_acc*t^2;
+                        v = obj.max_acc*t;
+                        a = obj.max_acc;
+                    elseif t>obj.tc && t<=(obj.tf-obj.tc)
+                        q = obj.pos(1)+obj.max_acc*obj.tc*(t-0.5*obj.tc);
+                        v = obj.max_acc*obj.tc;
+                        a = 0;
+                    elseif t>(obj.tf-obj.tc) && t<=obj.tf
+                        q = obj.pos(2)-0.5*obj.max_acc*(obj.tf-t)^2;
+                        v = obj.max_acc*(obj.tf-t);
+                        a = -obj.max_acc;
+                    end
+                else
+                    if t>=0 && t<=obj.tc
+                        q = obj.pos(1)+0.5*obj.max_acc*t^2;
+                        v = obj.max_acc*t;
+                        a = obj.max_acc;
+                    elseif t>obj.tc && t<obj.tf
+                        q = obj.pos(2)-0.5*obj.max_vel*(obj.tf-t)^2/(obj.tf-obj.tc);
+                        v = -obj.max_vel/(obj.tf-obj.tc)*(t-obj.tf);
+                        a = -obj.max_acc;
+                    end
                 end
                 pos = [pos, q];
                 vel = [vel, v];
