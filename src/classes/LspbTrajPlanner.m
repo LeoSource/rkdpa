@@ -36,7 +36,7 @@ classdef LspbTrajPlanner < handle
                     obj.uniform_vel = 1;
                     obj.tc = (pos(1)-pos(2)+obj.max_vel*tf)/obj.max_vel;
                     obj.max_acc = (obj.max_vel)^2/(pos(1)-pos(2)+obj.max_vel*tf);
-                elseif abs(max_vel)>up_value
+                elseif abs(max_vel)>=up_value
                     obj.uniform_vel = 0;
                     obj.tc = 0.5*tf;
                     obj.max_vel = 2*(pos(2)-pos(1))/tf;

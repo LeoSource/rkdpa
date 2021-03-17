@@ -53,15 +53,23 @@ classdef ArcPathPlanner
             d = -(x1*y2*z3-x1*y3*z2-x2*y1*z3+x2*y3*z1+x3*y1*z2-x3*y2*z1);
         end    
     
-        function p = GeneratePath(obj, alp)
+        function p = GeneratePath(obj, varp)
             pc = zeros(3,1);
-            pc(1) = obj.radius*cos(alp);
-            pc(2) = obj.radius*sin(alp);
-    
+            pc(1) = obj.radius*cos(varp);
+            pc(2) = obj.radius*sin(varp);    
             p = obj.center+obj.rot*pc;    
         end
     
-    
+        function [p, v, a] = GenerateMotion(obj, varp, varv, vara)
+            p = obj.GeneratePath(varp);
+            vc = zeros(3,1); ac = zeros(3,1);
+            vc(1) = -varv*sin(varp);
+            vc(2) = varv*cos(varp);
+            v = obj.rot*vc;
+            ac(1) = -varv^2*cos(varp)-vara*sin(varp);
+            ac(2) = -varv^2*sin(varp)+vara*cos(varp);
+            a = obj.rot*ac;
+        end
     
     
     

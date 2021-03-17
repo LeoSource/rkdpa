@@ -78,15 +78,15 @@ planner.PlotAVP(0.01);
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
-planner = LsqbTrajPlanner([15,2], 2, 9, 10, 'limitvel');
+planner = LspbTrajPlanner([20,10], 2, 15, 10, 'limitvel');
 planner.PlotAVP(0.01);
 
     case 'ctrajline'
-%% cartesian line trajectory plan using lsqb
+%% cartesian line trajectory plan using lspb
 pos_initial = [0, 0, 0];
 pos_goal = [3, 4, 5];
 line_length = norm(pos_goal-pos_initial);
-planner = LsqbTrajPlanner([0, line_length], 2, 5, 5, 'limitvel');
+planner = LspbTrajPlanner([0, line_length], 2, 5, 5, 'limitvel');
 [p, v, ~] = planner.GenerateTraj(0.01);
 pos = pos_initial+p'.*(pos_goal-pos_initial)/line_length;
 vel = v'.*(pos_goal-pos_initial)/line_length;
@@ -119,18 +119,47 @@ xlabel('z\_velocity');
 
 
     case 'ctrajcircle'
-%% cartesian circle trajectory plan using lsqb
-pos1 = [0, 0, 0];
-pos2 = [1, 1, 1];
-pos3 = [2, 2, 4];
-[center, radius, theta] = CalcArc(pos1, pos2, pos3);
-alp = 0:0.01:theta;% to do: lspb plan
-
+%% cartesian circle trajectory plan using lspb
+pos1 = [0, -2, 0];
+pos2 = [1, 0, 1];
+pos3 = [0, 3, 3];
+arcpath = ArcPathPlanner(pos1, pos2, pos3);
+planner = LspbTrajPlanner([0, arcpath.theta], 2, 2, 2, 'limitvel');
+[alp, alpv, ~] = planner.GenerateTraj(0.01);
+pos = []; vel = [];
+for idx = 1:length(alp)
+    [p, v, ~] = arcpath.GenerateMotion(alp(idx), alpv(idx), 0);
+    pos = [pos, p];
+    vel = [vel, v];
+end
 
 plot3([pos1(1); pos2(1); pos3(1)], [pos1(2); pos2(2); pos3(2)], [pos1(3); pos2(3); pos3(3)], 'ro');
 grid on
 xlabel('x'); ylabel('y'); zlabel('z');
 hold on
+plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
 
+figure
+time=0:0.01:2;
+subplot(3,1,1)
+plot(time, pos(1,:));
+xlabel('x\_position');
+subplot(3,1,2)
+plot(time, pos(2,:));
+xlabel('y\_position');
+subplot(3,1,3)
+plot(time, pos(3,:));
+xlabel('z\_position');
+
+figure
+subplot(3,1,1)
+plot(time, vel(1,:));
+xlabel('x\_velocity');
+subplot(3,1,2)
+plot(time, vel(2,:));
+xlabel('y\_velocity');
+subplot(3,1,3)
+plot(time,vel(3,:));
+xlabel('z\_velocity');
 
 end
