@@ -141,6 +141,9 @@ arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 pos1 = [1, 0, 0]; pos2 = [0, 0, 0]; pos3 = [0, 1, 0]; pos4 = [2, 1, 0];
 radius = 0.4;
 path = ArcTransPathPlanner([pos1', pos2', pos3', pos4'], radius);
+planner = LspbTrajPlanner([0, path.distance], 2, 2, 2, 'limitvel');
+[s, sv, sa] = planner.GenerateTraj(0.01);
+p = path.GeneratePath(0.1)
 end
 
 

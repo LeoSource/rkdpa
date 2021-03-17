@@ -11,14 +11,20 @@ classdef ArcTransPathPlanner < handle
         dr
         dl
         pt
+        line_vec
+        distance
     
         nump
         numarc
+        p_initial
+        p_goal
     end
     
     
     methods
         function obj = ArcTransPathPlanner(pos, radius)
+            obj.p_initial = pos(:,1);
+            obj.p_goal = pos(:,end);
             obj.radius = radius;
             obj.nump = size(pos, 2);
             obj.numarc = obj.nump-2;
@@ -39,7 +45,10 @@ classdef ArcTransPathPlanner < handle
                 if idx==obj.numarc
                     obj.dl(idx+1) = norm(pos(:,end)-pt2);
                 end
+                obj.line_vec(:,idx) = (pos(:,idx+1)-pos(:,idx))/norm(pos(:,idx+1)-pos(:,idx));
             end
+            obj.line_vec(:,obj.numarc+1) = (pos(:,end)-pos(:,end-1));
+            obj.distance = sum(obj.dl)+sum(obj.dr);
         end
         
         
@@ -58,6 +67,23 @@ classdef ArcTransPathPlanner < handle
             p2m1 = p2t1+pt1m1;
             p2c = obj.radius/sin(0.5*theta)/norm(p2m1)*p2m1;
             center = p2+p2c;            
+        end
+        
+        function p = GeneratePath(obj, varp)
+            dis = zeros(1,length(obj.dl)+length(obj.dr)+1);
+            m = dis(1);
+            for idx=2:length(dis)
+                if mod(idx,2)==0
+                    m = m+obj.dl(idx/2);
+                else
+                    m = m+obj.dr((idx-1)/2);
+                end
+                dis(idx) = m;
+            end
+            idx = discretize(varp, dis);
+            if mod(idx,2)==1
+                p = obj.p_initial+obj.line_vec(:,idx)*varp;
+            end
         end
         
     end
