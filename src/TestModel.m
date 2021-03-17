@@ -125,13 +125,8 @@ pos2 = [1, 0, 1];
 pos3 = [0, 3, 3];
 arcpath = ArcPathPlanner(pos1, pos2, pos3);
 planner = LspbTrajPlanner([0, arcpath.theta], 2, 2, 2, 'limitvel');
-[alp, alpv, ~] = planner.GenerateTraj(0.01);
-pos = []; vel = [];
-for idx = 1:length(alp)
-    [p, v, ~] = arcpath.GenerateMotion(alp(idx), alpv(idx), 0);
-    pos = [pos, p];
-    vel = [vel, v];
-end
+[alp, alpv, alpa] = planner.GenerateTraj(0.01);
+[pos, vel, acc] = arcpath.GenerateTraj(alp, alpv, alpa);
 
 plot3([pos1(1); pos2(1); pos3(1)], [pos1(2); pos2(2); pos3(2)], [pos1(3); pos2(3); pos3(3)], 'ro');
 grid on

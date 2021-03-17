@@ -71,7 +71,15 @@ classdef ArcPathPlanner
             a = obj.rot*ac;
         end
     
-    
+        function [pos, vel, acc] = GenerateTraj(obj, varp, varv, vara)
+            pos = []; vel = []; acc = [];
+            for idx=1:length(varp)
+                [p, v, a] = obj.GenerateMotion(varp(idx), varv(idx), vara(idx));
+                pos = [pos, p];
+                vel = [vel, v];
+                acc = [acc, a];
+            end
+        end
     
     end
      
