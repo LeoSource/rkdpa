@@ -28,23 +28,23 @@ classdef PolyTrajPlanner < handle
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
             for t=0:dt:obj.tf(end)
-                [p, v, a] = obj.GenerateMotionState(t);
+                [p, v, a] = obj.GenerateMotion(t);
                 pos = [pos, p];
                 vel = [vel, v];
                 acc = [acc, a];
             end
         end
         
-        function [pos, vel, acc] = GenerateMotionState(obj, t)
+        function [p, v, a] = GenerateMotion(obj, t)
             if length(obj.tf)==1
                 time = 0:obj.dt:obj.tf;
             else
                 time = obj.tf;
             end
             idx = discretize(t, time);
-            pos = obj.PolyPos(t)*obj.poly_params(:,idx);
-            vel = obj.PolyVel(t)*obj.poly_params(:,idx);
-            acc = obj.PolyAcc(t)*obj.poly_params(:,idx);
+            p = obj.PolyPos(t)*obj.poly_params(:,idx);
+            v = obj.PolyVel(t)*obj.poly_params(:,idx);
+            a = obj.PolyAcc(t)*obj.poly_params(:,idx);
         end
         
         function res = PolyPos(obj, t)

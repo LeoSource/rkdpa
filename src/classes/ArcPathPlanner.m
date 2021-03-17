@@ -1,4 +1,4 @@
-classdef ArcPathPlanner
+classdef ArcPathPlanner < handle
 % calculate the arc information according to 3 points
 % arc information: center, radius, angle range(include direction),
 % and transformation matrix
@@ -79,6 +79,32 @@ classdef ArcPathPlanner
                 vel = [vel, v];
                 acc = [acc, a];
             end
+        end
+        
+        function PlotTraj(obj, varp, varv, vara, tf, dt)
+            [pos, vel, ~] = obj.GenerateTraj(varp, varv, vara);
+            time=0:dt:tf;
+            figure
+            subplot(3,1,1)
+            plot(time, pos(1,:));
+            xlabel('x\_position');
+            subplot(3,1,2)
+            plot(time, pos(2,:));
+            xlabel('y\_position');
+            subplot(3,1,3)
+            plot(time, pos(3,:));
+            xlabel('z\_position');
+
+            figure
+            subplot(3,1,1)
+            plot(time, vel(1,:));
+            xlabel('x\_velocity');
+            subplot(3,1,2)
+            plot(time, vel(2,:));
+            xlabel('y\_velocity');
+            subplot(3,1,3)
+            plot(time,vel(3,:));
+            xlabel('z\_velocity');        
         end
     
     end

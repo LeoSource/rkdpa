@@ -6,7 +6,7 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-test_mode = 'ctrajcircle';
+test_mode = 'ctrajarctrans';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -134,27 +134,15 @@ xlabel('x'); ylabel('y'); zlabel('z');
 hold on
 plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
 
-figure
-time=0:0.01:2;
-subplot(3,1,1)
-plot(time, pos(1,:));
-xlabel('x\_position');
-subplot(3,1,2)
-plot(time, pos(2,:));
-xlabel('y\_position');
-subplot(3,1,3)
-plot(time, pos(3,:));
-xlabel('z\_position');
+arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 
-figure
-subplot(3,1,1)
-plot(time, vel(1,:));
-xlabel('x\_velocity');
-subplot(3,1,2)
-plot(time, vel(2,:));
-xlabel('y\_velocity');
-subplot(3,1,3)
-plot(time,vel(3,:));
-xlabel('z\_velocity');
-
+    case 'ctrajarctrans'
+%% cartesian trajectory for points using arc to transmit between 2 line paths
+pos1 = [1, 0, 0]; pos2 = [0, 0, 0]; pos3 = [0, 1, 0]; pos4 = [2, 1, 0];
+radius = 0.4;
+path = ArcTransPathPlanner([pos1', pos2', pos3', pos4'], radius);
 end
+
+
+
+

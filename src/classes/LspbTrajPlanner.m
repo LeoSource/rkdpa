@@ -82,7 +82,7 @@ classdef LspbTrajPlanner < handle
                 vel = [vel, v];
                 acc = [acc, a];
             end            
-        end
+        end       
         
         function PlotAVP(obj, dt)
             [q, dq, ddq] = obj.GenerateTraj(dt);
