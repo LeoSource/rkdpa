@@ -39,6 +39,7 @@ classdef ArcTransPathPlanner < handle
                 obj.pt(:,2*idx) = pt2;
                 obj.dr(idx) = obj.radius*(pi-obj.theta(idx));
                 obj.dl(idx) = norm(pt1-pos(:,idx));
+                obj.rot{idx} = obj.CalcArcRot(obj.center(:,idx), pt1, pt2);
                 if idx ~=1
                     obj.dl(idx) = obj.dl(idx)-norm(pos(:,idx)-obj.pt(:,2*(idx-1)));
                 end
@@ -47,10 +48,19 @@ classdef ArcTransPathPlanner < handle
                 end
                 obj.line_vec(:,idx) = (pos(:,idx+1)-pos(:,idx))/norm(pos(:,idx+1)-pos(:,idx));
             end
-            obj.line_vec(:,obj.numarc+1) = (pos(:,end)-pos(:,end-1));
+            obj.line_vec(:,obj.numarc+1) = (pos(:,end)-pos(:,end-1))/norm(pos(:,end)-pos(:,end-1));
             obj.distance = sum(obj.dl)+sum(obj.dr);
         end
         
+        
+        function rot = CalcArcRot(obj, center, p1, p2)
+            px = p1-center;
+            n = px/norm(px);
+            a = cross(px, (p2-center));
+            a = a/norm(a);
+            o = cross(a, n);
+            rot = [n, o, a];
+        end
         
         function [center, theta, pt1, pt2] = CalcArcPoints(obj, p1, p2, p3)
             p21 = p1-p2; p23 = p3-p2;
@@ -82,10 +92,84 @@ classdef ArcTransPathPlanner < handle
             end
             idx = discretize(varp, dis);
             if mod(idx,2)==1
-                p = obj.p_initial+obj.line_vec(:,idx)*varp;
+                if idx==1
+                    p = obj.p_initial+obj.line_vec(:,idx)*varp;
+                else
+                    p = obj.pt(:,idx-1)+obj.line_vec(:,(idx+1)/2)*(varp-dis(idx));
+                end
+            else
+                th = (varp-dis(idx))/obj.radius;
+                parc = zeros(3,1);
+                parc(1) = obj.radius*cos(th);
+                parc(2) = obj.radius*sin(th);
+                p = obj.center(:,idx/2)+obj.rot{idx/2}*parc;
             end
         end
         
+        function [p, v, a] = GenerateMotion(obj, varp, varv, vara)
+            p = obj.GeneratePath(varp);
+            dis = zeros(1,length(obj.dl)+length(obj.dr)+1);
+            m = dis(1);
+            for idx=2:length(dis)
+                if mod(idx,2)==0
+                    m = m+obj.dl(idx/2);
+                else
+                    m = m+obj.dr((idx-1)/2);
+                end
+                dis(idx) = m;
+            end
+            idx = discretize(varp, dis);
+            if mod(idx,2)==1
+                v = varv*obj.line_vec(:,(idx+1)/2);
+                a = vara*obj.line_vec(:,(idx+1)/2);
+            else
+                s = varp-dis(idx);
+                r = obj.radius;
+                vc=zeros(3,1); ac = zeros(3,1);
+                vc(1) = -varv*sin(s/r);
+                vc(2) = varv*cos(s/r);
+                v = obj.rot{idx/2}*vc;
+                ac(1) = -varv^2*cos(s/r)/r-vara*sin(s/r);
+                ac(2) = -varv^2*sin(s/r)/r+vara*cos(s/r);
+                a = obj.rot{idx/2}*ac;
+            end
+        end
+        
+        function [pos, vel, acc] = GenerateTraj(obj, varp, varv, vara)
+            pos = []; vel = []; acc = [];
+            for idx=1:length(varp)
+                [p, v, a] = obj.GenerateMotion(varp(idx), varv(idx), vara(idx));
+                pos = [pos, p];
+                vel = [vel, v];
+                acc = [acc, a];
+            end
+        end
+        
+        function PlotTraj(obj, varp, varv, vara, tf, dt)
+            [pos, vel, ~] = obj.GenerateTraj(varp, varv, vara);
+            time=0:dt:tf;
+            figure
+            subplot(3,1,1)
+            plot(time, pos(1,:));
+            ylabel('p\_x');
+            subplot(3,1,2)
+            plot(time, pos(2,:));
+            ylabel('p\_y');
+            subplot(3,1,3)
+            plot(time, pos(3,:));
+            ylabel('p\_z');
+
+            figure
+            subplot(3,1,1)
+            plot(time, vel(1,:));
+            ylabel('v\_x');
+            subplot(3,1,2)
+            plot(time, vel(2,:));
+            ylabel('v\_y');
+            subplot(3,1,3)
+            plot(time,vel(3,:));
+            ylabel('v\_z');        
+        end
     end
       
 end

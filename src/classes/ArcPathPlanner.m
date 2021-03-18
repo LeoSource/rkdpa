@@ -87,24 +87,24 @@ classdef ArcPathPlanner < handle
             figure
             subplot(3,1,1)
             plot(time, pos(1,:));
-            xlabel('x\_position');
+            ylabel('p\_x');
             subplot(3,1,2)
             plot(time, pos(2,:));
-            xlabel('y\_position');
+            ylabel('p\_y');
             subplot(3,1,3)
             plot(time, pos(3,:));
-            xlabel('z\_position');
+            ylabel('p\_z');
 
             figure
             subplot(3,1,1)
             plot(time, vel(1,:));
-            xlabel('x\_velocity');
+            ylabel('v\_x');
             subplot(3,1,2)
             plot(time, vel(2,:));
-            xlabel('y\_velocity');
+            ylabel('v\_y');
             subplot(3,1,3)
             plot(time,vel(3,:));
-            xlabel('z\_velocity');        
+            ylabel('v\_z');        
         end
     
     end
