@@ -5,6 +5,7 @@ src/*.asv
 src/classes/*.asv
 src/tools/*.asv
 src/*.gif
+*.autosave
 
 # 暂时忽略solidworks模型文件
 model/

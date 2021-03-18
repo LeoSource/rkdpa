@@ -146,11 +146,38 @@ xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 hold off
 
 figure(2)
+title('joint position');
 plot(t,sim_q(:,1),'-', t, sim_q(:,2), '--', t, sim_q(:,3), '-.', t, sim_q(:,4), ':', t, sim_q(:,5), '-');
 grid on
 legend('q1', 'q2', 'q3', 'q4', 'q5');
 
-figure(3)
+figure
 plot(pos_err);
 grid on
 legend('x', 'y', 'z');
+
+time = 0:dt:tf;
+figure
+title('joint velocity');
+plot(time,dq(:,1), '-', time, dq(:,2), '--', time, dq(:,3), '-.', time, dq(:,4), ':', time, dq(:,5), '-');
+grid on
+legend('dq1', 'dq2', 'dq3', 'dq4', 'dq5');
+
+figure
+title('joint torque');
+plot(time,tau(:,1), '-', time, tau(:,2), '--', time, tau(:,3), '-.', time, tau(:,4), ':', time, tau(:,5), '-');
+grid on
+legend('tau1', 'tau2', 'tau3', 'tau4', 'tau5');
+
+figure
+title('joint actuator power');
+power = dq.*tau;
+for idx=1:5
+    max_power(idx) = max(power(:,idx));
+end
+plot(time,power(:,1), '-', time, power(:,2), '--', time, power(:,3), '-.', time, power(:,4), ':', time, power(:,5), '-');
+grid on
+legend('power1', 'power2', 'power3', 'power4', 'power5');
+max_power
+
+
