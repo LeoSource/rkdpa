@@ -8,3 +8,6 @@ src/*.gif
 
 # 暂时忽略solidworks模型文件
 model/
+
+# 忽略vscode配置文件
+.vscode/

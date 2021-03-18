@@ -5,16 +5,26 @@ clc
 rbt = CleanRobot;
 %% task plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'ellipsoid';
+task = 'mirror';
 interp_pos = [];
 switch task
     case clean_task(1)
         % wipe the mirror
-        tmp_interp = [-1, 1, 1, -1]*0.5; 
-        interp_pos(:,1) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
-        interp_pos(:,2) = 0.7;
-        interp_pos(:,3) = [0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0, 1.0, 1.1, 1.1, 1.2, 1.2, 1.3, 1.3, 1.4, 1.4, 1.5, 1.5, 1.6, 1.6, 1.7, 1.7, 1.8, 1.8];   
+%         tmp_interp = [-1, 1, 1, -1]*0.5; 
+%         interp_pos(:,1) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
+%         interp_pos(:,2) = 0.7;
+%         interp_pos(:,3) = [0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0, 1.0, 1.1, 1.1, 1.2, 1.2, 1.3, 1.3, 1.4, 1.4, 1.5, 1.5, 1.6, 1.6, 1.7, 1.7, 1.8, 1.8];   
+%         ik_option = 'q2first';
+        pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+        radius = 0.02;
+        tf = 60; dt = 0.01;
+        via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 0.1);
+        path = ArcTransPathPlanner(via_pos, radius);
+        planner = LspbTrajPlanner([0, path.distance], tf, 0.5, 2, 'limitvel');
+        [s, sv, sa] = planner.GenerateTraj(dt);
+        [pos, vel, acc] = path.GenerateTraj(s, sv, sa);
         ik_option = 'q2first';
+        alpha = zeros(1, length(s));
     case clean_task(2)
         % wipe the table
         interp_pos(:,1) = [-0.5, -0.5, -0.4, -0.4, -0.3, -0.3, -0.2, -0.2, -0.1, -0.1, 0, 0, 0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6];
@@ -40,9 +50,9 @@ end
 
 %% trajectory plan
 sample_time = 0.01;
-tf = 20;
-pos = [];
-alpha = [];
+% tf = 20;
+% pos = [];
+% alpha = [];
 switch task
     case clean_task(3)%circle
         step_alpha = 2*pi*sample_time/tf;
@@ -95,22 +105,24 @@ switch task
         pos = pos(:,2:end);
         pos = pos';           
     otherwise
-        for idx=1:size(interp_pos,1)-1
-           if mod(idx,2)==1
-               interp_num = 100;
-           else
-               interp_num = 10;
-           end
-           initial_frame = transl(interp_pos(idx,:)');
-           end_frame = transl(interp_pos(idx+1,:)');
-           tmp_frame = ctraj(initial_frame, end_frame, interp_num);
-           pos = [pos; transl(tmp_frame)];
-           alpha = zeros(1,size(pos,1));
-        end           
+%         for idx=1:size(interp_pos,1)-1
+%            if mod(idx,2)==1
+%                interp_num = 100;
+%            else
+%                interp_num = 10;
+%            end
+%            initial_frame = transl(interp_pos(idx,:)');
+%            end_frame = transl(interp_pos(idx+1,:)');
+%            tmp_frame = ctraj(initial_frame, end_frame, interp_num);
+%            pos = [pos; transl(tmp_frame)];
+%            alpha = zeros(1,size(pos,1));
+%         end           
 end
+
 
 sim_q = [];
 sim_pos = [];
+pos = pos';
 for idx=1:size(pos,1)    
     tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
     sim_q = [sim_q; tmp_q];
