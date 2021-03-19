@@ -90,7 +90,7 @@ classdef ArcTransPathPlanner < handle
                 end
                 dis(idx) = m;
             end
-            idx = discretize(varp, dis);
+            idx = obj.CalcPosidx(dis, varp);
             if mod(idx,2)==1
                 if idx==1
                     p = obj.p_initial+obj.line_vec(:,idx)*varp;
@@ -118,7 +118,7 @@ classdef ArcTransPathPlanner < handle
                 end
                 dis(idx) = m;
             end
-            idx = discretize(varp, dis);
+            idx = obj.CalcPosidx(dis, varp);
             if mod(idx,2)==1
                 v = varv*obj.line_vec(:,(idx+1)/2);
                 a = vara*obj.line_vec(:,(idx+1)/2);
@@ -144,6 +144,16 @@ classdef ArcTransPathPlanner < handle
                 acc = [acc, a];
             end
         end
+
+        function idx = CalcPosidx(obj, dis, varp)
+            if varp>dis(end)
+                idx = length(dis)-1;
+            elseif varp<dis(1)
+                idx = 1;
+            else
+                idx = discretize(varp, dis);
+            end
+        end            
         
         function PlotTraj(obj, varp, varv, vara, tf, dt)
             [pos, vel, ~] = obj.GenerateTraj(varp, varv, vara);
@@ -158,6 +168,7 @@ classdef ArcTransPathPlanner < handle
             subplot(3,1,3)
             plot(time, pos(3,:));
             ylabel('p\_z');
+            suptitle('cartesian position');
 
             figure
             subplot(3,1,1)
@@ -169,6 +180,7 @@ classdef ArcTransPathPlanner < handle
             subplot(3,1,3)
             plot(time,vel(3,:));
             ylabel('v\_z');        
+            suptitle('cartesian velocity');
         end
     end
       

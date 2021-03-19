@@ -172,12 +172,16 @@ legend('tau1', 'tau2', 'tau3', 'tau4', 'tau5');
 figure
 power = dq.*tau;
 for idx=1:5
+    max_dq(idx) = max(dq(:,idx));
+    max_tau(idx) = max(tau(:,idx));
     max_power(idx) = max(power(:,idx));
 end
 plot(time,power(:,1), '-', time, power(:,2), '--', time, power(:,3), '-.', time, power(:,4), ':', time, power(:,5), '-');
 grid on
 title('joint actuator power');
 legend('power1', 'power2', 'power3', 'power4', 'power5');
+max_dq
+max_tau
 max_power
 
 

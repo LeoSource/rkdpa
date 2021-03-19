@@ -80,7 +80,7 @@ classdef ArcPathPlanner < handle
                 acc = [acc, a];
             end
         end
-        
+
         function PlotTraj(obj, varp, varv, vara, tf, dt)
             [pos, vel, ~] = obj.GenerateTraj(varp, varv, vara);
             time=0:dt:tf;
@@ -94,6 +94,7 @@ classdef ArcPathPlanner < handle
             subplot(3,1,3)
             plot(time, pos(3,:));
             ylabel('p\_z');
+            suptitle('cartesian position');
 
             figure
             subplot(3,1,1)
@@ -105,6 +106,7 @@ classdef ArcPathPlanner < handle
             subplot(3,1,3)
             plot(time,vel(3,:));
             ylabel('v\_z');        
+            suptitle('cartesian velocity');
         end
     
     end
