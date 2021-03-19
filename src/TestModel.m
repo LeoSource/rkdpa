@@ -139,9 +139,10 @@ arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
     case 'ctrajarctrans'
 %% cartesian trajectory for points using arc to transmit between 2 line paths
 pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
-radius = 0.02;
-tf = 60; dt = 0.01;
-via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 0.1);
+% pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.8, 0.2, 0.7]; pos3 = [-0.8, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
+radius = 0.04;
+tf = 90; dt = 0.01;
+via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 0.1, [-1,0,1]);
 path = ArcTransPathPlanner(via_pos, radius);
 planner = LspbTrajPlanner([0, path.distance], tf, 0.5, 2, 'limitvel');
 [s, sv, sa] = planner.GenerateTraj(dt);
@@ -154,7 +155,9 @@ hold on
 plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
 
 path.PlotTraj(s, sv, sa, tf, dt);
+
 end
+
 
 
 
