@@ -11,7 +11,7 @@ function via_pos = CalcRectanglePath(corner_pos, step, direction)
     cycle_idx = find(direction==-1);
     step_idx = find(direction==1);
     static_idx = find(direction==0);
-    numvp = 2*((corner_pos(step_idx,4)-corner_pos(step_idx,1))/step+1);
+    numvp = 2*(abs(corner_pos(step_idx,4)-corner_pos(step_idx,1))/step+1);
     for idx=1:round(numvp/2)
         via_pos(step_idx,2*idx-1) = corner_pos(step_idx,1)+(idx-1)*step;
         via_pos(step_idx,2*idx) = corner_pos(step_idx,1)+(idx-1)*step;

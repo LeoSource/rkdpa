@@ -12,3 +12,9 @@ model/
 
 # 忽略vscode配置文件
 .vscode/
+
+# 暂时忽略others文件夹
+others/
+
+# 暂时忽略md文件
+*.md
