@@ -6,7 +6,7 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-test_mode = 'ctrajbspline';
+test_mode = 'jacobian';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -194,7 +194,21 @@ hold on
 plot(pos(1,:), pos(2,:));
 % plot3(pos(1,:), pos(2,:), pos(3,:));
 
-
+    case 'jacobian'
+%% test for jacobian
+mdh_table = [      0,   0,   0,       0,    0,   0
+                pi/2,   0,   0,       0,    1,   0 
+                    0,    0,   0,   pi/2,    0,   pi/2
+                pi/2,    0,   0,   pi/2,   1,   0
+                    0,    0,   0,    pi/2,   0,   0
+                    0,   0.2,  0,   -pi/6-pi/2, 0, 0];
+test_rbt = SerialLink(mdh_table, 'modified', 'name', 'test_rbt');
+q = rand(1,5);  test_q = [q, 0];
+dq = rand(5,1); test_dq = [dq; 0];
+spatial_vel = rbt.CalcJaco(q)*dq
+test_jaco = test_rbt.jacob0(test_q);
+test_vel = test_jaco*test_dq
+jaco_err = norm(rbt.CalcJaco(q)-test_jaco(:,1:5))
 
 end
 

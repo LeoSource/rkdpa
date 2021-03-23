@@ -110,10 +110,21 @@ classdef CleanRobot < handle
             c = [];
         end
         
+        %% jacobian matrix calculation
+        function jaco = CalcJaco(obj, q)
+            jaco_end = obj.arm.jacob0(q);
+            p_mat = eye(6,6);
+            pose = obj.FKSolve(q);
+            rot = tr2rt(pose);
+            r = rot*obj.tool;%projection to the world coordinate system
+            p_mat(1:3,4:6) = -skew(r);
+            jaco = p_mat*jaco_end;
+        end
+
         %% validation for the workspace of cleanrobot
         function PlotWorkspace(obj)
             %to do:simplify the plot code
-            num = 50000;
+            num = 10000;
             qlim = obj.arm.qlim;
             q0 = qlim(:,1)';
             qf = qlim(:,2)';
