@@ -10,7 +10,6 @@ function [pos, b_coeff] = BSpline(via_pos, knots_vec, u)
         end
     end
     pos = via_pos*b_coeff;
-
 end
 
 

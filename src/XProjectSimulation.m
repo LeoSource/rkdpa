@@ -16,7 +16,7 @@ switch task
 %         interp_pos(:,3) = [0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0, 1.0, 1.1, 1.1, 1.2, 1.2, 1.3, 1.3, 1.4, 1.4, 1.5, 1.5, 1.6, 1.6, 1.7, 1.7, 1.8, 1.8];   
 %         ik_option = 'q2first';
         pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
-        radius = 0.02;
+        radius = 0.04;
         tf = 60; dt = 0.01;
         via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 0.1);
         path = ArcTransPathPlanner(via_pos, radius);
