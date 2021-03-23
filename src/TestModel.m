@@ -6,7 +6,7 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-test_mode = 'ctrajpoly';
+test_mode = 'ctrajbspline';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -170,6 +170,27 @@ grid on
 xlabel('x'); ylabel('y'); zlabel('z');
 hold on
 plot3(pos(1,:), pos(2,:), pos(3,:));
+
+    case 'ctrajbspline'
+%% cartesian trajectory plan using B-spline
+pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+via_pos = CalcRectanglePath1([pos1', pos2', pos3', pos4'], 0.1, 's');
+knots_vec = [0,0,0,1/5,2/5,3/5,4/5,1,1,1];
+% knots_vec = [0,0,0,0,1/3,2/3,1,1,1,1];
+% knots_vec = 0:0.1:1;
+pos = [];
+for u=0:0.01:0.99
+    [p, coef] = BSpline(via_pos(:,1:6),knots_vec, u);
+    pos = [pos ,p];
+end
+figure
+plot3(via_pos(1,1:6),via_pos(2,1:6),via_pos(3,1:6), 'ro');
+grid on
+xlabel('x'); ylabel('y'); zlabel('z');
+hold on
+plot3(pos(1,:), pos(2,:), pos(3,:));
+
+
 
 end
 

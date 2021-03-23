@@ -1,7 +1,7 @@
 classdef LspbTrajPlanner < handle
     % lsqb trajectory(trapezoidal velocity profile)    
-    % to do: add arbitrary position value
-    % to do: add S style velocity profile
+    % TO DO: add arbitrary position value
+    % TO DO: add S style velocity profile
     
     properties
         max_vel

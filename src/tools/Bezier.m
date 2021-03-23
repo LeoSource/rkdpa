@@ -1,5 +1,5 @@
 function Bezier( vertices )
-% BEZIER ï¿½ï¿½ï¿½ï¿½Bezierï¿½ï¿½ï¿½ï¿½
+% BEZIER Éú³É±´Èû¶ûÇúÏß
 
     Dim=size(vertices,1);
     NumPoint=size(vertices,2)-1;
