@@ -6,7 +6,7 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-test_mode = 'ctrajarctrans';
+test_mode = 'ctrajpoly';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -117,7 +117,6 @@ subplot(3,1,3)
 plot(time, vel(:,3));
 xlabel('z\_velocity');
 
-
     case 'ctrajcircle'
 %% cartesian circle trajectory plan using lspb
 pos1 = [0, -2, 0];
@@ -133,7 +132,6 @@ grid on
 xlabel('x'); ylabel('y'); zlabel('z');
 hold on
 plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
-
 arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 
     case 'ctrajarctrans'
@@ -154,8 +152,24 @@ grid on
 xlabel('x'); ylabel('y'); zlabel('z');
 hold on
 plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
-
 path.PlotTraj(s, sv, sa, tf, dt);
+
+    case 'ctrajpoly'
+%% cartesian trajectory plan using polynomial trajectory
+% it is very important to define the time sequence for every via position
+pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.77, 0.2, 0.7]; pos3 = [-0.77, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
+via_pos = CalcRectanglePath1([pos1', pos2', pos3', pos4'], 0.1, 'm');
+for idx=1:3
+    planner(idx) = PolyTrajPlanner(via_pos(idx,:), 2, 3);
+    [pos(idx,:), ~, ~] = planner(idx).GenerateTraj(0.01);
+end
+% planner(1).PlotAVP(0.01);
+figure
+plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'ro');
+grid on
+xlabel('x'); ylabel('y'); zlabel('z');
+hold on
+plot3(pos(1,:), pos(2,:), pos(3,:));
 
 end
 
