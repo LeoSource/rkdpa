@@ -1,0 +1,50 @@
+// test.cpp : 定义控制台应用程序的入口点。
+//
+
+#include "stdafx.h"
+#include <iostream>
+#include <Eigen/Dense>
+#include <algorithm>
+#include "PolyTrajPlanner.h"
+
+using namespace std;
+using namespace Eigen;
+
+int main()
+{
+	MatrixXd a = MatrixXd::Zero(3, 4);
+	a.setIdentity(3,4);
+	a << 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12;
+	double arra[] = { 0,2,4,6,8,10 };
+
+	auto b = MathTools::Discretize(arra, 6, 0);
+	cout << "idx = " << b << endl;
+	Matrix<double, 6, 1> pos1(arra);
+	int idx = MathTools::Discretize(pos1, 6, 0);
+	cout << "b=" << idx << endl;
+
+	//cout << sizeof(arra) / sizeof(arra[0]) << endl;
+	//RowVector3f p, q, r;
+	//cout << 'a'<< endl <<a << endl;
+	//cout << "block" << endl << a.block(1,2,2,2) << endl;
+	//cout << a.rightCols(1) << endl;
+
+	//VectorXd vel;
+	//vel.setZero(6);
+	//vel(0) = 1.2; vel(1) = 2.3; vel(2) = 3.4;
+	//cout << vel << endl;
+	//Matrix<double, 6, 6> mat;
+	//mat << vel, vel, vel, vel, vel, vel;
+	//cout << mat << endl;
+
+
+	Vector2d pos;
+	pos << 10, 5;
+	PolyTrajPlanner planner(pos, 2, 5);
+	cout << planner._poly_params << endl;
+	double p = planner.GenerateMotion(0.72);
+	cout << p << endl;
+
+    return 0;
+}
+
