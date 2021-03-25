@@ -19,7 +19,7 @@ PolyTrajPlanner::PolyTrajPlanner(VectorXd pos, double* tf_vec, int order)
 	_order = order;
 	int n = pos.size();
 	_nump = n;
-
+	_tf_vec.setZero(n);
 	for (int idx = 0; idx < n; idx++)
 	{
 		_tf_vec(idx) = tf_vec[idx];

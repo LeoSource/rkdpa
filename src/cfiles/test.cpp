@@ -38,11 +38,12 @@ int main()
 	//cout << mat << endl;
 
 
-	Vector2d pos;
-	pos << 10, 5;
-	PolyTrajPlanner planner(pos, 2, 5);
+	Vector3d pos;
+	pos << 0, 10, 5;
+	double time[] = { 0,1.2,2 };
+	PolyTrajPlanner planner(pos, time, 3);
 	cout << planner._poly_params << endl;
-	double p = planner.GenerateMotion(0.72);
+	double p = planner.GenerateMotion(1.3547);
 	cout << p << endl;
 
     return 0;
