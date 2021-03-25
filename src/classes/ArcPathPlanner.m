@@ -11,28 +11,46 @@ classdef ArcPathPlanner < handle
     
     
     methods
-        function obj = ArcPathPlanner(pos1, pos2, pos3)
-            [a1, b1, c1, d1] = obj.PointsCoplane(pos1, pos2, pos3);
-            [a2, b2, c2, d2] = obj.RadiusEqual(pos1, pos2);
-            [a3, b3, c3, d3] = obj.RadiusEqual(pos1, pos3);
-            center(1) = -(b1*c2*d3-b1*c3*d2-b2*c1*d3+b2*c3*d1+b3*c1*d2-b3*c2*d1)/...
-                                (a1*b2*c3-a1*b3*c2-a2*b1*c3+a2*b3*c1+a3*b1*c2-a3*b2*c1);
-            center(2) = (a1*c2*d3-a1*c3*d2-a2*c1*d3+a2*c3*d1+a3*c1*d2-a3*c2*d1)/...
-                                (a1*b2*c3-a1*b3*c2-a2*b1*c3+a2*b3*c1+a3*b1*c2-a3*b2*c1);
-            center(3) = -(a1*b2*d3-a1*b3*d2-a2*b1*d3+a2*b3*d1+a3*b1*d2-a3*b2*d1)/...
-                                (a1*b2*c3-a1*b3*c2-a2*b1*c3+a2*b3*c1+a3*b1*c2-a3*b2*c1);
-            obj.center = reshape(center, 3,1);
-            tmp_value = (pos1(1)-center(1))^2+(pos1(2)-center(2))^2+(pos1(3)-center(3))^2;
-            obj.radius = sqrt(tmp_value);
-            line_length = norm(pos3-pos1);
-            tmp_cos = (obj.radius^2+obj.radius^2-line_length^2)/(2*obj.radius*obj.radius);
-            obj.theta = acos(tmp_cos);
-            
-            n = (pos1-center)/norm(pos1-center);
-            n = reshape(n, 3,1);
-            a = [a1; b1; c1]/norm([a1; b1; c1]);
-            o = cross(a,n);
-            obj.rot = [n, o, a];
+        function obj = ArcPathPlanner(pos1, pos2, pos3, option)
+            if strcmp(option, 'arc')
+                [a1, b1, c1, d1] = obj.PointsCoplane(pos1, pos2, pos3);
+                [a2, b2, c2, d2] = obj.RadiusEqual(pos1, pos2);
+                [a3, b3, c3, d3] = obj.RadiusEqual(pos1, pos3);
+                center(1) = -(b1*c2*d3-b1*c3*d2-b2*c1*d3+b2*c3*d1+b3*c1*d2-b3*c2*d1)/...
+                                    (a1*b2*c3-a1*b3*c2-a2*b1*c3+a2*b3*c1+a3*b1*c2-a3*b2*c1);
+                center(2) = (a1*c2*d3-a1*c3*d2-a2*c1*d3+a2*c3*d1+a3*c1*d2-a3*c2*d1)/...
+                                    (a1*b2*c3-a1*b3*c2-a2*b1*c3+a2*b3*c1+a3*b1*c2-a3*b2*c1);
+                center(3) = -(a1*b2*d3-a1*b3*d2-a2*b1*d3+a2*b3*d1+a3*b1*d2-a3*b2*d1)/...
+                                    (a1*b2*c3-a1*b3*c2-a2*b1*c3+a2*b3*c1+a3*b1*c2-a3*b2*c1);
+                obj.center = reshape(center, 3,1);
+                tmp_value = (pos1(1)-center(1))^2+(pos1(2)-center(2))^2+(pos1(3)-center(3))^2;
+                obj.radius = sqrt(tmp_value);
+                line_length = norm(pos3-pos1);
+                tmp_cos = (obj.radius^2+obj.radius^2-line_length^2)/(2*obj.radius*obj.radius);
+                obj.theta = acos(tmp_cos);
+                
+                n = (pos1-center)/norm(pos1-center);
+                n = reshape(n, 3,1);
+                a = [a1; b1; c1]/norm([a1; b1; c1]);
+                o = cross(a,n);
+                obj.rot = [n, o, a];
+            elseif strcmp(option, 'circle')
+                % ref:http://blog.sina.com.cn/s/blog_6496e38e0102vi7e.html
+                obj.center = pos1;
+                obj.radius = pos3;
+                obj.theta = 2*pi;
+                zr = pos2;
+                yr = cross(zr, [1; 0; 0]);
+                if ~any(yr)
+                    yr = cross(zr, [0;1;0]);
+                end
+                xr = cross(zr, yr);
+                xr = xr/norm(xr);
+                yr = yr/norm(yr);
+                obj.rot = [xr, yr, zr];
+            else
+                error('input the right arc option');
+            end
         end
     
         function [a, b, c, d] = RadiusEqual(obj, pos1, pos2)

@@ -6,7 +6,7 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-test_mode = 'jacobian';
+test_mode = 'ctrajcircle';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -76,6 +76,9 @@ pos = [0,10, 5];
 planner = PolyTrajPlanner(pos, [0, 1.2, 2], 3);
 planner.PlotAVP(0.01);
 
+planner1 = PolyTrajPlanner([10,5], 2, 5);
+planner1.GenerateMotion(0.72)
+
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
 planner = LspbTrajPlanner([20,10], 2, 15, 10, 'limitvel');
@@ -117,12 +120,12 @@ subplot(3,1,3)
 plot(time, vel(:,3));
 xlabel('z\_velocity');
 
-    case 'ctrajcircle'
-%% cartesian circle trajectory plan using lspb
+    case 'ctrajarc'
+%% cartesian arc path trajectory plan using lspb
 pos1 = [0, -2, 0];
 pos2 = [1, 0, 1];
 pos3 = [0, 3, 3];
-arcpath = ArcPathPlanner(pos1, pos2, pos3);
+arcpath = ArcPathPlanner(pos1, pos2, pos3, 'arc');
 planner = LspbTrajPlanner([0, arcpath.theta], 2, 2, 2, 'limitvel');
 [alp, alpv, alpa] = planner.GenerateTraj(0.01);
 [pos, vel, acc] = arcpath.GenerateTraj(alp, alpv, alpa);
@@ -134,25 +137,39 @@ hold on
 plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
 arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 
+    case 'ctrajcircle'
+%% cartesian circle path trajectory plan using lspb
+center = [1;2;3]; n_vec = [1;0;0]; radius = 0.5;
+circlepath = ArcPathPlanner(center, n_vec, radius, 'circle');
+planner = LspbTrajPlanner([0, circlepath.theta], 2, 4, 2, 'limitvel');
+[alp, alpv, alpa] = planner.GenerateTraj(0.01);
+[pos, vel, acc] = circlepath.GenerateTraj(alp, alpv, alpa);
+
+plot3(pos(1,:), pos(2,:), pos(3,:));
+grid on
+xlabel('x'); ylabel('y'); zlabel('z');
+circlepath.PlotTraj(alp, alpv, alpa, 2, 0.01);
+
     case 'ctrajarctrans'
 %% cartesian trajectory for points using arc to transmit between 2 line paths
 % pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
-pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.77, 0.2, 0.7]; pos3 = [-0.77, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
+pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.8, 0.2, 0.7]; pos3 = [-0.8, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
 radius = 0.04;
 tf = 60; dt = 0.01;
 % via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 0.1, [-1,0,1]);
-via_pos = CalcRectanglePath1([pos1', pos2', pos3', pos4'], 0.1, 'm');
-path = ArcTransPathPlanner(via_pos, radius);
-planner = LspbTrajPlanner([0, path.distance], tf, 0.5, 2, 'limitvel');
+% via_pos = CalcRectanglePath1([pos1', pos2', pos3', pos4'], 0.1, 's');
+via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 16, 'm');
+cpath = ArcTransPathPlanner(via_pos, radius);
+planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
 [s, sv, sa] = planner.GenerateTraj(dt);
-[pos, vel, acc] = path.GenerateTraj(s, sv, sa);
+[pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
 
 plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'ro');
 grid on
 xlabel('x'); ylabel('y'); zlabel('z');
 hold on
 plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
-path.PlotTraj(s, sv, sa, tf, dt);
+cpath.PlotTraj(s, sv, sa, tf, dt);
 
     case 'ctrajpoly'
 %% cartesian trajectory plan using polynomial trajectory
@@ -209,6 +226,20 @@ spatial_vel = rbt.CalcJaco(q)*dq
 test_jaco = test_rbt.jacob0(test_q);
 test_vel = test_jaco*test_dq
 jaco_err = norm(rbt.CalcJaco(q)-test_jaco(:,1:5))
+
+    case 'redudantsolve'
+%% redundant solve for robot work
+% % pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+% pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.77, 0.2, 0.7]; pos3 = [-0.77, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
+% radius = 0.04;
+% tf = 60; dt = 0.01;
+% % via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 0.1, [-1,0,1]);
+% via_pos = CalcRectanglePath1([pos1', pos2', pos3', pos4'], 0.1, 'm');
+% cpath = ArcTransPathPlanner(via_pos, radius);
+% planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
+% [s, sv, sa] = planner.GenerateTraj(dt);
+% [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
+
 
 end
 
