@@ -2,47 +2,48 @@ clear
 close all
 clc
 
+addpath('classes');
+addpath('tools');
+
 rbt = CleanRobot;
 %% task plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'mirror';
+task = 'table';
 interp_pos = [];
 switch task
     case clean_task(1)
         % wipe the mirror
-%         tmp_interp = [-1, 1, 1, -1]*0.5; 
-%         interp_pos(:,1) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
-%         interp_pos(:,2) = 0.7;
-%         interp_pos(:,3) = [0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0, 1.0, 1.1, 1.1, 1.2, 1.2, 1.3, 1.3, 1.4, 1.4, 1.5, 1.5, 1.6, 1.6, 1.7, 1.7, 1.8, 1.8];   
-%         ik_option = 'q2first';
         pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
         radius = 0.04;
         tf = 60; dt = 0.01;
-        via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 0.1);
-        path = ArcTransPathPlanner(via_pos, radius);
-        planner = LspbTrajPlanner([0, path.distance], tf, 0.5, 2, 'limitvel');
+        via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 15, 's');
+        cpath = ArcTransPathPlanner(via_pos, radius);
+        planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
         [s, sv, sa] = planner.GenerateTraj(dt);
-        [pos, vel, acc] = path.GenerateTraj(s, sv, sa);
+        [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
         ik_option = 'q2first';
         alpha = zeros(1, length(s));
     case clean_task(2)
         % wipe the table
-        interp_pos(:,1) = [-0.5, -0.5, -0.4, -0.4, -0.3, -0.3, -0.2, -0.2, -0.1, -0.1, 0, 0, 0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6];
-        tmp_interp = [0.3, 0.8, 0.8, 0.3];
-        interp_pos(:,2) = [tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp, tmp_interp];
-        interp_pos(:,3) = 0.5;
-        ik_option = 'q3first';
+        pos1 = [0.8, 0.4, 0.7]; pos2 = [-0.8, 0.4, 0.7]; pos3 = [-0.8, 1.0, 0.7]; pos4 = [0.8, 1.0, 0.7];
+        radius = 0.04;
+        tf = 60; dt = 0.01;
+        via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 16, 'm');
+        cpath = ArcTransPathPlanner(via_pos, radius);
+        planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
+        [s, sv, sa] = planner.GenerateTraj(dt);
+        [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
+        ik_option = 'q3first0';
+        alpha = zeros(1, length(s));
     case clean_task(3)
         % wipe the washbasin 
-%         interp_pos = circle([0,0.5,0.5], 0.3);
-%         interp_pos = interp_pos';
-        ik_option = 'q3first';
+        ik_option = 'q3firstn';
     case clean_task(4)
         %wipe the washbasin 
-        ik_option = 'q3first';
+        ik_option = 'q3firstn';
     case clean_task(5)
         %wipe the washbasin 
-        ik_option = 'q3first';
+        ik_option = 'q3firstn';
     otherwise
         error('CleanRobot can not accomplish the task');
 end
@@ -154,6 +155,7 @@ legend('q1', 'q2', 'q3', 'q4', 'q5');
 figure
 plot(pos_err);
 grid on
+title('cartesian position error');
 legend('x', 'y', 'z');
 
 time = 0:dt:tf;

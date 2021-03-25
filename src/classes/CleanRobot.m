@@ -39,13 +39,10 @@ classdef CleanRobot < handle
             ty = obj.tool(2); tz = obj.tool(3);
             height_limit = obj.arm.qlim(2,:)+tz;
             switch option
-                case 'q3first'
-                    q(3) = -pi/6;
-                    q(1) = atan((pos(1)+sin(alpha)*ty)/(cos(alpha)*ty-pos(2)));
-                    q(5) = alpha-q(1); 
-                    tmp_value = pos(2)-ty*(-sin(q(1))*sin(q(5))+cos(q(1))*cos(q(3))*cos(q(5)))+cos(q(1))*sin(q(3))*tz;
-                    q(4) = tmp_value/(cos(q(1))*cos(q(3)));
-                    q(2) = pos(3)-cos(q(5))*sin(q(3))*ty-cos(q(3))*tz-sin(q(3))*q(4);                               
+                case 'q3first0'
+                    q = obj.IKJnt3(pos, alpha, 0);
+                case 'q3firstn'
+                    q = obj.IKJnt3(pos, alpha, -pi/6);
                 case 'q2first'
                     if pos(3)>height_limit(2)
                         q(2) = obj.arm.qlim(2,2);
@@ -76,6 +73,16 @@ classdef CleanRobot < handle
                 otherwise
                     error('put the right option to inverse kinematics solver');
             end
+        end
+
+        function q = IKJnt3(obj, pos, alpha, q3)
+            ty = obj.tool(2); tz = obj.tool(3);
+            q(3) = q3;
+            q(1) = atan((pos(1)+sin(alpha)*ty)/(cos(alpha)*ty-pos(2)));
+            q(5) = alpha-q(1); 
+            tmp_value = pos(2)-ty*(-sin(q(1))*sin(q(5))+cos(q(1))*cos(q(3))*cos(q(5)))+cos(q(1))*sin(q(3))*tz;
+            q(4) = tmp_value/(cos(q(1))*cos(q(3)));
+            q(2) = pos(3)-cos(q(5))*sin(q(3))*ty-cos(q(3))*tz-sin(q(3))*q(4);                               
         end
         
         %% inverse kinematics with numerical solution(optimization toolbox)
