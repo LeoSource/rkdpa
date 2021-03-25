@@ -121,6 +121,16 @@ classdef CleanRobot < handle
             jaco = p_mat*jaco_end;
         end
 
+        function jv = CalcJv(obj, q)
+            jaco = obj.CalcJaco(q);
+            jv = jaco(1:3,:);
+        end
+
+        function jw = CalcJw(obj, q)
+            jaco = obj.CalcJaco(q);
+            jw = jaco(4:6,:);
+        end
+
         %% validation for the workspace of cleanrobot
         function PlotWorkspace(obj)
             %to do:simplify the plot code
