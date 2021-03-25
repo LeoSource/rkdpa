@@ -6,9 +6,9 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-%% task plan
+%% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'table';
+task = 'circle';
 interp_pos = [];
 switch task
     case clean_task(1)
@@ -37,6 +37,12 @@ switch task
         alpha = zeros(1, length(s));
     case clean_task(3)
         % wipe the washbasin 
+        center = [0; 0.5; 0.5]; radius = 0.3; n_vec = [0;0;1];
+        circlepath = ArcPathPlanner(center, n_vec, radius, 'circle');
+        tf = 10; dt = 0.01;
+        planner = LspbTrajPlanner([0, circlepath.theta], tf, 1, 2, 'limitvel');
+        [alpha, alpv, alpa] = planner.GenerateTraj(dt);
+        [pos, vel, acc] = circlepath.GenerateTraj(alpha, alpv, alpa);
         ik_option = 'q3firstn';
     case clean_task(4)
         %wipe the washbasin 
@@ -56,12 +62,12 @@ sample_time = 0.01;
 % alpha = [];
 switch task
     case clean_task(3)%circle
-        step_alpha = 2*pi*sample_time/tf;
-        alpha = 0: step_alpha: 2*pi;
-        origin = [0; 0.5; 0.5];
-        radius = 0.3;
-        pos = [0.3*sin(alpha); 0.5+0.3*cos(alpha); 0.5*ones(1,length(alpha))];
-        pos = pos';        
+%         step_alpha = 2*pi*sample_time/tf;
+%         alpha = 0: step_alpha: 2*pi;
+%         origin = [0; 0.5; 0.5];
+%         radius = 0.3;
+%         pos = [0.3*sin(alpha); 0.5+0.3*cos(alpha); 0.5*ones(1,length(alpha))];
+%         pos = pos';        
     case clean_task(4)%sphere
         step = 1*pi/180;
         origin = [0; 0.5; 0.5];
