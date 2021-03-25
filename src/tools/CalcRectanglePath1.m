@@ -18,7 +18,7 @@ function via_pos = CalcRectanglePath1(corner_pos, step, option)
         start_pos1 = corner_pos(:,1);
         start_pos2 = corner_pos(:,4);
     end
-    numvp = 2*(floor(norm(step_vec1)/step)+1);
+    numvp = 2*(round(norm(step_vec1)/step)+1);
     rest_dis = mod(norm(step_vec1), step);
     step_vec1 = step_vec1/norm(step_vec1);
     step_vec2 = step_vec2/norm(step_vec2);
