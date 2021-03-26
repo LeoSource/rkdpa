@@ -1,12 +1,12 @@
-// test.cpp : ¶¨Òå¿ØÖÆÌ¨Ó¦ÓÃ³ÌĞòµÄÈë¿Úµã¡£
+ï»¿// test.cpp : å®šä¹‰æ§åˆ¶å°åº”ç”¨ç¨‹åºçš„å…¥å£ç‚¹ã€‚
 //
 
-#include "stdafx.h"
+//#include "stdafx.h"
 #include <iostream>
-#include <Eigen/Dense>
 #include <algorithm>
 #include "PolyTrajPlanner.h"
 
+#include "eigen3/Eigen/Dense"
 using namespace std;
 using namespace Eigen;
 

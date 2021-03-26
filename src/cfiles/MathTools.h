@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <math.h>
-#include <Eigen/Dense>
+//#include <Eigen/Dense>
+//#include "Eigen/Dense"
+#include "eigen3/Eigen/Dense"
 
 #define	EPS	1e-8
 
