@@ -9,18 +9,22 @@ addpath('tools');
 % to do: random position to test
 rbt = CleanRobot;
 
-q = rbt.IKSolve([0.499770431588613, 0.7, 1.6], 'q2first', 0);
+cmd_pos = [rand, rand, rand+1]';
+% cmd_pos = [0.1, 0.8, 1.7]';
+q = rbt.IKSolve(cmd_pos, 'q2first', 0);
 pos = rbt.FKSolve(q).t;
+disp(['pos_err = ', num2str(norm(cmd_pos-pos))]);
 
-
-q2 = rbt.IKSolve([0, 0.8, 0.5], 'q3first', 0);
+cmd_pos = [0, 0.8, rand]';
+q2 = rbt.IKSolve(cmd_pos, 'q3first0', 0);
 pos2 = rbt.FKSolve(q2).t;
+disp(['pos_err = ', num2str(norm(cmd_pos-pos2))]);
 
-circle_params.origin = [0; 0.5; 0.5];
+circle_params.origin = [rand; rand; rand];
 circle_params.radius = 0.3;
-circle_params.alpha = -20*pi/180;
+circle_params.alpha = 45*pi/180;
 cmd_pos = [-sin(circle_params.alpha)*circle_params.radius, circle_params.origin(2)+cos(circle_params.alpha)*circle_params.radius, circle_params.origin(3)]
-q3 = rbt.IKSolve(cmd_pos, 'q3first', circle_params.alpha);
+q3 = rbt.IKSolve(cmd_pos, 'q3firstn', circle_params.alpha);
 pos3 = rbt.FKSolve(q3).t;
 
 
