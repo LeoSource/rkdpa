@@ -13,11 +13,13 @@ classdef CleanRobot < handle
         %% constructor
         function obj = CleanRobot()
             % mdh parameters: theta d a alpha sigma offset
+            l1 = 0.15; l2 = 0.2; l3 = 0.1;% model refinement
+%             l1 = 0; l2 = 0; l3 = 0;
             mdh_table = [      0,   0,   0,       0,    0,   0
                                     pi/2,   0,   0,       0,    1,   0 
-                                        0,    0,   0,   pi/2,    0,   pi/2
+                                        0,    l2,   -l1,   pi/2,    0,   pi/2
                                     pi/2,    0,   0,   pi/2,   1,   0
-                                        0,    0,   0,    pi/2,   0,   0];
+                                        0,    0,   -l3,    pi/2,   0,   0];
             qlimit = [-pi/2, pi/2; 0.5, 1.5; -pi/2 ,pi/2; 0.2, 1; -2*pi, 2*pi];            
             obj.arm = SerialLink(mdh_table,'modified','name','CleanRobot');
             for idx=1:size(mdh_table,1)
@@ -32,8 +34,57 @@ classdef CleanRobot < handle
             pose.t = pose.t+tr2rt(pose)*obj.tool;
         end
         
-        %% inverse kinematics with analytical solution        
+        %% inverse kinematics with analytical solution    
         function q = IKSolve(obj, pos, option, alpha)
+            %%to simplify the problem of end-effector's pose: theta5 = alpha-theta1
+            q = zeros(1,5);
+            ty = obj.tool(2); tz = obj.tool(3);
+            height_limit = obj.arm.qlim(2,:)+tz;
+            switch option
+                case 'q3first0'
+                    q = obj.IKJnt3Uni(pos, alpha, 0);
+                case 'q3firstn'
+                    q = obj.IKJnt3Uni(pos, alpha, -pi/6);
+                case 'q2first'
+                    if pos(3)>height_limit(2)
+                        q(2) = obj.arm.qlim(2,2);
+                    elseif pos(3)<height_limit(1)
+                        q(2) = obj.arm.qlim(2,1);
+                    else
+                        q(2) = pos(3)-tz;
+                    end        
+                    a = pos(1)+sin(alpha)*ty;
+                    b = pos(2)-cos(alpha)*ty;
+                    c = obj.arm.d(3)+obj.arm.a(5);
+                    q(1) = CalcTransEqua(a, b, c);
+                    q(5) = alpha-q(1);
+                    a = cos(q(1))*(pos(3)-q(2));
+                    b = -pos(2)-sin(q(5))*sin(q(1))*ty+cos(q(1))*obj.arm.a(3)+sin(q(1))*(obj.arm.d(3)+obj.arm.a(5));
+                    c = cos(q(1))*tz;
+                    q(3) = CalcTransEqua(a, b, c);
+                    tmp_value = pos(2)-ty*(-sin(q(1))*sin(q(5))+cos(q(1))*cos(q(3))*cos(q(5)))+...
+                                cos(q(1))*sin(q(3))*tz-obj.arm.a(3)*cos(q(1))-(obj.arm.d(3)+obj.arm.a(5))*sin(q(1));
+                    q(4) = tmp_value/(cos(q(1))*cos(q(3)));                    
+                otherwise
+                    error('put the right option to inverse kinematics solver');
+            end
+        end
+        
+        function q = IKJnt3Uni(obj, pos, alpha, q3)
+            ty = obj.tool(2); tz = obj.tool(3);
+            q(3) = q3;
+            a = pos(1)+sin(alpha)*ty;
+            b = pos(2)-cos(alpha)*ty;
+            c = obj.arm.d(3)+obj.arm.a(5);
+            q(1) = CalcTransEqua(a, b, c);
+            q(5) = alpha-q(1);
+            tmp_value = pos(2)-ty*(-sin(q(1))*sin(q(5))+cos(q(1))*cos(q(3))*cos(q(5)))+...
+                        cos(q(1))*sin(q(3))*tz-obj.arm.a(3)*cos(q(1))-(obj.arm.d(3)+obj.arm.a(5))*sin(q(1));
+            q(4) = tmp_value/(cos(q(1))*cos(q(3)));
+            q(2) = pos(3)-cos(q(5))*sin(q(3))*ty-cos(q(3))*tz-sin(q(3))*q(4);
+        end
+
+        function q = IKSolve1(obj, pos, option, alpha)
              %%to simplify the problem of end-effector's pose: theta5 = alpha-theta1
             q = zeros(1,5);
             ty = obj.tool(2); tz = obj.tool(3);
@@ -53,23 +104,12 @@ classdef CleanRobot < handle
                     end        
                     q(1) = atan((pos(1)+sin(alpha)*ty)/(cos(alpha)*ty-pos(2)));
                     q(5) = alpha-q(1);
-                    a = sin(q(1))*(pos(3)-q(2));
-                    b = pos(1)+sin(q(5))*cos(q(1))*ty;
-                    c = sin(q(1))*tz;
-                    if abs(a+c)<1e-5
-                        u = (c-a)/(2*b);
-                        q(3) = 2*atan(u);
-                    else
-                        q3_tmp1 = 2*atan((b+sqrt(b^2+a^2-c^2))/(a+c));
-                        q3_tmp2 = 2*atan((b-sqrt(b^2+a^2-c^2))/(a+c));
-                        if (q3_tmp1>pi/2) || (q3_tmp1<-pi/2)
-                            q(3) = q3_tmp2;
-                        else
-                            q(3) = q3_tmp1;
-                        end
-                    end
+                    a = cos(q(1))*(pos(3)-q(2));
+                    b = -pos(2)-sin(q(5))*sin(q(1))*ty;
+                    c = cos(q(1))*tz;
+                    q(3) = CalcTransEqua(a, b, c);
                     tmp_value = pos(2)-ty*(-sin(q(1))*sin(q(5))+cos(q(1))*cos(q(3))*cos(q(5)))+cos(q(1))*sin(q(3))*tz;
-                    q(4) = tmp_value/(cos(q(1))*cos(q(3)));                    
+                    q(4) = tmp_value/(cos(q(1))*cos(q(3))); 
                 otherwise
                     error('put the right option to inverse kinematics solver');
             end
@@ -82,7 +122,7 @@ classdef CleanRobot < handle
             q(5) = alpha-q(1); 
             tmp_value = pos(2)-ty*(-sin(q(1))*sin(q(5))+cos(q(1))*cos(q(3))*cos(q(5)))+cos(q(1))*sin(q(3))*tz;
             q(4) = tmp_value/(cos(q(1))*cos(q(3)));
-            q(2) = pos(3)-cos(q(5))*sin(q(3))*ty-cos(q(3))*tz-sin(q(3))*q(4);                               
+            q(2) = pos(3)-cos(q(5))*sin(q(3))*ty-cos(q(3))*tz-sin(q(3))*q(4);
         end
         
         %% inverse kinematics with numerical solution(optimization toolbox)
@@ -219,3 +259,4 @@ classdef CleanRobot < handle
     end
     
 end
+
