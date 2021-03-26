@@ -159,8 +159,9 @@ classdef CleanRobot < handle
             s1 = sin(q(1)); c1 = cos(q(1));
             s3 = sin(q(3)); c3 = cos(q(3));
             s5 = sin(q(5)); c5 = cos(q(5));
-            ceq(1) = -ty*(c1*s5+s1*c3*c5)+s1*s3*tz-s1*c3*q(4)-pos(1);
-            ceq(2) = ty*(-s1*s5+c1*c3*c5)-c1*s3*tz+c1*c3*q(4)-pos(2);
+            lx = obj.arm.d(3)+obj.arm.a(5); ly = obj.arm.a(3);
+            ceq(1) = -ty*(c1*s5+s1*c3*c5)+s1*s3*tz-s1*c3*q(4)-ly*s1+lx*c1-pos(1);
+            ceq(2) = ty*(-s1*s5+c1*c3*c5)-c1*s3*tz+c1*c3*q(4)+ly*c1+lx*s1-pos(2);
             ceq(3) = s3*c5*ty+c3*tz+q(2)+s3*q(4)-pos(3);
             c = [];
         end
