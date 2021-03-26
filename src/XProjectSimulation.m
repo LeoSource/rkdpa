@@ -4,11 +4,11 @@ clc
 
 addpath('classes');
 addpath('tools');
-
+% TO DO: optimize the sphere and ellipsoid path planner like ArcPathPlanner
 rbt = CleanRobot;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'circle';
+task = 'mirror';
 interp_pos = [];
 switch task
     case clean_task(1)
@@ -60,15 +60,9 @@ sample_time = 0.01;
 % tf = 20;
 % pos = [];
 % alpha = [];
-switch task
-    case clean_task(3)%circle
-%         step_alpha = 2*pi*sample_time/tf;
-%         alpha = 0: step_alpha: 2*pi;
-%         origin = [0; 0.5; 0.5];
-%         radius = 0.3;
-%         pos = [0.3*sin(alpha); 0.5+0.3*cos(alpha); 0.5*ones(1,length(alpha))];
-%         pos = pos';        
+switch task    
     case clean_task(4)%sphere
+        dt = 0.01;
         step = 1*pi/180;
         origin = [0; 0.5; 0.5];
         radius = 0.3;
@@ -88,8 +82,8 @@ switch task
             alpha = [alpha, zeros(1,length(phi))];
         end
         pos = pos(:,2:end);
-        pos = pos';        
     case clean_task(5)%ellipsoid
+        dt = 0.01;
         step = 1*pi/180;
         origin = [0; 0.5; 1];
         a = 0.4; b = 0.5; c = 0.3;
@@ -109,21 +103,8 @@ switch task
             pos = [pos, tmp_pos];
             alpha = [alpha, zeros(1,length(phi))];
         end
-        pos = pos(:,2:end);
-        pos = pos';           
-    otherwise
-%         for idx=1:size(interp_pos,1)-1
-%            if mod(idx,2)==1
-%                interp_num = 100;
-%            else
-%                interp_num = 10;
-%            end
-%            initial_frame = transl(interp_pos(idx,:)');
-%            end_frame = transl(interp_pos(idx+1,:)');
-%            tmp_frame = ctraj(initial_frame, end_frame, interp_num);
-%            pos = [pos; transl(tmp_frame)];
-%            alpha = zeros(1,size(pos,1));
-%         end           
+        pos = pos(:,2:end);      
+    otherwise         
 end
 
 
@@ -188,8 +169,8 @@ plot(time,power(:,1), '-', time, power(:,2), '--', time, power(:,3), '-.', time,
 grid on
 title('joint actuator power');
 legend('power1', 'power2', 'power3', 'power4', 'power5');
-max_dq
-max_tau
-max_power
+disp(['max_q = ', num2str(max_dq)]);    
+disp(['max_tau = ', num2str(max_tau)]);   
+disp(['max_power = ', num2str(max_power)]);
 
 
