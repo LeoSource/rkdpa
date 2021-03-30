@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MathTools.h"
+#include "RobotMath.h"
 
 using namespace std;
 using namespace Eigen;
@@ -20,11 +20,16 @@ public:
 
 public:
 	PolyTrajPlanner() {}
+
 	PolyTrajPlanner(VectorXd pos, double tf, int order);
+
 	PolyTrajPlanner(VectorXd pos, double* tf_vec, int order);
+
 	~PolyTrajPlanner();
 
-public://private
+	RobotTools::JAVP GenerateMotion(double t);
+
+private:
 	RowVectorXd PolyPos(double t);
 
 	RowVectorXd PolyVel(double t);
@@ -39,6 +44,5 @@ public://private
 
 	MatrixXd PolyContiAcc(VectorXd pos);
 
-	double GenerateMotion(double t);
 };
 

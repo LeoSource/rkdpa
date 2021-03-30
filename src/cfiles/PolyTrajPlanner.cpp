@@ -206,9 +206,10 @@ MatrixXd PolyTrajPlanner::PolyContiAcc(VectorXd pos)
 }
 
 
-double PolyTrajPlanner::GenerateMotion(double t)
+RobotTools::JAVP PolyTrajPlanner::GenerateMotion(double t)
 {
 	VectorXd time_vec;
+	RobotTools::JAVP avp;
 	if (fabs(_tf) < EPS)
 	{
 		time_vec = _tf_vec;
@@ -218,9 +219,11 @@ double PolyTrajPlanner::GenerateMotion(double t)
 		time_vec.setLinSpaced(_nump, 0, _tf);
 	}	
 	int idx = MathTools::Discretize(time_vec, _nump, t);
-	double p = PolyPos(t)*_poly_params.col(idx);
+	avp.pos = PolyPos(t)*_poly_params.col(idx);
+	avp.vel = PolyVel(t)*_poly_params.col(idx);
+	avp.acc = PolyAcc(t)*_poly_params.col(idx);
 
-	return p;
+	return avp;
 }
 
 PolyTrajPlanner::~PolyTrajPlanner()
