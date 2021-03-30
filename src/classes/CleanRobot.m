@@ -13,8 +13,8 @@ classdef CleanRobot < handle
         %% constructor
         function obj = CleanRobot()
             % mdh parameters: theta d a alpha sigma offset
-            l1 = 0.15; l2 = 0.2; l3 = 0.1;% model refinement
-%             l1 = 0; l2 = 0; l3 = 0;
+%             l1 = 0.15; l2 = 0.2; l3 = 0.1;% model refinement
+            l1 = 0; l2 = 0; l3 = 0;
             mdh_table = [      0,   0,   0,       0,    0,   0
                                     pi/2,   0,   0,       0,    1,   0 
                                         0,    l2,   -l1,   pi/2,    0,   pi/2
@@ -92,6 +92,7 @@ classdef CleanRobot < handle
             q(2) = pos(3)-s3*c5*ty-c3*tz-s3*q(4);
         end
 
+        % the following ik algorithm will be deleted
         function q = IKSolve1(obj, pos, option, alpha)
              %%to simplify the problem of end-effector's pose: theta5 = alpha-theta1
             q = zeros(1,5);

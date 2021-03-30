@@ -8,7 +8,7 @@ addpath('tools');
 rbt = CleanRobot;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'mirror';
+task = 'table';
 interp_pos = [];
 switch task
     case clean_task(1)

@@ -6,7 +6,7 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-test_mode = 'ctrajarctrans';
+test_mode = 'jacobian';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -240,6 +240,8 @@ test_jaco = test_rbt.jacob0(test_q);
 test_vel = test_jaco*test_dq
 jaco_err = norm(rbt.CalcJaco(q)-test_jaco(:,1:5))
 
+q= [0.3,0.98,-0.91,0.91,0.56];
+jaco = rbt.CalcJaco(q)
     case 'redudantsolve'
 %% redundant solve for robot work
 % % pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
