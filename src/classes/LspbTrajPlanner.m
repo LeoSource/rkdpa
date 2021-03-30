@@ -2,6 +2,7 @@ classdef LspbTrajPlanner < handle
     % lsqb trajectory(trapezoidal velocity profile)    
     % TO DO: add arbitrary position value
     % TO DO: add S style velocity profile
+    % TO DO: add no time limit option
     
     properties
         max_vel
@@ -53,36 +54,40 @@ classdef LspbTrajPlanner < handle
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
             for t = 0:dt:obj.tf
-                if obj.uniform_vel==1
-                    if t>=0 && t<=obj.tc
-                        q = obj.pos(1)+0.5*obj.max_acc*t^2;
-                        v = obj.max_acc*t;
-                        a = obj.max_acc;
-                    elseif t>obj.tc && t<=(obj.tf-obj.tc)
-                        q = obj.pos(1)+obj.max_acc*obj.tc*(t-0.5*obj.tc);
-                        v = obj.max_acc*obj.tc;
-                        a = 0;
-                    elseif t>(obj.tf-obj.tc) && t<=obj.tf
-                        q = obj.pos(2)-0.5*obj.max_acc*(obj.tf-t)^2;
-                        v = obj.max_acc*(obj.tf-t);
-                        a = -obj.max_acc;
-                    end
-                else
-                    if t>=0 && t<=obj.tc
-                        q = obj.pos(1)+0.5*obj.max_acc*t^2;
-                        v = obj.max_acc*t;
-                        a = obj.max_acc;
-                    elseif t>obj.tc && t<obj.tf
-                        q = obj.pos(2)-0.5*obj.max_vel*(obj.tf-t)^2/(obj.tf-obj.tc);
-                        v = -obj.max_vel/(obj.tf-obj.tc)*(t-obj.tf);
-                        a = -obj.max_acc;
-                    end
-                end
-                pos = [pos, q];
+                [p, v, a] = obj.GenerateMotion(t);
+                pos = [pos, p];
                 vel = [vel, v];
                 acc = [acc, a];
             end            
         end       
+
+        function [p, v, a] = GenerateMotion(obj, t)
+            if obj.uniform_vel==1
+                if t>=0 && t<=obj.tc
+                    p = obj.pos(1)+0.5*obj.max_acc*t^2;
+                    v = obj.max_acc*t;
+                    a = obj.max_acc;
+                elseif t>obj.tc && t<=(obj.tf-obj.tc)
+                    p = obj.pos(1)+obj.max_acc*obj.tc*(t-0.5*obj.tc);
+                    v = obj.max_acc*obj.tc;
+                    a = 0;
+                elseif t>(obj.tf-obj.tc) && t<=obj.tf
+                    p = obj.pos(2)-0.5*obj.max_acc*(obj.tf-t)^2;
+                    v = obj.max_acc*(obj.tf-t);
+                    a = -obj.max_acc;
+                end
+            else
+                if t>=0 && t<=obj.tc
+                    p = obj.pos(1)+0.5*obj.max_acc*t^2;
+                    v = obj.max_acc*t;
+                    a = obj.max_acc;
+                elseif t>obj.tc && t<=obj.tf
+                    p = obj.pos(2)-0.5*obj.max_vel*(obj.tf-t)^2/(obj.tf-obj.tc);
+                    v = -obj.max_vel/(obj.tf-obj.tc)*(t-obj.tf);
+                    a = -obj.max_acc;
+                end
+            end
+        end
         
         function PlotAVP(obj, dt)
             [q, dq, ddq] = obj.GenerateTraj(dt);

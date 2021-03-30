@@ -6,7 +6,7 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-test_mode = 'ctrajcircle';
+test_mode = 'ctrajarctrans';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -76,14 +76,15 @@ pos = [0,10, 5];
 planner = PolyTrajPlanner(pos, [0, 1.2, 2], 3);
 planner.PlotAVP(0.01);
 
-planner1 = PolyTrajPlanner([10,5], 2, 5);
-planner1.GenerateMotion(0.72)
+planner1 = PolyTrajPlanner([0, 10,5], [0,1.2,2], 3);
+[p, v, a] = planner1.GenerateMotion(1.3547)
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
-planner = LspbTrajPlanner([20,10], 2, 15, 10, 'limitvel');
+planner = LspbTrajPlanner([20,10], 2, 16, 10, 'limitvel');
 planner.PlotAVP(0.01);
 
+[p, v, a] = planner.GenerateMotion(2)
     case 'ctrajline'
 %% cartesian line trajectory plan using lspb
 pos_initial = [0, 0, 0];
@@ -137,6 +138,10 @@ hold on
 plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
 arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 
+% comparison test with Cpp
+[alp, alpv, alpa] = planner.GenerateMotion(1);
+[pos, vel, acc] = arcpath.GenerateMotion(alp, alpv, alpa)
+
     case 'ctrajcircle'
 %% cartesian circle path trajectory plan using lspb
 center = [1;2;3]; n_vec = [1;0;0]; radius = 0.5;
@@ -149,6 +154,10 @@ plot3(pos(1,:), pos(2,:), pos(3,:));
 grid on
 xlabel('x'); ylabel('y'); zlabel('z');
 circlepath.PlotTraj(alp, alpv, alpa, 2, 0.01);
+
+% comparison test with Cpp
+[alp, alpv, alpa] = planner.GenerateMotion(2);
+[pos, vel, acc] = circlepath.GenerateMotion(alp, alpv, alpa)
 
     case 'ctrajarctrans'
 %% cartesian trajectory for points using arc to transmit between 2 line paths
@@ -170,6 +179,10 @@ xlabel('x'); ylabel('y'); zlabel('z');
 hold on
 plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
 cpath.PlotTraj(s, sv, sa, tf, dt);
+
+% comparison test with Cpp
+[s, sv, sa] = planner.GenerateMotion(54);
+[pos, vel, acc] = cpath.GenerateMotion(s, sv, sa)
 
     case 'ctrajpoly'
 %% cartesian trajectory plan using polynomial trajectory
