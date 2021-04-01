@@ -8,7 +8,7 @@ addpath('tools');
 rbt = CleanRobot;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'table';
+task = 'mirror';
 interp_pos = [];
 switch task
     case clean_task(1)
@@ -107,7 +107,6 @@ switch task
     otherwise         
 end
 
-
 sim_q = [];
 sim_pos = [];
 pos = pos';
@@ -119,8 +118,6 @@ for idx=1:size(pos,1)
 end
 pos_err = pos-sim_pos;
 t = [0:sample_time:sample_time*(size(sim_q,1)-1)]';
-sim_q(:,2) = sim_q(:,2) - 0.75;
-
 %% simulation with simscape and plot
 sim('x_project_g3.slx');
 
