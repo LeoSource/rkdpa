@@ -6,7 +6,8 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-test_mode = 'jacobian';
+g_cycle_time = 0.001;
+test_mode = 'mirrortask';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -131,16 +132,19 @@ planner = LspbTrajPlanner([0, arcpath.theta], 2, 2, 2, 'limitvel');
 [alp, alpv, alpa] = planner.GenerateTraj(0.01);
 [pos, vel, acc] = arcpath.GenerateTraj(alp, alpv, alpa);
 
-plot3([pos1(1); pos2(1); pos3(1)], [pos1(2); pos2(2); pos3(2)], [pos1(3); pos2(3); pos3(3)], 'ro');
+f1 = plot3([pos1(1); pos2(1); pos3(1)], [pos1(2); pos2(2); pos3(2)], [pos1(3); pos2(3); pos3(3)], 'ro');
 grid on
 xlabel('x'); ylabel('y'); zlabel('z');
 hold on
-plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
-arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
-
+f2 = plot3(pos(1,:), pos(2,:), pos(3,:), 'b--');
 % comparison test with Cpp
-[alp, alpv, alpa] = planner.GenerateMotion(1);
-[pos, vel, acc] = arcpath.GenerateMotion(alp, alpv, alpa)
+pos_cpp = load('./data/ctrajarc_pos.csv');
+np = length(pos_cpp)/3;
+pos_cpp = reshape(pos_cpp, 3, np);
+f3 = plot3(pos_cpp(1,:), pos_cpp(2,:), pos_cpp(3,:), 'r-');
+legend([f2, f3], 'matlab\_data', 'cpp\_data');
+
+arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 
     case 'ctrajcircle'
 %% cartesian circle path trajectory plan using lspb
@@ -254,6 +258,37 @@ jaco = rbt.CalcJaco(q)
 % planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
 % [s, sv, sa] = planner.GenerateTraj(dt);
 % [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
+
+    case 'mirrortask'
+%%  comparison with cpp
+pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+radius = 0.04;
+tf = 60; dt = 0.01;
+via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 15, 's');
+cpath = ArcTransPathPlanner(via_pos, radius);
+planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
+[s, sv, sa] = planner.GenerateTraj(dt);
+[pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
+ik_option = 'q2first';
+alpha = zeros(1, length(s));
+
+sim_q = [];
+pos = pos';
+for idx=1:size(pos,1)    
+    tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
+    sim_q = [sim_q; tmp_q];
+end
+t = 0:dt:tf;
+tt = 0:g_cycle_time:tf;
+
+q_cpp = load('./data/mirrortask_jpos.csv');
+q_cpp = reshape(q_cpp, rbt.nlinks, length(tt));
+for idx=1:rbt.nlinks
+    figure(idx)
+    plot(t, sim_q(:,idx), 'b--', tt, q_cpp(idx, :), 'r-');
+    xlabel('time'); ylabel(['q', num2str(idx)]);
+    legend('matlab\_data', 'cpp\_data');
+end
 
 
 end

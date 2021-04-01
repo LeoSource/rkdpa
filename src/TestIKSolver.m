@@ -10,6 +10,7 @@ addpath('tools');
 rbt = CleanRobot;
 q = [0.2,-0.3,0.45,0.67,pi/2];
 rbt.FKSolve(q)
+rbt.fksolve(q)
 
 % cmd_pos = [rand, rand, rand+1]';
 cmd_pos = [-0.47, 0.8, 0.92]';
