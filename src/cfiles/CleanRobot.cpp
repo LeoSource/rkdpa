@@ -54,7 +54,8 @@ VectorXd CleanRobot::IKSolve(Vector3d pos, char* option, double alpha)
 {
 	VectorXd q(_nlinks);
 	double ty = _tool.pos(1), tz = _tool.pos(2);
-	Vector2d height_limit(_qlimit(1, 0)+tz, _qlimit(1, 1)+tz);
+	double h = _offset(1);
+	Vector2d height_limit(_qlimit(1, 0)+tz+h, _qlimit(1, 1)+tz+h);
 	if (strcmp(option, "q3first0")==0)
 		q = IKJnt3(pos, alpha, 0);
 	else if (strcmp(option, "q3firstn")==0)
@@ -80,10 +81,11 @@ VectorXd CleanRobot::IKJnt3(Vector3d pos, double alpha, double q3)
 	double s1 = sin(q(0)), c1 = cos(q(0));
 	double s3 = sin(q(2)), c3 = cos(q(2));
 	double s5 = sin(q(4)), c5 = cos(q(4));
+	double h = _offset(1), w = _offset(3);
 	double lx = _mdh_table(2, 1)+_mdh_table(4, 2), ly = _mdh_table(2, 2);
 	double tmp_value = pos(1)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1;
-	q(3) = tmp_value/(c1*c3);
-	q(1) = pos(2)-s3*c5*ty-c3*tz-s3*q(3);
+	q(3) = tmp_value/(c1*c3)-w;
+	q(1) = pos(2)-s3*c5*ty-c3*tz-s3*q(3)-h;
 
 	return q;
 }
@@ -92,13 +94,14 @@ VectorXd CleanRobot::IKJnt2(Vector3d pos, double alpha)
 {
 	VectorXd q(_nlinks);
 	double ty = _tool.pos(1), tz = _tool.pos(2);
-	Vector2d height_limit(_qlimit(1, 0)+tz, _qlimit(1, 1)+tz);
+	double h = _offset(1), w = _offset(3);
+	Vector2d height_limit(_qlimit(1, 0)+tz+h, _qlimit(1, 1)+tz+h);
 	if (pos(2)>height_limit(1))
 		q(1) = _qlimit(1, 1);
 	else if (pos(2)<height_limit(0))
 		q(1) = _qlimit(1, 0);
 	else
-		q(1) = pos(2)-tz;
+		q(1) = pos(2)-tz-h;
 
 	double a = pos(0)+sin(alpha)*ty;
 	double b = pos(1)-cos(alpha)*ty;
@@ -109,13 +112,13 @@ VectorXd CleanRobot::IKJnt2(Vector3d pos, double alpha)
 	double s1 = sin(q(0)), c1 = cos(q(0));
 	double s5 = sin(q(4)), c5 = cos(q(4));
 	double lx = _mdh_table(2, 1)+_mdh_table(4, 2), ly = _mdh_table(2, 2);
-	a = c1*(pos(2)-q(1));
+	a = c1*(pos(2)-q(1)-h);
 	b = -pos(1)-s1*s5*ty+c1*ly+s1*lx;
 	c = c1*tz;
 	q(2) = MathTools::CalcTransEqua(a, b, c);
 	double s3 = sin(q(2)), c3 = cos(q(2));
 	double tmp_value = pos(1)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1;
-	q(3) = tmp_value/(c1*c3);
+	q(3) = tmp_value/(c1*c3)-w;
 
 	return q;
 }

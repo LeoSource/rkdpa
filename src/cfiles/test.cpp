@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "GlobalParams.h"
 #include <iostream>
+#include <fstream>
 #include <algorithm>
 #include "PolyTrajPlanner.h"
 #include "LspbTrajPlanner.h"
@@ -27,7 +28,8 @@ enum ID_test
 	ctrajbspline = 8,
 	jacobian = 9,
 	iksolver = 10,
-	other = 11
+	mirrortask = 11,
+	other = 12
 };
 
 CleanRobot CreatRobot()
@@ -86,12 +88,32 @@ void Testctrajarc()
 	pos1<<0, -2, 0; pos2<<1, 0, 1; pos3<<0, 3, 3;
 	ArcPathPlanner arcpath(pos1, pos2, pos3);
 	Vector2d via_pos(0, arcpath._theta);
-	LspbTrajPlanner planner(via_pos, 2, 2, 2, "limitvel");
-	RobotTools::JAVP javp = planner.GenerateMotion(1);
-	RobotTools::CLineAVP avp = arcpath.GenerateMotion(javp.pos, javp.vel, javp.acc);
-	cout<<avp.pos<<endl;
-	cout<<avp.vel<<endl;
-	cout<<avp.acc<<endl;
+	double tf = 2;
+	LspbTrajPlanner planner(via_pos, tf, 2, 2, "limitvel");
+	int ntime = tf/g_cycle_time+1;
+
+	//const char* file_name = "../data/traj_pos.csv";
+	const char* file_name = "C:/00Work/01projects/XProject/src/data/ctrajarc_pos.csv";
+	ofstream ofile;
+	ofile.open(file_name, ios::out|ios::trunc);
+	if (!ofile.is_open())
+	{
+		cout<<"failed to open the file"<<endl;
+	}
+	else
+	{
+		cout<<"start saving data"<<endl;
+		for (int idx = 0; idx<ntime; idx++)
+		{
+			double t = idx*g_cycle_time;
+			RobotTools::JAVP javp = planner.GenerateMotion(t);
+			RobotTools::CLineAVP avp = arcpath.GenerateMotion(javp.pos, javp.vel, javp.acc);
+			ofile<<avp.pos<<endl;
+		}
+		cout<<"succeed to save the data"<<endl;
+	}
+	ofile.close();
+
 }
 
 void Testctrajcircle()
@@ -130,8 +152,8 @@ void Testctrajarctrans()
 void Testiksolver()
 {
 	CleanRobot rbt = CreatRobot();
-	Vector3d pos;
-	pos.setRandom();
+	Vector3d pos(0.7,0.8,1);
+	//pos.setRandom();
 	VectorXd q = rbt.IKSolve(pos, "q2first", 0);
 	Vector3d pos_err = pos-rbt.FKSolve(q).pos;
 
@@ -151,18 +173,65 @@ void Testjacobian()
 	cout<<jaco<<endl<<endl;
 }
 
-void Testother()
+void Testmirrortask()
 {
 	Vector3d pos1, pos2, pos3, pos4;
-	pos1<<3, 4, 0;
-	pos2<<0, 1, 0;
-	pos3 = pos1.cross(pos2);
-	cout << 2%2 << endl;
+	pos1<<0.7, 0.8, 1; pos2<<-0.7, 0.8, 1; pos3<<-0.7, 0.8, 2.4; pos4<<0.7, 0.8, 2.4;
+	Matrix<double, 3, 4> corner_pos;
+	corner_pos<<pos1, pos2, pos3, pos4;
+	double radius = 0.04;
+	double tf = 60;
+	MatrixXd via_pos = RobotTools::CalcRectanglePath(corner_pos, 15, "s");
+	ArcTransPathPlanner cpath(via_pos, radius);
+	Vector2d via_path(0, cpath._distance);
+	LspbTrajPlanner planner(via_path, tf, 0.5, 2, "limitvel");
+	CleanRobot rbt = CreatRobot();
+	int ntime = tf/g_cycle_time+1;
+
+	const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos.csv";
+	ofstream ofile;
+	ofile.open(file_name, ios::out|ios::trunc);
+	if (!ofile.is_open())
+	{
+		cout<<"failed to open the file"<<endl;
+	}
+	else
+	{
+		cout<<"start to save data"<<endl;
+		for (int idx = 0; idx<ntime; idx++)
+		{
+			double t = idx*g_cycle_time;
+			RobotTools::JAVP javp = planner.GenerateMotion(t);
+			RobotTools::CLineAVP avp = cpath.GenerateMotion(javp.pos, javp.vel, javp.acc);
+			VectorXd q = rbt.IKSolve(avp.pos, "q2first", 0);
+			ofile<<q<<endl;
+		}
+		cout<<"succeed to save the data"<<endl;
+	}
+	ofile.close();
+}
+
+void Testother()
+{
+
+	int a[2][3] = { 1,2,3,4,5,6 };
+	ofstream ofile;
+	ofile.open("result.csv", ios::out|ios::trunc);
+	ofile<<"First,Second,Third"<<endl;
+	for (int i = 0; i < 2; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			ofile<<a[i][j]<<",";
+		}
+		ofile<<"\n";
+	}
+	ofile.close();
 }
 
 int main()
 {
-	ID_test test_mode = jacobian;
+	ID_test test_mode = mirrortask;
 	switch (test_mode)
 	{
 	case dhmodel:
@@ -195,6 +264,10 @@ int main()
 
 	case jacobian:
 		Testjacobian();
+		break;
+
+	case mirrortask:
+		Testmirrortask();
 		break;
 
 	case other:
