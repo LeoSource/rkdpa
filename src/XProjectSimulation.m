@@ -15,7 +15,7 @@ switch task
         % wipe the mirror
         pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
         radius = 0.04;
-        tf = 60; dt = 0.01;
+        tf = 60; dt = 0.001;
         via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 15, 's');
         cpath = ArcTransPathPlanner(via_pos, radius);
         planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
@@ -56,7 +56,7 @@ end
 
 
 %% trajectory plan
-sample_time = 0.01;
+sample_time = 0.001;
 % tf = 20;
 % pos = [];
 % alpha = [];
@@ -119,7 +119,7 @@ end
 pos_err = pos-sim_pos;
 t = [0:sample_time:sample_time*(size(sim_q,1)-1)]';
 %% simulation with simscape and plot
-sim('x_project_g3.slx');
+sim('simulink/x_project_g3.slx');
 
 figure(1)
 plot2(pos, '--');

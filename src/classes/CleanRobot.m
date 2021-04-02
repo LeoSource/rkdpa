@@ -23,8 +23,9 @@ classdef CleanRobot < handle
         %% constructor
         function obj = CleanRobot()
             % mdh parameters: theta d a alpha type offset
-%             l1 = 0.15; l2 = 0.2; l3 = 0.1;% model refinement
-            l1 = 0; l2 = 0; l3 = 0; h = 0.5; w = 0.4;
+            l1 = 0.106; l2 = 0.09; l3 = 0;% model refinement
+            h = 0.5; w = 0.423;
+%             l1 = 0; l2 = 0; l3 = 0; 
             mdh_table = [      0,   0,   0,       0,    0,   0
                                     pi/2,   0,   0,       0,    1,   h 
                                         0,    l2,   -l1,   pi/2,    0,   pi/2
@@ -124,7 +125,7 @@ classdef CleanRobot < handle
             lx = obj.arm.d(3)+obj.arm.a(5); ly = obj.arm.a(3);
             tmp_value = pos(2)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1;
             q(4) = tmp_value/(c1*c3) - w;
-            q(2) = pos(3)-s3*c5*ty-c3*tz-s3*q(4) - h;
+            q(2) = pos(3)-s3*c5*ty-c3*tz-s3*(q(4)+w) - h;
         end
         
         %% inverse kinematics with numerical solution(optimization toolbox)

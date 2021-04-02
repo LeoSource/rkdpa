@@ -28,7 +28,7 @@ for idx=1:size(t,1)
     end_rot = [tmp_frame.n, tmp_frame.o, tmp_frame.a];
     cart_pos = [cart_pos, tmp_frame.t];
 end
-sim('test_model');
+sim('simulink/test_model');
 sim_pos(:,1) = sim_pos_x;
 sim_pos(:,2) = sim_pos_y;
 sim_pos(:,3) = sim_pos_z;
