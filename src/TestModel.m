@@ -7,23 +7,21 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'mirrortask';
+test_mode = 'dhmodel';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
-%%there is lag in Simulink_PS Converter block because of the filter
-sample_time = 0.001;
 tf = 10;
-t = [0:sample_time:tf]';
-q(:,1) = pi/2*sin(2*pi*0.5*t);
-q(:,2) = 0.5*sin(2*pi*0.5*t);
-q(:,3) = pi/2*sin(2*pi*0.5*t);
-q(:,4) =  0.5*sin(2*pi*0.5*t);
-q(:,5) = pi/2*sin(2*pi*0.5*t);
-q_offset = [0, 0.75, 0, 0, 0];
+t = [0:g_cycle_time:tf]';
+for idx=1:rbt.nlinks-1
+    q0 = rand; a = rand; b = rand;
+    q(:, idx) = q0+a*sin(t)+b*sin(2*t);
+    qd(:, idx) = a*cos(t)+2*b*cos(2*t);
+    qdd(:, idx) = -a*sin(t)-4*b*sin(2*t);
+end
 cart_pos = [];
 for idx=1:size(t,1)
-    q_in = q(idx,:) + q_offset;
+    q_in = [q(idx, 1:3), 0, q(idx, 4)];
     tmp_frame = rbt.FKSolve(q_in);
     end_rot = [tmp_frame.n, tmp_frame.o, tmp_frame.a];
     cart_pos = [cart_pos, tmp_frame.t];
