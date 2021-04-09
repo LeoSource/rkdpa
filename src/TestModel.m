@@ -83,7 +83,8 @@ planner1 = PolyTrajPlanner([0, 10,5], [0,1.2,2], 3);
 % planner = LspbTrajPlanner([20,10], 2, 16, 10, 'limitvel');
 % planner.PlotAVP(0.01);
 
-trajplanner = DoubleSVelTrajPlanner([0, 10],[0, 0], 10, 20, 30);
+trajplanner = DoubleSVelTrajPlanner([0, 10],[0, 0], 5, 10, 30);
+trajplanner.SetPhaseDuration(5, 1/3, 1/5);
 trajplanner.PlotMotion(0.001, 'pvaj');
 
 % [p, v, a] = planner.GenerateMotion(2)

@@ -1,6 +1,8 @@
 classdef PolyTrajPlanner < handle
     %   third and fifth order polynomial for trajectory plan(for now)
-    %   to do: add other trajectory plan type 
+    %   TO DO: extends other style cubic splines
+    %   ref: trajectory planning for automatic machines and robots, chapter 4.4  
+    %   TO DO: smoothing cubic splines, chapter 4.4.5
     properties
         num
         tf
@@ -9,6 +11,8 @@ classdef PolyTrajPlanner < handle
         poly_params
         order
     end
+
+    
     
     methods
         function obj = PolyTrajPlanner(pos, tf, order)
@@ -159,17 +163,13 @@ classdef PolyTrajPlanner < handle
         function PlotAVP(obj, dt)
             [pos, vel, acc] = obj.GenerateTraj(dt);
             t = 0:dt:obj.tf(end);
-            plot(t, pos);
-            ylabel('position');
-            
-            figure;
-            plot(t, vel);
-            ylabel('velocity');
-            
-            figure
-            plot(t,acc);
-            ylabel('acceleration');
-                        
+            motion_data = [pos; vel; acc];
+            motion_name = {'position', 'velocity', 'acceleration'};
+            for idx=1:3
+                subplot(3, 1, idx);
+                plot(t, motion_data(idx, :)); grid on
+                ylabel(motion_name{idx});
+            end                       
         end
         
     end
