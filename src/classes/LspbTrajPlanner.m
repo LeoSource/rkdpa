@@ -1,14 +1,13 @@
 classdef LspbTrajPlanner < handle
-    % lsqb trajectory(trapezoidal velocity profile)    
-    % TO DO: add arbitrary position value
-    % TO DO: add S style velocity profile
-    % TO DO: add no time limit option
+    % lspb trajectory(trapezoidal velocity profile)    
+    % TO DO: trajectory through a sequence of points
+    % TO DO: add preassigned acceleration and velocity
     
     properties
         max_vel
         max_acc
         max_jerk
-        uniform_vel
+        const_phase
         
         np
         tf
@@ -18,6 +17,9 @@ classdef LspbTrajPlanner < handle
     
     methods
         function obj = LspbTrajPlanner(pos, tf, max_vel, max_acc, option)
+        % assume that: jmin = -jmax, amin = -amax, vmin = -vmax, t0 = 0
+        % generic initial and final values of velocity
+        % initial and final accelerations set to zeros
             obj.tf = tf;
             obj.pos = pos;
             obj.np = length(pos);
@@ -27,18 +29,18 @@ classdef LspbTrajPlanner < handle
             if strcmp(option, 'limitacc')
                 tmp_value = 4*abs(pos(2) - pos(1))/tf^2;
                 if abs(max_acc)<tmp_value
-                    error('robot cannot arrive at the goal in the time');
+                    error('cannot arrive at the goal in the time');
                 end
                 obj.tc = tf/2-0.5*sqrt((tf^2*obj.max_acc-4*(pos(2)-pos(1)))/obj.max_acc);
             elseif strcmp(option, 'limitvel')
                 low_value = abs(pos(2)-pos(1))/tf;
                 up_value = 2*low_value;
                 if abs(max_vel)>low_value && abs(max_vel)<up_value
-                    obj.uniform_vel = 1;
+                    obj.const_phase = 1;
                     obj.tc = (pos(1)-pos(2)+obj.max_vel*tf)/obj.max_vel;
                     obj.max_acc = (obj.max_vel)^2/(pos(1)-pos(2)+obj.max_vel*tf);
                 elseif abs(max_vel)>=up_value
-                    obj.uniform_vel = 0;
+                    obj.const_phase = 0;
                     obj.tc = 0.5*tf;
                     obj.max_vel = 2*(pos(2)-pos(1))/tf;
                     obj.max_acc = obj.max_vel/obj.tc;
@@ -62,7 +64,7 @@ classdef LspbTrajPlanner < handle
         end       
 
         function [p, v, a] = GenerateMotion(obj, t)
-            if obj.uniform_vel==1
+            if obj.const_phase==1
                 if t>=0 && t<=obj.tc
                     p = obj.pos(1)+0.5*obj.max_acc*t^2;
                     v = obj.max_acc*t;
@@ -92,16 +94,14 @@ classdef LspbTrajPlanner < handle
         function PlotAVP(obj, dt)
             [q, dq, ddq] = obj.GenerateTraj(dt);
             t = 0:dt:obj.tf;
-            plot(t, q);
-            ylabel('position');
+            subplot(3,1,1);
+            plot(t, q); grid on; ylabel('position');
             
-            figure
-            plot(t, dq);
-            ylabel('velocity');
+            subplot(3,1,2)
+            plot(t, dq); grid on; ylabel('velocity');
             
-            figure
-            plot(t, ddq);
-            ylabel('acceleration');
+            subplot(3,1,3)
+            plot(t, ddq); grid on; ylabel('acceleration');
         end
         
         

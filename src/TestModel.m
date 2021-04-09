@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'dhmodel';
+test_mode = 'jtrajlspb';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -80,10 +80,13 @@ planner1 = PolyTrajPlanner([0, 10,5], [0,1.2,2], 3);
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
-planner = LspbTrajPlanner([20,10], 2, 16, 10, 'limitvel');
-planner.PlotAVP(0.01);
+% planner = LspbTrajPlanner([20,10], 2, 16, 10, 'limitvel');
+% planner.PlotAVP(0.01);
 
-[p, v, a] = planner.GenerateMotion(2)
+trajplanner = DoubleSVelTrajPlanner([0, 10],[0, 0], 10, 20, 30);
+trajplanner.PlotMotion(0.001, 'pvaj');
+
+% [p, v, a] = planner.GenerateMotion(2)
     case 'ctrajline'
 %% cartesian line trajectory plan using lspb
 pos_initial = [0, 0, 0];
