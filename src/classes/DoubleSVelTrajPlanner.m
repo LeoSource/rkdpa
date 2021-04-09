@@ -47,7 +47,7 @@ classdef DoubleSVelTrajPlanner < handle
             if ~obj.ExistTraj()
                 error('the displacement is too short');
             else
-                obj.maxvel_reached = obj.ReachMaxVel();
+                obj.ReachMaxVel();
             end
             obj.vmin = -obj.vmax; obj.amin = -obj.amax; obj.jmin = -obj.jmax;
             obj.alima = obj.jmax*obj.tj1;
@@ -89,7 +89,7 @@ classdef DoubleSVelTrajPlanner < handle
             end
         end
 
-        function maxvel_reached = ReachMaxVel(obj)
+        function ReachMaxVel(obj)
             if (obj.vmax-obj.v0)*obj.jmax<obj.amax^2
                 obj.tj1 = sqrt((obj.vmax-obj.v0)/obj.jmax);
                 obj.ta = 2*obj.tj1;
@@ -109,17 +109,18 @@ classdef DoubleSVelTrajPlanner < handle
             if obj.tv<0
                 % the constant velocity segment is not present
                 % vlim < vmax
-                maxvel_reached = 0;
+                obj.maxvel_reached = 0;
                 obj.tv = 0;
-                obj.maxacc_reached = obj.ReachMaxAcc();
+                obj.ReachMaxAcc();
             else
                 % there is constant velocity segment
                 % vlim = vmax
-                maxvel_reached = 1;
+                obj.maxvel_reached = 1;
+                obj.maxacc_reached = 1;
             end
         end
 
-        function maxacc_reached = ReachMaxAcc(obj)
+        function ReachMaxAcc(obj)
             [obj.ta, obj.td, obj.tj1, obj.tj2] = deal(0);
             gam = 1; step = -0.005;
             % recursive algorithm for that maximum acceleration is not reached
@@ -150,12 +151,49 @@ classdef DoubleSVelTrajPlanner < handle
                 obj.tj1 = tmp_value/obj.jmax/(obj.v0+obj.v1);
             end
             if gam<1
-                maxacc_reached = 0;
+                obj.maxacc_reached = 0;
             else
-                maxacc_reached = 1;
+                obj.maxacc_reached = 1;
             end
         end
 
+        % Plan a double S trajectory with a given time length T 
+        % assumed that maximum velocities and accelerations are reached 
+        function SetTimeLength(obj, tf)
+            if (obj.maxvel_reached==1) && (obj.maxacc_reached==1)
+                scale = obj.tf/tf;
+                obj.tf = tf;
+                obj.tj1 = obj.tj1/scale; obj.ta = obj.ta/scale;
+                obj.tj2 = obj.tj2/scale; obj.td = obj.td/scale;
+                obj.tv = obj.tv/scale;
+                obj.v0 = scale*obj.v0; obj.v1 = scale*obj.v1;
+                obj.vmax = scale*obj.vmax; obj.vmin = -obj.vmax;
+                obj.amax = scale^2*obj.amax; obj.amin = -obj.amax;
+                obj.jmax = scale^3*obj.jmax; obj.jmin = -obj.jmax;
+                obj.vlim = obj.vmax;
+                obj.alima = obj.amax; obj.alimd = obj.amin;
+            else
+                error('the time length is too short');
+            end
+        end
+
+        % Plan a double S trajectory with a given time length T 
+        % the initial and final velocities assumed to set zeros
+        function SetPhaseDuration(obj, tf, alpha, beta)
+            if (obj.maxvel_reached==1) && (obj.maxacc_reached==1)
+                obj.tf = tf; obj.ta = alpha*obj.tf; obj.td = obj.ta;
+                obj.tj1 = beta*obj.ta; obj.tj2 = beta*obj.td;
+                obj.tv = obj.tf-obj.ta-obj.td;
+                h = obj.q1-obj.q0;
+                obj.vmax = h/(obj.tf-obj.ta); obj.vmin = -obj.vmax;
+                obj.amax = h/(obj.tf-obj.ta)/(obj.ta-obj.tj1); obj.amin = -obj.amax;
+                obj.jmax = h/(obj.tf-obj.ta)/(obj.ta-obj.tj1)/obj.tj1; obj.jmin = -obj.jmax;
+                obj.vlim = obj.vmax;
+                obj.alima = obj.amax; obj.alimd = obj.amin;
+            else
+                error('the duration phase setting is not correct');
+            end
+        end
       
         function [pos, vel, acc, jerk] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = []; jerk = [];
