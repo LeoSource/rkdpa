@@ -9,6 +9,8 @@ classdef CubicSplinePlanner < handle
         pos
         v_clamped
         style
+
+        acceleration
     end
     
     methods
@@ -24,6 +26,7 @@ classdef CubicSplinePlanner < handle
             obj.duration = t;
             obj.poly_params = zeros(4*(obj.np-1), 1);
             obj.poly_params = obj.CalcPolyParams(pos);
+%             obj.poly_params = obj.CalcParamsBaseonAcc(pos);
         end
 
         function res = PolyPos(obj, t)
@@ -108,6 +111,39 @@ classdef CubicSplinePlanner < handle
             params = reshape(params, 4, n-1);
         end
 
+        function acc = CalcPointsAcc(obj, pos)
+            n = obj.np;
+            T = zeros(1, n-1);
+            for idx=1:n-1
+                T(idx) = obj.duration(idx+1)-obj.duration(idx);
+            end
+            rhs = zeros(n, 1);
+            lhs = zeros(n, 3);
+            rhs(1) = 6*((pos(2)-pos(1))/T(1)-obj.v_clamped(1));
+            rhs(n) = 6*(obj.v_clamped(2)-(pos(n)-pos(n-1))/T(n-1));
+            lhs(1, 1) = 2*T(1); lhs(1, 2) = T(1);
+            lhs(n, n-1) = T(n-1); lhs(n, n) = 2*T(n-1);
+            for idx=2:n-1
+                tmp_rhs = (pos(idx+1)-pos(idx))/T(idx)-(pos(idx)-pos(idx-1))/T(idx-1);
+                rhs(idx) = 6*tmp_rhs;
+                lhs(idx, idx-1) = T(idx-1);
+                lhs(idx, idx) = 2*(T(idx-1)+T(idx));
+                lhs(idx, idx+1) = T(idx);
+            end
+            acc = lhs\rhs;
+        end
+
+        function params = CalcParamsBaseonAcc(obj, pos)
+            n = obj.np;
+            params = zeros(4, n-1);
+            acc = obj.CalcPointsAcc(pos);
+            for idx=1:n-1
+                rhs = [pos(idx); pos(idx+1); acc(idx); acc(idx+1)];
+                lhs = [obj.PolyPos(obj.duration(idx)); obj.PolyPos(obj.duration(idx+1));...
+                        obj.PolyAcc(obj.duration(idx)); obj.PolyAcc(obj.duration(idx+1))];
+                params(:, idx) = lhs\rhs;
+            end
+        end
 
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
