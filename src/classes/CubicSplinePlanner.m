@@ -11,22 +11,33 @@ classdef CubicSplinePlanner < handle
         style
 
         acceleration
+        lambda
+        weight
     end
     
     methods
         function obj = CubicSplinePlanner(pos, t, option, v_clamped)
             obj.pos = pos;
             obj.style = option;
-            if strcmp(option, 'clamped')
+            if strcmp(option, 'clamped') || strcmp(option, 'smooth')
                 obj.v_clamped = v_clamped;
             else
                 obj.v_clamped = zeros(1, 2);
             end
             obj.np = length(pos);
             obj.duration = t;
-            obj.poly_params = zeros(4*(obj.np-1), 1);
-            obj.poly_params = obj.CalcPolyParams(pos);
-%             obj.poly_params = obj.CalcParamsBaseonAcc(pos);
+%             obj.poly_params = obj.CalcPolyParams(pos);
+            obj.poly_params = obj.CalcParamsBaseonAcc(pos);
+        end
+
+        function SetSmoothParams(obj, mu, w)
+            obj.lambda = (1-mu)/6/mu;
+            if nargin>2
+                obj.weight = w;
+            else
+                obj.weight = [0, ones(1, obj.np-2), 0];
+            end
+            obj.poly_params = obj.CalcSmoothParams(obj.pos);
         end
 
         function res = PolyPos(obj, t)
@@ -118,7 +129,7 @@ classdef CubicSplinePlanner < handle
                 T(idx) = obj.duration(idx+1)-obj.duration(idx);
             end
             rhs = zeros(n, 1);
-            lhs = zeros(n, 3);
+            lhs = zeros(n, n);
             rhs(1) = 6*((pos(2)-pos(1))/T(1)-obj.v_clamped(1));
             rhs(n) = 6*(obj.v_clamped(2)-(pos(n)-pos(n-1))/T(n-1));
             lhs(1, 1) = 2*T(1); lhs(1, 2) = T(1);
@@ -143,6 +154,47 @@ classdef CubicSplinePlanner < handle
                         obj.PolyAcc(obj.duration(idx)); obj.PolyAcc(obj.duration(idx+1))];
                 params(:, idx) = lhs\rhs;
             end
+        end
+
+        function via_points = CalcApproximatePoints(obj, pos)
+            n = obj.np;
+            T = zeros(1, n-1);
+            for idx=1:n-1
+                T(idx) = obj.duration(idx+1)-obj.duration(idx);
+            end
+            C = zeros(n, n);
+            A = zeros(n, n);
+            C(1, 1) = -6/T(1); C(1, 2) = 6/T(1);
+            C(n, n-1) = 6/T(n-1); C(n, n) = -6/T(n-1);
+            A(1, 1) = 2*T(1); A(1, 2) = T(1);
+            A(n, n-1) = T(n-1); A(n, n) = 2*T(n-1);
+            for idx=2:n-1
+                C(idx, idx-1) = 6/T(idx-1);
+                C(idx, idx) = -6/T(idx-1)-6/T(idx);
+                C(idx, idx+1) = 6/T(idx);
+                A(idx, idx-1) = T(idx-1);
+                A(idx, idx) = 2*(T(idx-1)+T(idx));
+                A(idx, idx+1) = T(idx);
+            end
+            w = zeros(1, n);
+            for idx=1:n
+                if abs(obj.weight(idx))<1e-5
+                    w(idx) = 0;
+                else
+                    w(idx) = 1/obj.weight(idx);
+                end
+            end
+            rhs = C*pos';
+            lhs = A+obj.lambda*C*diag(w)*C';
+            acc = lhs\rhs;
+
+            via_points = pos'-obj.lambda*diag(w)*C'*acc;
+            via_points = reshape(via_points, 1, n);
+        end
+
+        function params = CalcSmoothParams(obj, pos)
+            via_points = obj.CalcApproximatePoints(pos);
+            params = obj.CalcParamsBaseonAcc(via_points);
         end
 
         function [pos, vel, acc] = GenerateTraj(obj, dt)
@@ -179,3 +231,4 @@ classdef CubicSplinePlanner < handle
     end
 end
 
+ 

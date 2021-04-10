@@ -76,8 +76,9 @@ t = [0, 5, 7, 8, 10, 15, 18];
 planner = PolyTrajPlanner(q, t, 3);
 % planner.PlotAVP(0.01);
 
-planner1 = CubicSplinePlanner(q, t, 'clamped', [0, 0]);
-planner1.PlotAVP(0.01);
+planner1 = CubicSplinePlanner(q, t, 'smooth', [0, 0]);
+planner1.SetSmoothParams(1);
+planner1.PlotAVP(0.001);
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
