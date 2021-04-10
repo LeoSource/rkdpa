@@ -124,7 +124,6 @@ classdef PolyTrajPlanner < handle
             n = obj.num;
             rhs = zeros(4*(n-1), 1);
             lhs = zeros(4*(n-1), 4*(n-1));
-            params = zeros(4*(n-1), 1);
             if length(obj.tf)==1                
                 t = 0:obj.dt:tf;
             else
@@ -135,6 +134,8 @@ classdef PolyTrajPlanner < handle
                 rhs(2*(n-1)) = pos(n);
                 lhs(2*(n-1)+1, 1:4) = obj.PolyVel(t(1));
                 lhs(2*(n-1)+n, 4*n-7:4*n-4) = obj.PolyVel(t(n));
+                rhs(2*(n-1)+1) = 2;
+                rhs(2*(n-1)+n) = -3;
                 for idx=2:n-1
                     rhs(2*idx-2) = pos(idx);
                     rhs(2*idx-1) = pos(idx);
@@ -159,17 +160,12 @@ classdef PolyTrajPlanner < handle
         function PlotAVP(obj, dt)
             [pos, vel, acc] = obj.GenerateTraj(dt);
             t = 0:dt:obj.tf(end);
-            plot(t, pos);
-            ylabel('position');
-            
-            figure;
-            plot(t, vel);
-            ylabel('velocity');
-            
-            figure
-            plot(t,acc);
-            ylabel('acceleration');
-                        
+            subplot(3, 1, 1)
+            plot(t, pos); grid on; ylabel('position');           
+            subplot(3, 1, 2)
+            plot(t, vel); grid on; ylabel('velocity');            
+            subplot(3, 1, 3)
+            plot(t,acc); grid on; ylabel('acceleration');                       
         end
         
     end
