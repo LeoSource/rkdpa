@@ -11,6 +11,7 @@ classdef PolyTrajPlanner < handle
     end
     
     methods
+        %% Constructor and Get the Polynomial Parameters
         function obj = PolyTrajPlanner(pos, tf, order)
             obj.order = order;
             n = length(pos);
@@ -25,6 +26,7 @@ classdef PolyTrajPlanner < handle
             obj.poly_params = obj.PolyParams(pos, tf);
         end
         
+        %% Generate the Trajectory
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
             for t=0:dt:obj.tf(end)
@@ -47,6 +49,7 @@ classdef PolyTrajPlanner < handle
             a = obj.PolyAcc(t)*obj.poly_params(:,idx);
         end
         
+        %% Elementary Row Vector for Position, Velocity and Acceleration
         function res = PolyPos(obj, t)
             if obj.order==3
                 res = [1, t, t^2, t^3];
@@ -71,16 +74,7 @@ classdef PolyTrajPlanner < handle
             end
         end
         
-        function res = LhsMat(obj, t0, tf)
-            if obj.order==3
-                res = [obj.PolyPos(t0); obj.PolyPos(tf); obj.PolyVel(t0); obj.PolyVel(tf)];
-            elseif obj.order==5
-                res = [obj.PolyPos(t0); obj.PolyPos(tf);...
-                            obj.PolyVel(t0); obj.PolyVel(tf);...
-                            obj.PolyAcc(t0); obj.PolyAcc(tf)];
-            end
-        end
-        
+        %% Calculate Polynomial Parameters
         function params = PolyParams(obj, pos, tf)
             if obj.order==3
                 if obj.num>2
@@ -93,11 +87,20 @@ classdef PolyTrajPlanner < handle
                 lhs = obj.LhsMat(0, tf);
                 params = lhs\rhs;                
             end
+                end
+        
+        function res = LhsMat(obj, t0, tf)
+            if obj.order==3
+                res = [obj.PolyPos(t0); obj.PolyPos(tf); obj.PolyVel(t0); obj.PolyVel(tf)];
+            elseif obj.order==5
+                res = [obj.PolyPos(t0); obj.PolyPos(tf);...
+                            obj.PolyVel(t0); obj.PolyVel(tf);...
+                            obj.PolyAcc(t0); obj.PolyAcc(tf)];
+            end
         end
-        
-        
+    
         function params = PolyAutoVel(obj, pos ,tf)
-            % calculate the velocity automatically 
+            % calculate the velocity heuristically 
             t = 0:obj.dt:tf;
             n = obj.num;
             for idx=1:n-1
@@ -157,6 +160,7 @@ classdef PolyTrajPlanner < handle
             
         end
         
+        %% Plot Function for Test and Presentation
         function PlotAVP(obj, dt)
             [pos, vel, acc] = obj.GenerateTraj(dt);
             t = 0:dt:obj.tf(end);

@@ -16,6 +16,7 @@ classdef CubicSplinePlanner < handle
     end
     
     methods
+        %% Constructor and Get the 3rd Polynomial Parameters
         function obj = CubicSplinePlanner(pos, t, option, v_clamped)
             obj.pos = pos;
             obj.style = option;
@@ -40,6 +41,7 @@ classdef CubicSplinePlanner < handle
             obj.poly_params = obj.CalcSmoothParams(obj.pos);
         end
 
+        %% Elementary Row Vector for Position, Velocity and Acceleration
         function res = PolyPos(obj, t)
             res = [1, t, t^2, t^3];
         end
@@ -52,6 +54,38 @@ classdef CubicSplinePlanner < handle
             res = [0, 0, 2, 6*t];
         end
 
+        %% Calculate Polynomial Parameters with 3 types: clamped, natural, cyclic
+        function params = CalcPolyParams(obj, pos)
+            n = obj.np;
+            % necesssary constraints for interpolation points
+            rhs = zeros(4*(n-1), 1);
+            lhs = zeros(4*(n-1), 4*(n-1));
+            rhs(1:2*(n-1)) = obj.RhsMatPos(pos);
+            lhs(1:2*(n-1), :) = obj.LhsMatPos();
+            lhs(2*n-1:3*n-4, :) = obj.LhsMatVel();
+            lhs(3*n-3:4*n-6, :) = obj.LhsMatAcc();
+
+            % depends on trajectory type: clamped, natural, cyclic
+            switch obj.style
+            case 'clamped'
+                lhs(4*n-5, 1:4) = obj.PolyVel(obj.duration(1));
+                lhs(4*n-4,4*n-7:4*n-4) = obj.PolyVel(obj.duration(n));
+                rhs(4*n-5) = obj.v_clamped(1);
+                rhs(4*n-4) = obj.v_clamped(2);
+            case 'natural'
+                lhs(4*n-5, 1:4) = obj.PolyAcc(obj.duration(1));
+                lhs(4*n-4, 4*n-7:4*n-4) = obj.PolyAcc(obj.duration(end));
+            case 'cyclic'
+                lhs(4*n-5, 1:4) = obj.PolyVel(obj.duration(1));
+                lhs(4*n-5, 4*n-7:4*n-4) = -obj.PolyVel(obj.duration(end));
+                lhs(4*n-4, 1:4) = obj.PolyAcc(obj.duration(1));
+                lhs(4*n-4, 4*n-7:4*n-4) = -obj.PolyAcc(obj.duration(end));
+            end
+
+            params = lhs\rhs;
+            params = reshape(params, 4, n-1);
+        end
+        
         function rhs = RhsMatPos(obj, pos)
             n = obj.np;
             rhs = zeros(2*(n-1), 1);
@@ -91,37 +125,19 @@ classdef CubicSplinePlanner < handle
             end
         end
 
-        function params = CalcPolyParams(obj, pos)
+        %% Calculate Polynomial Parameters Based on Acceleration
+        function params = CalcParamsBaseonAcc(obj, pos)
             n = obj.np;
-            % necesssary constraints for interpolation points
-            rhs = zeros(4*(n-1), 1);
-            lhs = zeros(4*(n-1), 4*(n-1));
-            rhs(1:2*(n-1)) = obj.RhsMatPos(pos);
-            lhs(1:2*(n-1), :) = obj.LhsMatPos();
-            lhs(2*n-1:3*n-4, :) = obj.LhsMatVel();
-            lhs(3*n-3:4*n-6, :) = obj.LhsMatAcc();
-
-            % depends on trajectory type: clamped, natural, cyclic
-            switch obj.style
-            case 'clamped'
-                lhs(4*n-5, 1:4) = obj.PolyVel(obj.duration(1));
-                lhs(4*n-4,4*n-7:4*n-4) = obj.PolyVel(obj.duration(n));
-                rhs(4*n-5) = obj.v_clamped(1);
-                rhs(4*n-4) = obj.v_clamped(2);
-            case 'natural'
-                lhs(4*n-5, 1:4) = obj.PolyAcc(obj.duration(1));
-                lhs(4*n-4, 4*n-7:4*n-4) = obj.PolyAcc(obj.duration(end));
-            case 'cyclic'
-                lhs(4*n-5, 1:4) = obj.PolyVel(obj.duration(1));
-                lhs(4*n-5, 4*n-7:4*n-4) = -obj.PolyVel(obj.duration(end));
-                lhs(4*n-4, 1:4) = obj.PolyAcc(obj.duration(1));
-                lhs(4*n-4, 4*n-7:4*n-4) = -obj.PolyAcc(obj.duration(end));
+            params = zeros(4, n-1);
+            acc = obj.CalcPointsAcc(pos);
+            for idx=1:n-1
+                rhs = [pos(idx); pos(idx+1); acc(idx); acc(idx+1)];
+                lhs = [obj.PolyPos(obj.duration(idx)); obj.PolyPos(obj.duration(idx+1));...
+                        obj.PolyAcc(obj.duration(idx)); obj.PolyAcc(obj.duration(idx+1))];
+                params(:, idx) = lhs\rhs;
             end
-
-            params = lhs\rhs;
-            params = reshape(params, 4, n-1);
         end
-
+        
         function acc = CalcPointsAcc(obj, pos)
             n = obj.np;
             T = zeros(1, n-1);
@@ -144,18 +160,12 @@ classdef CubicSplinePlanner < handle
             acc = lhs\rhs;
         end
 
-        function params = CalcParamsBaseonAcc(obj, pos)
-            n = obj.np;
-            params = zeros(4, n-1);
-            acc = obj.CalcPointsAcc(pos);
-            for idx=1:n-1
-                rhs = [pos(idx); pos(idx+1); acc(idx); acc(idx+1)];
-                lhs = [obj.PolyPos(obj.duration(idx)); obj.PolyPos(obj.duration(idx+1));...
-                        obj.PolyAcc(obj.duration(idx)); obj.PolyAcc(obj.duration(idx+1))];
-                params(:, idx) = lhs\rhs;
-            end
+        %% Smoothing Cubic Spline
+        function params = CalcSmoothParams(obj, pos)
+            via_points = obj.CalcApproximatePoints(pos);
+            params = obj.CalcParamsBaseonAcc(via_points);
         end
-
+        
         function via_points = CalcApproximatePoints(obj, pos)
             n = obj.np;
             T = zeros(1, n-1);
@@ -192,11 +202,7 @@ classdef CubicSplinePlanner < handle
             via_points = reshape(via_points, 1, n);
         end
 
-        function params = CalcSmoothParams(obj, pos)
-            via_points = obj.CalcApproximatePoints(pos);
-            params = obj.CalcParamsBaseonAcc(via_points);
-        end
-
+        %% Generate the Trajectory
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
             for t = 0:dt:obj.duration(end)
@@ -215,6 +221,7 @@ classdef CubicSplinePlanner < handle
             a = obj.PolyAcc(t)*obj.poly_params(:,idx);
         end
         
+        %% Plot Function for Test and Presentation
         function PlotAVP(obj, dt)
             [q, dq, ddq] = obj.GenerateTraj(dt);
             t = 0:dt:obj.duration(end);
