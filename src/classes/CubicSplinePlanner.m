@@ -9,35 +9,49 @@ classdef CubicSplinePlanner < handle
         pos
         v_clamped
         style
-
-        acceleration
+        
+        smooth_style
         lambda
         weight
+        smooth_err
+        smooth_tol
     end
     
     methods
         %% Constructor and Get the 3rd Polynomial Parameters
         function obj = CubicSplinePlanner(pos, t, option, v_clamped)
             obj.pos = pos;
+            obj.np = length(pos);
+            obj.duration = t;
             obj.style = option;
-            if strcmp(option, 'clamped') || strcmp(option, 'smooth')
+
+            obj.smooth_style = 'none';
+            obj.smooth_err = 0;
+            obj.smooth_tol = 0;
+            obj.weight = [0, ones(1, obj.np-2), 0];
+            if strcmp(option, 'clamped')
                 obj.v_clamped = v_clamped;
             else
                 obj.v_clamped = zeros(1, 2);
             end
-            obj.np = length(pos);
-            obj.duration = t;
 %             obj.poly_params = obj.CalcPolyParams(pos);
             obj.poly_params = obj.CalcParamsBaseonAcc(pos);
         end
 
-        function SetSmoothParams(obj, mu, w)
+        function SetSmoothWeight(obj, mu, w)
             obj.lambda = (1-mu)/6/mu;
+            obj.smooth_style = 'weight';
             if nargin>2
                 obj.weight = w;
             else
                 obj.weight = [0, ones(1, obj.np-2), 0];
             end
+            obj.poly_params = obj.CalcSmoothParams(obj.pos);
+        end
+
+        function SetSmoothTolerance(obj, tol)
+            obj.smooth_tol = tol;
+            obj.smooth_style = 'tolerance';
             obj.poly_params = obj.CalcSmoothParams(obj.pos);
         end
 
@@ -162,10 +176,17 @@ classdef CubicSplinePlanner < handle
 
         %% Smoothing Cubic Spline
         function params = CalcSmoothParams(obj, pos)
-            via_points = obj.CalcApproximatePoints(pos);
-            params = obj.CalcParamsBaseonAcc(via_points);
+            if strcmp(obj.smooth_style, 'weight')
+                via_points = obj.CalcApproximatePoints(pos);
+            elseif strcmp(obj.smooth_style, 'tolerance')
+                mu = obj.CalcSmoothScale(pos);
+                obj.lambda = (1-mu)/6/mu;
+                via_points = obj.CalcApproximatePoints(pos);
+            end
+            obj.smooth_err = max(via_points-pos);
+            params = obj.CalcPolyParams(via_points);
         end
-        
+
         function via_points = CalcApproximatePoints(obj, pos)
             n = obj.np;
             T = zeros(1, n-1);
@@ -200,6 +221,24 @@ classdef CubicSplinePlanner < handle
 
             via_points = pos'-obj.lambda*diag(w)*C'*acc;
             via_points = reshape(via_points, 1, n);
+        end
+
+        function res = CalcSmoothScale(obj, pos)
+            max_it_nums = 50; it_nums = 0;
+            s_mu = 0; e_mu = 1;
+            while obj.smooth_err>obj.smooth_tol || it_nums<max_it_nums
+                mu = 0.5*(s_mu+e_mu);
+                obj.lambda = (1-mu)/6/mu;
+                via_points = obj.CalcApproximatePoints(pos);
+                obj.smooth_err = max(via_points-pos);
+                if obj.smooth_err>obj.smooth_tol
+                    s_mu = mu;
+                else
+                    e_mu = mu;
+                end
+                it_nums = it_nums+1;
+            end
+            res = mu;
         end
 
         %% Generate the Trajectory

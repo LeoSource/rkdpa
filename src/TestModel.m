@@ -71,13 +71,14 @@ rbt.PlotWorkspace;
 
     case 'jtrajpoly'
 %% joint trajectory plan using polynomial trajectory
-q = [3, -2, -5, 0, 6, 12, 8];
+q = [3, -2, -5, 0, 6, 12, 3];
 t = [0, 5, 7, 8, 10, 15, 18];
 planner = PolyTrajPlanner(q, t, 3);
 % planner.PlotAVP(0.01);
 
-planner1 = CubicSplinePlanner(q, t, 'smooth', [0, 0]);
-planner1.SetSmoothParams(1);
+planner1 = CubicSplinePlanner(q, t, 'clamped', [0, 0]);
+% planner1.SetSmoothWeight(0.9);
+planner1.SetSmoothTolerance(0.1);
 planner1.PlotAVP(0.001);
 
     case 'jtrajlspb'
