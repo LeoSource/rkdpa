@@ -1,7 +1,24 @@
-classdef CubicSplinePlanner < handle
-    % cubic splines trajectory planning  
-    % ref: trajectory planning for automatic machines and robots, chapter 4.4
-    
+%   Cubic Spline Trajectory Planner Class:
+%   A specific class that plans and generates cubilc spline
+%   There are 3 kinds of cubic slpine: clamped, natural and cyclic
+%   The spline is not smoothed by default, otherwise, you can decide the
+%   the smooth style: set smooth weight or set smooth tolerance, 
+%   The spline is not time optimized by default, otherwise, you can decide the
+%   time optimized style: total time or constrains of velocity and acceleration
+%   Referance: 
+%   trajectory planning for automatic machines and robots, chapter 4.4
+%   Author:
+%   liao zhixiang, zhixiangleo@163.com
+
+%   Note:
+%   1. use only one kind of spline style, i.e, style, smooth_stylem
+%   and time_optimized, as much as possible
+%   TO DO:
+%   1. optimize the constructor logic according to different spline options,
+%   i.e, style, smooth_stylem and time_optimized
+%   2. solve the conflict between smooth and time optimize
+
+classdef CubicSplinePlanner < handle 
     properties
         np
         poly_params
@@ -17,6 +34,8 @@ classdef CubicSplinePlanner < handle
         smooth_tol
 
         time_optimized
+        amax
+        vmax
     end
     
     methods
@@ -25,22 +44,26 @@ classdef CubicSplinePlanner < handle
             obj.pos = pos;
             obj.np = length(pos);
             obj.style = option;
-            if length(t)==1
-                obj.time_optimized = 'gentle';
-                obj.duration = t*obj.CalcOptimizedTime(pos);
-            else
-                obj.duration = t;
-            end
-
-            obj.smooth_style = 'none';
-            obj.smooth_err = 0;
-            obj.smooth_tol = 0;
-            obj.weight = [0, ones(1, obj.np-2), 0];
             if strcmp(option, 'clamped')
                 obj.v_clamped = v_clamped;
             else
                 obj.v_clamped = zeros(1, 2);
             end
+            if length(t)==1 && t<0
+                obj.time_optimized = 'minimum';
+                obj.amax = 10;
+                obj.vmax = 10;
+                obj.duration = obj.CalcOptimizedIntervals();
+            elseif length(t)==1 && t>0
+                obj.time_optimized = 'gentle';
+                obj.duration = t*obj.CalcIntervals(pos);
+            else
+                obj.duration = t;
+            end
+            obj.smooth_style = 'none';
+            obj.smooth_err = 0;
+            obj.smooth_tol = 0;
+            obj.weight = [0, ones(1, obj.np-2), 0];
             obj.poly_params = obj.CalcPolyParams(pos);
 %             obj.poly_params = obj.CalcParamsBaseonAcc(pos);
         end
@@ -66,6 +89,13 @@ classdef CubicSplinePlanner < handle
             obj.time_optimized = style;
             tf = obj.duration(end);
             obj.duration = tf*obj.CalcOptimizedTime(obj.pos);
+            obj.poly_params = obj.CalcPolyParams(obj.pos);
+        end
+
+        function SetTimeOptimizedConstrtaints(obj, vmax, amax)
+            obj.vmax = vmax;
+            obj.amax = amax;
+            obj.duration = obj.CalcOptimizedIntervals();
             obj.poly_params = obj.CalcPolyParams(obj.pos);
         end
 
@@ -256,7 +286,7 @@ classdef CubicSplinePlanner < handle
         end
 
         %% Choice of the Time Instants and Optimization
-        function duration = CalcOptimizedTime(obj, pos)
+        function duration = CalcIntervals(obj, pos)
             n = obj.np;
             if strcmp(obj.time_optimized, 'fast')
                 dk = ones(1,n-1)/(n-1);
@@ -277,6 +307,53 @@ classdef CubicSplinePlanner < handle
                 t(idx) = t(idx-1)+dk(idx)/d;
             end
             duration = t;
+        end
+
+        function duration = CalcOptimizedIntervals(obj)
+            n = obj.np;
+            A = []; b = [];
+            Aeq = []; beq = [];
+            x0 = ones(1, n-1);
+            options = optimoptions(@fmincon, 'MaxFunEvals', 15000, 'Display', 'iter', 'ConstraintTolerance', 1e-6);
+            [x, fval] = fmincon(@obj.ObjFunction, x0, A, b, Aeq, beq, [], [], @obj.CondFunction, options);
+            duration = zeros(1, n);
+            for idx=2:n
+                duration(idx) = duration(idx-1)+x(idx-1);
+            end
+        end
+
+        function objective = ObjFunction(obj, x)
+            objective = sum(x);
+        end
+
+        function [c, ceq] = CondFunction(obj, x)
+            n = obj.np;
+            num_opts = 200;
+            condvmax = zeros(num_opts, 1);
+            condvmin = zeros(num_opts, 1);
+            condamax = zeros(num_opts, 1);
+            condamin = zeros(num_opts, 1);
+            condpos = zeros(n, 1);
+            time = zeros(1, n);
+            for idx=2:n
+                time(idx) = time(idx-1)+x(idx-1);
+            end
+            obj.duration = time;
+            obj.poly_params = obj.CalcPolyParams(obj.pos);
+            t = linspace(time(1), time(end), num_opts);
+            for idx=1:num_opts
+                [~, v, a] = obj.GenerateMotion(t(idx));
+                condvmax(idx) = v-obj.vmax;
+                condvmin(idx) = -obj.vmax-v;
+                condamax(idx) = a-obj.amax;
+                condamin(idx) = -obj.amax-a;
+            end
+            for idx=1:n
+                [p, ~, ~] = obj.GenerateMotion(time(idx));
+                condpos(idx) = p-obj.pos(idx);
+            end
+            ceq = condpos;
+            c = [condvmax; condvmin; condamax; condamin];
         end
         
         %% Generate the Trajectory
