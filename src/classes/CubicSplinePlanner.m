@@ -53,18 +53,18 @@ classdef CubicSplinePlanner < handle
                 obj.time_optimized = 'minimum';
                 obj.amax = 10;
                 obj.vmax = 10;
-                obj.duration = obj.CalcOptimizedIntervals();
             elseif length(t)==1 && t>0
                 obj.time_optimized = 'gentle';
                 obj.duration = t*obj.CalcIntervals(pos);
+                obj.poly_params = obj.CalcPolyParams(pos);
             else
                 obj.duration = t;
+                obj.poly_params = obj.CalcPolyParams(pos);
             end
             obj.smooth_style = 'none';
             obj.smooth_err = 0;
             obj.smooth_tol = 0;
             obj.weight = [0, ones(1, obj.np-2), 0];
-            obj.poly_params = obj.CalcPolyParams(pos);
 %             obj.poly_params = obj.CalcParamsBaseonAcc(pos);
         end
 
@@ -88,7 +88,7 @@ classdef CubicSplinePlanner < handle
         function SetTimeOptimizedStyle(obj, style)
             obj.time_optimized = style;
             tf = obj.duration(end);
-            obj.duration = tf*obj.CalcOptimizedTime(obj.pos);
+            obj.duration = tf*obj.CalcIntervals(obj.pos);
             obj.poly_params = obj.CalcPolyParams(obj.pos);
         end
 

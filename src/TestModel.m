@@ -74,13 +74,13 @@ rbt.PlotWorkspace;
 q = [0, 2, 12, 5];
 % t = [0, 5, 7, 8, 10, 15, 18];
 % t = 18;
-t = -1;
+t = 8;
 planner = PolyTrajPlanner(q, t, 3);
 % planner.PlotAVP(0.01);
 
 planner1 = CubicSplinePlanner(q, t, 'clamped', [0, 0]);
-planner1.SetTimeOptimizedConstrtaints(10, 6);
-% planner1.SetTimeOptimizedStyle('middle');
+% planner1.SetTimeOptimizedConstrtaints(10, 6);
+planner1.SetTimeOptimizedStyle('gentle');
 % planner1.SetSmoothWeight(0.7);
 % planner1.SetSmoothTolerance(0.2);
 planner1.PlotAVP(0.001);
