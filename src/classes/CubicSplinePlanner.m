@@ -15,6 +15,8 @@ classdef CubicSplinePlanner < handle
         weight
         smooth_err
         smooth_tol
+
+        time_optimized
     end
     
     methods
@@ -22,8 +24,13 @@ classdef CubicSplinePlanner < handle
         function obj = CubicSplinePlanner(pos, t, option, v_clamped)
             obj.pos = pos;
             obj.np = length(pos);
-            obj.duration = t;
             obj.style = option;
+            if length(t)==1
+                obj.time_optimized = 'gentle';
+                obj.duration = t*obj.CalcOptimizedTime(pos);
+            else
+                obj.duration = t;
+            end
 
             obj.smooth_style = 'none';
             obj.smooth_err = 0;
@@ -34,8 +41,8 @@ classdef CubicSplinePlanner < handle
             else
                 obj.v_clamped = zeros(1, 2);
             end
-%             obj.poly_params = obj.CalcPolyParams(pos);
-            obj.poly_params = obj.CalcParamsBaseonAcc(pos);
+            obj.poly_params = obj.CalcPolyParams(pos);
+%             obj.poly_params = obj.CalcParamsBaseonAcc(pos);
         end
 
         function SetSmoothWeight(obj, mu, w)
@@ -53,6 +60,13 @@ classdef CubicSplinePlanner < handle
             obj.smooth_tol = tol;
             obj.smooth_style = 'tolerance';
             obj.poly_params = obj.CalcSmoothParams(obj.pos);
+        end
+
+        function SetTimeOptimizedStyle(obj, style)
+            obj.time_optimized = style;
+            tf = obj.duration(end);
+            obj.duration = tf*obj.CalcOptimizedTime(obj.pos);
+            obj.poly_params = obj.CalcPolyParams(obj.pos);
         end
 
         %% Elementary Row Vector for Position, Velocity and Acceleration
@@ -241,6 +255,30 @@ classdef CubicSplinePlanner < handle
             res = mu;
         end
 
+        %% Choice of the Time Instants and Optimization
+        function duration = CalcOptimizedTime(obj, pos)
+            n = obj.np;
+            if strcmp(obj.time_optimized, 'fast')
+                dk = ones(1,n-1)/(n-1);
+            elseif strcmp(obj.time_optimized, 'middle')
+                dk = zeros(1,n-1);
+                for idx=1:n-1
+                    dk(idx) = abs(pos(idx+1)-pos(idx));
+                end
+            elseif strcmp(obj.time_optimized, 'gentle')
+                dk = zeros(1,n-1);
+                for idx=1:n-1
+                    dk(idx) = sqrt(abs(pos(idx+1)-pos(idx)));
+                end
+            end
+            d = sum(dk);
+            t = zeros(1, n); t(end) = 1;
+            for idx=2:n-1
+                t(idx) = t(idx-1)+dk(idx)/d;
+            end
+            duration = t;
+        end
+        
         %% Generate the Trajectory
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
