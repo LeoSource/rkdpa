@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'jtrajlspb';
+test_mode = 'jtrajpoly';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -71,12 +71,15 @@ rbt.PlotWorkspace;
 
     case 'jtrajpoly'
 %% joint trajectory plan using polynomial trajectory
-pos = [0,10, 5];
-planner = PolyTrajPlanner(pos, [0, 1.2, 2], 3);
-planner.PlotAVP(0.01);
+q = [3, -2, -5, 0, 6, 12, 3];
+t = [0, 5, 7, 8, 10, 15, 18];
+planner = PolyTrajPlanner(q, t, 3);
+% planner.PlotAVP(0.01);
 
-planner1 = PolyTrajPlanner([0, 10,5], [0,1.2,2], 3);
-[p, v, a] = planner1.GenerateMotion(1.3547)
+planner1 = CubicSplinePlanner(q, t, 'clamped', [0, 0]);
+% planner1.SetSmoothWeight(0.9);
+planner1.SetSmoothTolerance(0.1);
+planner1.PlotAVP(0.001);
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
