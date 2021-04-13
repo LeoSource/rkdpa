@@ -87,25 +87,49 @@ planner1.PlotAVP(0.001);
 
     case 'jonlinetraj'
 %%  joint online trajectory plan
-tf = 4; dt = 0.01;
-planner = OnlineTrajPlanner(10, 10, dt, 3);
-p = 0; v =0; a = 10;
+tf = 5; dt = 0.001; vmax = 20; amax = 200;
+planner = OnlineTrajPlanner(vmax, amax, dt, 3);
+p = 0; v =0; a = 0;
 planner.InitPlanner(p ,v, a);
-pos = []; vel = []; acc = [];
+% generate command motion
+pos_cmd = []; vel_cmd = [];
 for t=0:dt:tf
-    if t ==2.18
-        aa = 1;
+    if t>=0 && t<1
+        v_cmd = 5;
+        p_cmd = 5*t+5;
+    elseif t>=1 && t<2
+        v_cmd = 10;
+        p_cmd = 10*t-5;
+    elseif t>=2 && t<3
+        v_cmd = 15;
+        p_cmd = 15*t-25;
+    elseif t>=3 && t<=tf
+        v_cmd = 0;
+        p_cmd = 10;
     end
-    [p, v, a] = planner.GenerateMotion([15,10,0], [p,v,a]);
+    pos_cmd = [pos_cmd, p_cmd];
+    vel_cmd = [vel_cmd, v_cmd];
+end
+% generate actual motion
+pos = []; vel = []; acc = [];
+idx = 0;
+for t=0:dt:tf
+    idx = idx+1;
+    p = p+0.01*sign(rand-0.5);
+    v = v+0.001*sign(rand-0.5);
+    [p, v, a] = planner.GenerateMotion([pos_cmd(idx),vel_cmd(idx),0], [p,v,a]);
     pos = [pos, p]; vel = [vel, v]; acc = [acc, a];
 end
-subplot(3,1,1)
-plot([0:dt:tf], pos, 'k-'); grid on; ylabel('position'); hold on; plot([0, tf], [15, 15], 'r--');
-subplot(3,1,2)
-plot([0:dt:tf], vel, 'k-'); grid on; ylabel('velocity'); hold on; plot([0, tf], [10, 10], 'r-');
-subplot(3,1,3)
-plot([0:dt:tf], acc, 'k-'); grid on; ylabel('acceleration');
 
+tt = 0:dt:tf;
+subplot(3,1,1)
+plot(tt, pos, 'k-'); grid on; ylabel('position'); hold on;
+plot(tt, pos_cmd, 'r--');
+subplot(3,1,2)
+plot(tt, vel, 'k-'); grid on; ylabel('velocity'); hold on;
+plot(tt, vel_cmd, 'r--');
+subplot(3,1,3)
+plot(0:dt:tf, acc, 'k-'); grid on; ylabel('acceleration');
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
