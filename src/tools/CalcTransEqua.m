@@ -1,4 +1,5 @@
-%% calculate the equation like a*cos+b*sin = c
+% calculate the transcendental  equation like
+% a*cos(theta)+b*sin(theta) = c
 function theta = CalcTransEqua(a, b, c)
     if abs(a+c)<1e-5
         u = (c-a)/(2*b);

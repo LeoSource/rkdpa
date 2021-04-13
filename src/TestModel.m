@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'jtrajpoly';
+test_mode = 'jonlinetraj';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -84,6 +84,28 @@ planner1.SetTimeOptimizedStyle('gentle');
 % planner1.SetSmoothWeight(0.7);
 % planner1.SetSmoothTolerance(0.2);
 planner1.PlotAVP(0.001);
+
+    case 'jonlinetraj'
+%%  joint online trajectory plan
+tf = 4; dt = 0.01;
+planner = OnlineTrajPlanner(10, 10, dt, 3);
+p = 0; v =0; a = 10;
+planner.InitPlanner(p ,v, a);
+pos = []; vel = []; acc = [];
+for t=0:dt:tf
+    if t ==2.18
+        aa = 1;
+    end
+    [p, v, a] = planner.GenerateMotion([15,10,0], [p,v,a]);
+    pos = [pos, p]; vel = [vel, v]; acc = [acc, a];
+end
+subplot(3,1,1)
+plot([0:dt:tf], pos, 'k-'); grid on; ylabel('position'); hold on; plot([0, tf], [15, 15], 'r--');
+subplot(3,1,2)
+plot([0:dt:tf], vel, 'k-'); grid on; ylabel('velocity'); hold on; plot([0, tf], [10, 10], 'r-');
+subplot(3,1,3)
+plot([0:dt:tf], acc, 'k-'); grid on; ylabel('acceleration');
+
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
