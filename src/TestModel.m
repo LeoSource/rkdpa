@@ -87,38 +87,39 @@ planner1.PlotAVP(0.001);
 
     case 'jonlinetraj'
 %%  joint online trajectory plan
-tf = 5; dt = 0.001; vmax = 20; amax = 200;
-planner = OnlineTrajPlanner(vmax, amax, dt, 3);
-p = 0; v =0; a = 0;
+tf = 25; dt = 0.0005; vmax = 3; amax = 2; jmax = 5;
+planner = OnlineTrajPlanner(vmax, amax, jmax, dt, 5);
+p = 0; v =0; a = 0; j =0;
 planner.InitPlanner(p ,v, a);
 % generate command motion
 pos_cmd = []; vel_cmd = [];
 for t=0:dt:tf
     if t>=0 && t<1
-        v_cmd = 5;
-        p_cmd = 5*t+5;
-    elseif t>=1 && t<2
-        v_cmd = 10;
-        p_cmd = 10*t-5;
-    elseif t>=2 && t<3
-        v_cmd = 15;
-        p_cmd = 15*t-25;
-    elseif t>=3 && t<=tf
+        v_cmd = 0;
+        p_cmd = 0;
+    elseif t>=1 && t<7
+        v_cmd = 0;
+        p_cmd = 4;
+    elseif t>=7 && t<13
         v_cmd = 0;
         p_cmd = 10;
+    else
+        v_cmd = 0;
+        p_cmd = -2;
     end
     pos_cmd = [pos_cmd, p_cmd];
     vel_cmd = [vel_cmd, v_cmd];
 end
 % generate actual motion
-pos = []; vel = []; acc = [];
+pos = []; vel = []; acc = []; jerk = [];
 idx = 0;
 for t=0:dt:tf
     idx = idx+1;
-    p = p+0.01*sign(rand-0.5);
-    v = v+0.001*sign(rand-0.5);
-    [p, v, a] = planner.GenerateMotion([pos_cmd(idx),vel_cmd(idx),0], [p,v,a]);
-    pos = [pos, p]; vel = [vel, v]; acc = [acc, a];
+    p = p+0.001*sign(rand-0.5);
+    v = v+0.01*sign(rand-0.5);
+    a = a+0.1*sign(rand-0.5);
+    [p, v, a, j] = planner.GenerateMotion5th([pos_cmd(idx),vel_cmd(idx),0], [p,v,a]);
+    pos = [pos, p]; vel = [vel, v]; acc = [acc, a]; jerk = [jerk, j];
 end
 
 tt = 0:dt:tf;
