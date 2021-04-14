@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'jonlinetraj';
+test_mode = 'redudantsolve';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -87,7 +87,7 @@ planner1.PlotAVP(0.001);
 
     case 'jonlinetraj'
 %%  joint online trajectory plan
-tf = 25; dt = 0.0005; vmax = 3; amax = 2; jmax = 5;
+tf = 25; dt = 0.001; vmax = 3; amax = 2; jmax = 5;
 planner = OnlineTrajPlanner(vmax, amax, jmax, dt, 5);
 p = 0; v =0; a = 0; j =0;
 planner.InitPlanner(p ,v, a);
@@ -304,16 +304,22 @@ q= [0.3,0.98,-0.91,0.91,0.56];
 jaco = rbt.CalcJaco(q)
     case 'redudantsolve'
 %% redundant solve for robot work
-% % pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
 % pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.77, 0.2, 0.7]; pos3 = [-0.77, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
-% radius = 0.04;
-% tf = 60; dt = 0.01;
-% % via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 0.1, [-1,0,1]);
-% via_pos = CalcRectanglePath1([pos1', pos2', pos3', pos4'], 0.1, 'm');
-% cpath = ArcTransPathPlanner(via_pos, radius);
-% planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
-% [s, sv, sa] = planner.GenerateTraj(dt);
-% [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
+radius = 0.04;
+tf = 60; dt = 0.01;
+via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 15, 's');
+cpath = ArcTransPathPlanner(via_pos, radius);
+planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
+[s, sv, sa] = planner.GenerateTraj(dt);
+[pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
+q = rbt.IKSolve(pos1, 'q2first', 0);
+for idx=1:size(pos, 2)
+    cmd_vel = [vel(:,idx); 0; 0];
+    cmd_pos = [pos(:,idx); 0; 0];
+    jaco = rbt.CalcOperationJaco(q);
+    
+end
 
     case 'mirrortask'
 %%  comparison with cpp

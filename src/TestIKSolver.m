@@ -8,18 +8,19 @@ addpath('tools');
 %% tests for iksolver
 % to do: random position to test
 rbt = CleanRobot;
-q = [0.2,-0.3,0.45,0.67,pi/2];
-rbt.FKSolve(q)
-rbt.fksolve(q)
+q = rand(1,5);
+pose1 = rbt.FKSolve(q)
+pose2 = rbt.fksolve(q)
+tr2rt(pose1)*rotx(-30)-pose2(1:3,1:3)
 
 % cmd_pos = [rand, rand, rand+1]';
-cmd_pos = [-0.47, 0.8, 0.92]';
+cmd_pos = [0.7, 0.8, 1]';
 q = rbt.IKSolve(cmd_pos, 'q2first', 0);
 pos = rbt.FKSolve(q).t;
 disp(['pos_err = ', num2str(norm(cmd_pos-pos))]);
 
 cmd_pos = [0, 0.8, rand]';
-q2 = rbt.IKSolve(cmd_pos, 'q3first0', 0);
+q2 = rbt.IKSolve(cmd_pos, 'q3firstn', 0);
 pos2 = rbt.FKSolve(q2).t;
 disp(['pos_err = ', num2str(norm(cmd_pos-pos2))]);
 

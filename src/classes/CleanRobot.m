@@ -1,10 +1,11 @@
+%   build clean robot model
+%   it is not a universal serial arm robot because of the iksolver
+%   the iksolver is specific under work situation
+%   workspace display which depends on dh_table and joint limit 
+%   Author:
+%   liao zhixiang, zhixiangleo@163.com
+
 classdef CleanRobot < handle
-    
-    % build clean robot model
-    % it is not a universal serial arm robot because of the iksolver
-    % you can change the dh_table, joints limit or other robot parameters in class constructor
-    % the iksolver is specific under work situation
-    % workspace display which depends on dh_table and joint limit 
     
     properties
         arm
@@ -20,12 +21,11 @@ classdef CleanRobot < handle
     end
         
     methods
-        %% constructor
+        %% Class Constructor
         function obj = CleanRobot()
             % mdh parameters: theta d a alpha type offset
             l1 = 0.106; l2 = 0.09; l3 = 0;% model refinement
             h = 0.5; w = 0.423;
-%             l1 = 0; l2 = 0; l3 = 0; 
             mdh_table = [      0,   0,   0,       0,    0,   0
                                     pi/2,   0,   0,       0,    1,   h 
                                         0,    l2,   -l1,   pi/2,    0,   pi/2
@@ -46,13 +46,19 @@ classdef CleanRobot < handle
             obj.qmax = qlimit(:,2);
             obj.qmin = qlimit(:,1);
             obj.tool_pose = eye(4);
-            obj.tool_pose(1:3,end) = [0, 0.2*cos(-pi/6), 0.2*sin(-pi/6)]';
+            obj.tool_pose(1:3, 1:3) = rotx(-30);
+            obj.tool_pose(1:3,end) = [0, 0.2*cosd(-30), 0.2*sind(-30)]';
         end
         
-        %% forward kinematics using robotics toolbox
+        %% Forward Kinematics Using Robotics Toolbox
         function pose = FKSolve(obj, q)
             pose = obj.arm.fkine(q);
             pose.t = pose.t+tr2rt(pose)*obj.tool;
+        end
+
+        function  tool_pose = FKSolveTool(obj, q)
+            pose = obj.transform(q, 1, obj.nlinks);
+            tool_pose = pose*obj.tool_pose;
         end
 
         function pose = transform(obj, q, s_idx, e_idx)
@@ -68,7 +74,7 @@ classdef CleanRobot < handle
             pose = pose*obj.tool_pose;
         end
         
-        %% inverse kinematics with analytical solution    
+        %% Inverse Kinematics with Analytical Solution    
         function q = IKSolve(obj, pos, option, alpha)
             %%to simplify the problem of end-effector's pose: theta5 = alpha-theta1
             q = zeros(1,5);
@@ -128,7 +134,7 @@ classdef CleanRobot < handle
             q(2) = pos(3)-s3*c5*ty-c3*tz-s3*(q(4)+w) - h;
         end
         
-        %% inverse kinematics with numerical solution(optimization toolbox)
+        %% Inverse Kinematics with Numerical Solution(optimization toolbox)
         function [q, qerr, exitflag] = IKSolveCon(obj, pose, q0)
             %%to guarantee that the end-effector's pose is perpendicular to
             %%vertical surface, but it is very hard to get a analytical value
@@ -162,7 +168,7 @@ classdef CleanRobot < handle
             c = [];
         end
         
-        %% jacobian matrix calculation
+        %% Calculate Jacobian Matrix
         function jaco = CalcJaco(obj, q)
             jaco_end = obj.arm.jacob0(q);
             p_mat = eye(6,6);
@@ -183,7 +189,22 @@ classdef CleanRobot < handle
             jw = jaco(4:6,:);
         end
 
-        %% validation for the workspace of cleanrobot
+        function jaco = CalcRPYJaco(obj, q)
+            pose = obj.FKSolveTool(q);
+            rot_0_tool = pose(1:3, 1:3);
+            rpy = Rot2RPY(rot_0_tool);
+            trans_0_rpy = RPY2JAC(rpy);
+            jv = obj.CalcJv(q); jw = obj.CalcJw(q);
+            jw = pinv(trans_0_rpy)*jw;
+            jaco = [jv; jw];
+        end
+
+        function jaco = CalcOperationJaco(obj, q)
+            jaco_rpy = obj.CalcRPYJaco(q);
+            jaco = [jaco_rpy(1:3,:); jaco_rpy(4,:); jaco_rpy(6,:)];
+        end
+
+        %% Validation for Workspace of Cleanrobot
         function PlotWorkspace(obj)
             %to do:simplify the plot code
             num = 10000;
