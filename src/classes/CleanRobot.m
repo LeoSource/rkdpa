@@ -22,6 +22,7 @@ classdef CleanRobot < handle
         gain_pos
         gain_rpy
         q_ik
+        ts
     end
         
     methods
@@ -181,17 +182,32 @@ classdef CleanRobot < handle
             vel_comp = diag(obj.gain_pos)*(pos_cmd-pos_fdb);
             jv = obj.CalcJv(q_in);
             qd = pinv(jv)*(vel_cmd+vel_comp);
-            obj.q_ik = obj.q_ik+qd*0.001;
+            obj.q_ik = obj.q_ik+qd*obj.ts;
             obj.q_ik = LimitNumber(obj.qmin, obj.q_ik, obj.qmax);
             q = obj.q_ik;
         end
 
-        function InitIKSolver(obj, q_in)
+        function [q, qd] = IKSolveRPY(obj, pos_cmd, vel_cmd, q_in)
+            pose = obj.FKSolveTool(q_in);
+            pos_fdb = zeros(5,1);
+            pos_fdb(1:3) = pose(1:3, end);
+            rpy = Rot2RPY(pose(1:3, 1:3));
+            pos_fdb(4:5) = [rpy(1); rpy(3)];
+            vel_comp = diag([obj.gain_pos, obj.gain_rpy])*(pos_cmd-pos_fdb);
+            jaco = obj.CalcOperationJaco(q_in);
+            qd = pinv(jaco)*(vel_cmd+vel_comp);
+            obj.q_ik = obj.q_ik+qd*obj.ts;
+            obj.q_ik = LimitNumber(obj.qmin, obj.q_ik, obj.qmax);
+            q = obj.q_ik;
+        end
+
+        function InitIKSolver(obj, q_in, ts)
             obj.q_ik = q_in;
+            obj.ts = ts;
         end
         
         %% Calculate Jacobian Matrix
-        function jaco = CalcJaco(obj, q)
+        function jaco = CalcJacoTool(obj, q)
             jaco_end = obj.arm.jacob0(q);
             p_mat = eye(6,6);
             pose = obj.FKSolve(q);
@@ -202,12 +218,12 @@ classdef CleanRobot < handle
         end
 
         function jv = CalcJv(obj, q)
-            jaco = obj.CalcJaco(q);
+            jaco = obj.CalcJacoTool(q);
             jv = jaco(1:3,:);
         end
 
         function jw = CalcJw(obj, q)
-            jaco = obj.CalcJaco(q);
+            jaco = obj.CalcJacoTool(q);
             jw = jaco(4:6,:);
         end
 

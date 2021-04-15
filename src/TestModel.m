@@ -297,13 +297,13 @@ mdh_table = [      0,   0,   0,       0,    0,   0
 test_rbt = SerialLink(mdh_table, 'modified', 'name', 'test_rbt');
 q = rand(1,5);  test_q = [q, 0];
 dq = rand(5,1); test_dq = [dq; 0];
-spatial_vel = rbt.CalcJaco(q)*dq
+spatial_vel = rbt.CalcJacoTool(q)*dq
 test_jaco = test_rbt.jacob0(test_q);
 test_vel = test_jaco*test_dq
-jaco_err = norm(rbt.CalcJaco(q)-test_jaco(:,1:5))
+jaco_err = norm(rbt.CalcJacoTool(q)-test_jaco(:,1:5))
 
 q= [0.3,0.98,-0.91,0.91,0.56];
-jaco = rbt.CalcJaco(q)
+jaco = rbt.CalcJacoTool(q)
     case 'redudantsolve'
 %% redundant solve for robot work
 pos1 = [0.5, 0.8, 1]; pos2 = [-0.5, 0.8, 1]; pos3 = [-0.5, 0.8, 1.8]; pos4 = [0.5, 0.8, 1.8];
@@ -317,9 +317,10 @@ planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
 [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
 q = rbt.IKSolve(pos1, 'q2first', 0);
 sim_q = []; sim_pos = [];
-rbt.InitIKSolver(q);
+rbt.InitIKSolver(q, dt);
 for idx=1:size(pos, 2)
-    [q, qd] = rbt.IKSolvePos(pos(:,idx), vel(:,idx), q);
+%     [q, qd] = rbt.IKSolvePos(pos(:,idx), vel(:,idx), q);
+    [q, qd] = rbt.IKSolveRPY([pos(:,idx);0;0], [vel(:,idx);0;0], q);
     pose = rbt.FKSolveTool(q);
     tmp_pos = pose(1:3, end);
     sim_q = [sim_q, q]; sim_pos = [sim_pos, tmp_pos];
