@@ -286,11 +286,13 @@ plot(pos(1,:), pos(2,:));
 
     case 'jacobian'
 %% test for jacobian
+l1 = 0.106; l2 = 0.09; l3 = 0;% model refinement
+h = 0.5; w = 0.423;
 mdh_table = [      0,   0,   0,       0,    0,   0
-                pi/2,   0,   0,       0,    1,   0 
-                    0,    0,   0,   pi/2,    0,   pi/2
-                pi/2,    0,   0,   pi/2,   1,   0
-                    0,    0,   0,    pi/2,   0,   0
+                pi/2,   0,   0,       0,    1,   h 
+                    0,    l2,   -l1,   pi/2,    0,   pi/2
+                pi/2,    0,   0,   pi/2,   1,   w
+                    0,    0,   -l3,    pi/2,   0,   0
                     0,   0.2,  0,   -pi/6-pi/2, 0, 0];
 test_rbt = SerialLink(mdh_table, 'modified', 'name', 'test_rbt');
 q = rand(1,5);  test_q = [q, 0];
@@ -304,23 +306,31 @@ q= [0.3,0.98,-0.91,0.91,0.56];
 jaco = rbt.CalcJaco(q)
     case 'redudantsolve'
 %% redundant solve for robot work
-pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+pos1 = [0.5, 0.8, 1]; pos2 = [-0.5, 0.8, 1]; pos3 = [-0.5, 0.8, 1.8]; pos4 = [0.5, 0.8, 1.8];
 % pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.77, 0.2, 0.7]; pos3 = [-0.77, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
 radius = 0.04;
-tf = 60; dt = 0.01;
-via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 15, 's');
+tf = 40; dt = 0.001;
+via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 9, 's');
 cpath = ArcTransPathPlanner(via_pos, radius);
 planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
 [s, sv, sa] = planner.GenerateTraj(dt);
 [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
 q = rbt.IKSolve(pos1, 'q2first', 0);
+sim_q = []; sim_pos = [];
+rbt.InitIKSolver(q);
 for idx=1:size(pos, 2)
-    cmd_vel = [vel(:,idx); 0; 0];
-    cmd_pos = [pos(:,idx); 0; 0];
-    jaco = rbt.CalcOperationJaco(q);
-    
+    [q, qd] = rbt.IKSolvePos(pos(:,idx), vel(:,idx), q);
+    pose = rbt.FKSolveTool(q);
+    tmp_pos = pose(1:3, end);
+    sim_q = [sim_q, q]; sim_pos = [sim_pos, tmp_pos];
 end
 
+t = [0:dt:tf]';
+plot(t,sim_q(1, :),'-', t, sim_q(2, :), '--', t, sim_q(3, :), '-.', t, sim_q(4, :), ':', t, sim_q(5, :), '-');
+grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
+figure
+plot2(pos', 'r--'); hold on; plot2(sim_pos', 'k-'); grid on; axis([-inf, inf, 0.6, 1, -inf, inf]);
+xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)'); legend('cmd\_pos', 'sim\_pos');
     case 'mirrortask'
 %%  comparison with cpp
 pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];

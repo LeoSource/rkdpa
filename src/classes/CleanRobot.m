@@ -18,6 +18,10 @@ classdef CleanRobot < handle
         tool_pose
         qmin
         qmax
+
+        gain_pos
+        gain_rpy
+        q_ik
     end
         
     methods
@@ -31,7 +35,7 @@ classdef CleanRobot < handle
                                         0,    l2,   -l1,   pi/2,    0,   pi/2
                                     pi/2,    0,   0,   pi/2,   1,   w
                                         0,    0,   -l3,    pi/2,   0,   0];
-            qlimit = [-pi/2, pi/2; 0, 1; -pi/2 ,pi/2; 0, 0.6; -2*pi, 2*pi];            
+            qlimit = [-pi/2, pi/2; 0, 1; -pi/2 ,pi/2; 0, 0.506; -2*pi, 2*pi];            
             obj.arm = SerialLink(mdh_table,'modified','name','CleanRobot');
             for idx=1:size(mdh_table,1)
                 obj.arm.links(idx).qlim = qlimit(idx,:);
@@ -48,6 +52,8 @@ classdef CleanRobot < handle
             obj.tool_pose = eye(4);
             obj.tool_pose(1:3, 1:3) = rotx(-30);
             obj.tool_pose(1:3,end) = [0, 0.2*cosd(-30), 0.2*sind(-30)]';
+            obj.gain_pos = [500, 500, 500];
+            obj.gain_rpy = [200, 200];
         end
         
         %% Forward Kinematics Using Robotics Toolbox
@@ -77,7 +83,7 @@ classdef CleanRobot < handle
         %% Inverse Kinematics with Analytical Solution    
         function q = IKSolve(obj, pos, option, alpha)
             %%to simplify the problem of end-effector's pose: theta5 = alpha-theta1
-            q = zeros(1,5);
+            q = zeros(5,1);
             ty = obj.tool(2); tz = obj.tool(3);
             h = obj.links{2}.offset; w = obj.links{4}.offset;
             height_limit = obj.arm.qlim(2,:)+tz+obj.links{2}.offset;
@@ -166,6 +172,22 @@ classdef CleanRobot < handle
             ceq(2) = ty*(-s1*s5+c1*c3*c5)-c1*s3*tz+c1*c3*(q(4)+w)+ly*c1+lx*s1-pos(2);
             ceq(3) = s3*c5*ty+c3*tz+q(2)+h+s3*(q(4)+w)-pos(3);
             c = [];
+        end
+
+        %% Inverse Kinematics of Numerical Solution with Jacobian
+        function [q, qd] = IKSolvePos(obj, pos_cmd, vel_cmd, q_in)
+            pose = obj.FKSolveTool(q_in);
+            pos_fdb = pose(1:3, end);
+            vel_comp = diag(obj.gain_pos)*(pos_cmd-pos_fdb);
+            jv = obj.CalcJv(q_in);
+            qd = pinv(jv)*(vel_cmd+vel_comp);
+            obj.q_ik = obj.q_ik+qd*0.001;
+            obj.q_ik = LimitNumber(obj.qmin, obj.q_ik, obj.qmax);
+            q = obj.q_ik;
+        end
+
+        function InitIKSolver(obj, q_in)
+            obj.q_ik = q_in;
         end
         
         %% Calculate Jacobian Matrix
