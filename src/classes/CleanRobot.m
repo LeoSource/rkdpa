@@ -21,6 +21,7 @@ classdef CleanRobot < handle
 
         gain_pos
         gain_rpy
+        gain_opt
         q_ik
         ts
     end
@@ -53,8 +54,9 @@ classdef CleanRobot < handle
             obj.tool_pose = eye(4);
             obj.tool_pose(1:3, 1:3) = rotx(-30);
             obj.tool_pose(1:3,end) = [0, 0.2*cosd(-30), 0.2*sind(-30)]';
-            obj.gain_pos = [500, 500, 500];
-            obj.gain_rpy = [200, 200];
+            obj.gain_pos = diag([500, 500, 500]);
+            obj.gain_rpy = diag([500, 500, 500, 100, 100]);
+            obj.gain_opt = diag([5, 5, 5, 5, 5]);
         end
         
         %% Forward Kinematics Using Robotics Toolbox
@@ -179,7 +181,7 @@ classdef CleanRobot < handle
         function [q, qd] = IKSolvePos(obj, pos_cmd, vel_cmd, q_in)
             pose = obj.FKSolveTool(q_in);
             pos_fdb = pose(1:3, end);
-            vel_comp = diag(obj.gain_pos)*(pos_cmd-pos_fdb);
+            vel_comp = obj.gain_pos*(pos_cmd-pos_fdb);
             jv = obj.CalcJv(q_in);
             qd = pinv(jv)*(vel_cmd+vel_comp);
             obj.q_ik = obj.q_ik+qd*obj.ts;
@@ -193,9 +195,25 @@ classdef CleanRobot < handle
             pos_fdb(1:3) = pose(1:3, end);
             rpy = Rot2RPY(pose(1:3, 1:3));
             pos_fdb(4:5) = [rpy(1); rpy(3)];
-            vel_comp = diag([obj.gain_pos, obj.gain_rpy])*(pos_cmd-pos_fdb);
+            vel_comp = obj.gain_rpy*(pos_cmd-pos_fdb);
             jaco = obj.CalcOperationJaco(q_in);
             qd = pinv(jaco)*(vel_cmd+vel_comp);
+            obj.q_ik = obj.q_ik+qd*obj.ts;
+            obj.q_ik = LimitNumber(obj.qmin, obj.q_ik, obj.qmax);
+            q = obj.q_ik;
+        end
+
+        function [q, qd] = IKSolveRedudant(obj, pos_cmd, vel_cmd, q_in, dir_vec)
+            pose = obj.FKSolveTool(q_in);
+            pos_fdb = pose(1:3, end);
+            vel_comp = obj.gain_pos*(pos_cmd-pos_fdb);
+
+            jaco_wrist = obj.CalcJacoWrist(q_in);
+            jv_wrist = jaco_wrist(1:3,:);
+            jv_tool = obj.CalcJv(q_in);
+            q0 = obj.gain_opt*(jv_tool'-jv_wrist')*dir_vec;
+
+            qd = pinv(jv_tool)*(vel_cmd+vel_comp)+(eye(5)-pinv(jv_tool)*jv_tool)*q0;
             obj.q_ik = obj.q_ik+qd*obj.ts;
             obj.q_ik = LimitNumber(obj.qmin, obj.q_ik, obj.qmax);
             q = obj.q_ik;
@@ -207,8 +225,12 @@ classdef CleanRobot < handle
         end
         
         %% Calculate Jacobian Matrix
+        function jaco = CalcJacoWrist(obj,q)
+            jaco = obj.arm.jacob0(q);
+        end
+
         function jaco = CalcJacoTool(obj, q)
-            jaco_end = obj.arm.jacob0(q);
+            jaco_end = obj.CalcJacoWrist(q);
             p_mat = eye(6,6);
             pose = obj.FKSolve(q);
             rot = tr2rt(pose);
@@ -232,14 +254,14 @@ classdef CleanRobot < handle
             rot_0_tool = pose(1:3, 1:3);
             rpy = Rot2RPY(rot_0_tool);
             trans_0_rpy = RPY2JAC(rpy);
-            jv = obj.CalcJv(q); jw = obj.CalcJw(q);
-            jw = pinv(trans_0_rpy)*jw;
-            jaco = [jv; jw];
+            jv_tool = obj.CalcJv(q); jw_tool = obj.CalcJw(q);
+            jw_tool = pinv(trans_0_rpy)*jw_tool;
+            jaco = [jv_tool; jw_tool];
         end
 
         function jaco = CalcOperationJaco(obj, q)
-            jaco_rpy = obj.CalcRPYJaco(q);
-            jaco = [jaco_rpy(1:3,:); jaco_rpy(4,:); jaco_rpy(6,:)];
+            jaco_rpy_tool = obj.CalcRPYJaco(q);
+            jaco = [jaco_rpy_tool(1:3,:); jaco_rpy_tool(4,:); jaco_rpy_tool(6,:)];
         end
 
         %% Validation for Workspace of Cleanrobot

@@ -320,7 +320,8 @@ sim_q = []; sim_pos = [];
 rbt.InitIKSolver(q, dt);
 for idx=1:size(pos, 2)
 %     [q, qd] = rbt.IKSolvePos(pos(:,idx), vel(:,idx), q);
-    [q, qd] = rbt.IKSolveRPY([pos(:,idx);0;0], [vel(:,idx);0;0], q);
+%     [q, qd] = rbt.IKSolveRPY([pos(:,idx);0;0], [vel(:,idx);0;0], q);
+    [q, qd] = rbt.IKSolveRedudant(pos(:,idx), vel(:,idx), q, [0;1;0]);
     pose = rbt.FKSolveTool(q);
     tmp_pos = pose(1:3, end);
     sim_q = [sim_q, q]; sim_pos = [sim_pos, tmp_pos];
