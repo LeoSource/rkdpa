@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'redudantsolve';
+test_mode = 'ctrajbspline';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -263,6 +263,17 @@ plot3(pos(1,:), pos(2,:), pos(3,:));
 
     case 'ctrajbspline'
 %% cartesian trajectory plan using B-spline
+via_pos = [83, -64, 42, -98, -13, 140, 43, -65, -45, 71;...
+            -54, 10, 79, 23, 125, 81, 32, -17, -89, 90;...
+            119, 124, 226, 222, 102, 92, 92, 134, 182, 192];
+planner = CubicBSplinePlanner(via_pos);
+planner.PlotBSpline(0.005); hold on;
+if size(via_pos,1)==3
+    scatter3(via_pos(1,:), via_pos(2,:), via_pos(3,:));
+else
+    scatter(via_pos(1,:), via_pos(2,:));
+end
+
 %pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
 pos1 = rand(2,1)*1; pos2 = rand(2,1)*2; pos3 = rand(2,1)*3; 
 pos4 = rand(2,1)*4; pos5 = rand(2,1)*5; pos6 = rand(2,1)*6;
@@ -271,7 +282,7 @@ via_pos = [pos1, pos2, pos3, pos4, pos5, pos6];
 knots_vec = [0,0,0,0,1/3,2/3,1,1,1,1];%clamped table
 % knots_vec = 0:0.1:1;
 pos = [];
-for u=0:0.001:0.999
+for u=0:0.001:1
     [p, coef] = BSpline(via_pos(:,1:6),knots_vec, u);
     pos = [pos ,p];
 end
