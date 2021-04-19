@@ -26,22 +26,28 @@ classdef CubicBSplinePlanner < handle
     end
 
     methods
-        %% Constructor of Class
-        function obj = CubicBSplinePlanner(via_pos, option)
+        %% Constructor of Class and Other Settings
+        function obj = CubicBSplinePlanner(via_pos, option, u)
             obj.nump = size(via_pos, 2);
             obj.pdegree = 3;
-            obj.uknot_vec = obj.CalcUKnot(via_pos);
-            if strcmp(option, 'interpolation')
-                obj.num_ctrlp = obj.nump+2;
-                obj.knot_vec = obj.CalcKnotVec();
-                obj.ctrl_pos = obj.CalcCtrlPos(via_pos);
-            elseif strcmp(option, 'approximation')
-                obj.num_ctrlp = 16;
-                obj.knot_vec = obj.CalcApproKnotVec();
-                obj.ctrl_pos = obj.CalcApproCtrlPos(via_pos);
+            if nargin>2
+                obj.knot_vec = u;
+                obj.uknot_vec = u(4:obj.nump+3);
             else
-                error('error option')
+                obj.uknot_vec = obj.CalcUKnot(via_pos);
+                if strcmp(option, 'interpolation')
+                    obj.num_ctrlp = obj.nump+2;
+                    obj.knot_vec = obj.CalcKnotVec();
+                    obj.ctrl_pos = obj.CalcCtrlPos(via_pos);
+                elseif strcmp(option, 'approximation')
+                    obj.num_ctrlp = 16;
+                    obj.knot_vec = obj.CalcApproKnotVec();
+                    obj.ctrl_pos = obj.CalcApproCtrlPos(via_pos);
+                else
+                    error('error option')
+                end
             end
+
         end
 
         %% Calculate Control Position for Interpolation 
@@ -137,7 +143,7 @@ classdef CubicBSplinePlanner < handle
             knot_vec(m+1:m+p+1) = deal(uk(end));
         end
         
-        %% Standard B-Spline Basis Function
+        %% Standard B-Spline Basis Function and Derivative
         function b_coeff = CalcBSplineCoeff(obj, p, idx, u)
             if p==0
                 if u>=obj.knot_vec(idx) && u<obj.knot_vec(idx+1)
@@ -171,6 +177,32 @@ classdef CubicBSplinePlanner < handle
             end
         end
 
+        function diff_bcoeff = DiffBSplineCoeff(obj, p, jidx, u, k)
+            ak = zeros(1, k+1); b_coeff = zeros(k+1,1);
+            for idx=0:k
+                ak(idx+1) = obj.CalcDiffCoeff(k,idx,jidx);
+                b_coeff(idx+1) = obj.CalcBSplineCoeff(p-k,jidx+idx,u);
+            end
+            diff_bcoeff = factorial(p)/factorial(p-k)*ak*b_coeff;
+        end
+
+        function ak = CalcDiffCoeff(obj, k, idx, jidx)
+            p = obj.pdegree; u = obj.knot_vec;
+            if k==0
+                ak = 1;
+            else
+                if idx==0
+                    ak = Divide(obj.CalcDiffCoeff(k-1, 0, jidx),(u(jidx+p-k+1)-u(jidx)));
+                elseif idx==k
+                    ak = -Divide(obj.CalcDiffCoeff(k-1, k-1, jidx), u(jidx+p+1)-u(jidx+k));
+                else
+                    num = obj.CalcDiffCoeff(k-1, idx, jidx)-obj.CalcDiffCoeff(k-1, idx-1, jidx);
+                    den = u(jidx+p+idx-k+1)-u(jidx+idx);
+                    ak = Divide(num, den);
+                end
+            end
+        end
+
         %% Generate B-Spline and Display
         function pos = GeneratePos(obj, u)
             m = obj.num_ctrlp;
@@ -183,6 +215,15 @@ classdef CubicBSplinePlanner < handle
                 end
             end
             pos = obj.ctrl_pos*b_coeff;
+        end
+
+        function vel = GenerateVel(obj, u)
+            m = obj.num_ctrlp;
+            diff_bcoeff = zeros(m,1);
+            for idx=1:m
+                diff_bcoeff(idx) = obj.DiffBSplineCoeff(3, idx, u, 1);
+            end
+            vel = obj.ctrl_pos*diff_bcoeff;
         end
 
         function curve = GenerateBSpline(obj, du)
@@ -200,6 +241,15 @@ classdef CubicBSplinePlanner < handle
         end
 
     end
+end
 
-
+function res = Divide(num, den)
+    if abs(num)<eps && abs(den)<eps
+        res = 0;
+    elseif abs(den)<eps
+        den = 1;
+        res = num/den;
+    else
+        res = num/den;
+    end
 end

@@ -263,15 +263,17 @@ plot3(pos(1,:), pos(2,:), pos(3,:));
 
     case 'ctrajbspline'
 %% cartesian trajectory plan using B-spline
-via_pos = [83, -64, 42, -98, -13, 140, 43, -65, -45, 71;...
-            -54, 10, 79, 23, 125, 81, 32, -17, -89, 90;...
-            119, 124, 226, 222, 102, 92, 92, 134, 182, 192];
+% via_pos = [83, -64, 42, -98, -13, 140, 43, -65, -45, 71;...
+%             -54, 10, 79, 23, 125, 81, 32, -17, -89, 90;...
+%             119, 124, 226, 222, 102, 92, 92, 134, 182, 192];
 % via_pos1 = [1; -1]+linspace(0,1,10).*([1;1]-[1;-1]);
 % via_pos2 = [1; 1]+linspace(0,1,10).*([-1;1]-[1;1]);
 % via_pos3 = [-1; 1]+linspace(0,1,10).*([-1;-1]-[-1;1]);
 % via_pos4 = [-1;-1]+linspace(0,1,10).*([1;-1]-[-1;-1]);
 % via_pos = [via_pos1, via_pos2, via_pos3, via_pos4];
-planner = CubicBSplinePlanner(via_pos, 'interpolation');
+via_pos = [1, 2, 3, 4, 5; 2, 3, -3, 4, 5];
+u = [0,0,0,0,1,2,4,7,7,7,7];
+planner = CubicBSplinePlanner(via_pos, 'interpolation', u);
 planner.PlotBSpline(0.005); hold on;
 if size(via_pos,1)==3
     scatter3(via_pos(1,:), via_pos(2,:), via_pos(3,:));
