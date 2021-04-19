@@ -26,6 +26,7 @@ classdef CubicBSplinePlanner < handle
     end
 
     methods
+        %% Constructor of Class
         function obj = CubicBSplinePlanner(via_pos, option)
             obj.nump = size(via_pos, 2);
             obj.pdegree = 3;
@@ -43,29 +44,7 @@ classdef CubicBSplinePlanner < handle
             end
         end
 
-        function knot_vec = CalcKnotVec(obj)
-            uk = obj.uknot_vec;
-            m = obj.num_ctrlp; p = obj.pdegree;
-            knot_vec = zeros(1, m+p+1);
-            knot_vec(1:3) = deal(uk(1));
-            knot_vec(end-2:end) = deal(uk(end));
-            for idx=1:obj.nump
-                knot_vec(idx+3) = uk(idx);
-            end
-        end
-
-        function uk = CalcUKnot(obj, q)
-            uk = zeros(obj.nump, 1);
-            uk(end) = 1;
-            d = 0;
-            for idx=2:obj.nump
-                d = d+norm(q(:,idx)-q(:,idx-1));
-            end
-            for idx=2:obj.nump-1
-                uk(idx) = uk(idx-1)+norm(q(:,idx)-q(:,idx-1))/d;
-            end
-        end
-
+        %% Calculate Control Position for Interpolation 
         function p = CalcCtrlPos(obj, q)
             n = obj.nump; m =obj.num_ctrlp; u_hat = obj.uknot_vec;
             dim = size(q, 1);
@@ -97,20 +76,7 @@ classdef CubicBSplinePlanner < handle
             p(:,3:n) = p_tmp';
         end
 
-        function knot_vec = CalcApproKnotVec(obj)
-            n = obj.nump; m = obj.num_ctrlp; p =3;
-            d = (n+1)/(m-p+1);
-            uk = obj.uknot_vec;
-            knot_vec = zeros(1, m+p+1);
-            for jidx=2:m-p
-                idx = floor(jidx*d);
-                alph = jidx*d-idx;
-                knot_vec(jidx+p) = (1-alph)*uk(idx-1)+alph*uk(idx);
-            end
-            knot_vec(1:p+1) = deal(uk(1));
-            knot_vec(m+1:m+p+1) = deal(uk(end));
-        end
-
+        %% Calculate Control Position for Approximation
         function p = CalcApproCtrlPos(obj, q)
             n = obj.nump; dim = size(q,1); u_hat = obj.uknot_vec;
             m = obj.num_ctrlp;
@@ -132,7 +98,46 @@ classdef CubicBSplinePlanner < handle
             p_tmp = pseinv_B*R;
             p(:,2:m-1) = p_tmp';
         end
+        
+        %% Calculate Knot Vector for Interpolation and Approximation
+        function knot_vec = CalcKnotVec(obj)
+            uk = obj.uknot_vec;
+            m = obj.num_ctrlp; p = obj.pdegree;
+            knot_vec = zeros(1, m+p+1);
+            knot_vec(1:3) = deal(uk(1));
+            knot_vec(end-2:end) = deal(uk(end));
+            for idx=1:obj.nump
+                knot_vec(idx+3) = uk(idx);
+            end
+        end
 
+        function uk = CalcUKnot(obj, q)
+            uk = zeros(obj.nump, 1);
+            uk(end) = 1;
+            d = 0;
+            for idx=2:obj.nump
+                d = d+norm(q(:,idx)-q(:,idx-1));
+            end
+            for idx=2:obj.nump-1
+                uk(idx) = uk(idx-1)+norm(q(:,idx)-q(:,idx-1))/d;
+            end
+        end
+
+        function knot_vec = CalcApproKnotVec(obj)
+            n = obj.nump; m = obj.num_ctrlp; p =3;
+            d = (n+1)/(m-p+1);
+            uk = obj.uknot_vec;
+            knot_vec = zeros(1, m+p+1);
+            for jidx=2:m-p
+                idx = floor(jidx*d);
+                alph = jidx*d-idx;
+                knot_vec(jidx+p) = (1-alph)*uk(idx-1)+alph*uk(idx);
+            end
+            knot_vec(1:p+1) = deal(uk(1));
+            knot_vec(m+1:m+p+1) = deal(uk(end));
+        end
+        
+        %% Standard B-Spline Basis Function
         function b_coeff = CalcBSplineCoeff(obj, p, idx, u)
             if p==0
                 if u>=obj.knot_vec(idx) && u<obj.knot_vec(idx+1)
@@ -166,6 +171,7 @@ classdef CubicBSplinePlanner < handle
             end
         end
 
+        %% Generate B-Spline and Display
         function pos = GeneratePos(obj, u)
             m = obj.num_ctrlp;
             b_coeff = zeros(m, 1);
