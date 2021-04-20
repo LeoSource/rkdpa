@@ -271,9 +271,13 @@ plot3(pos(1,:), pos(2,:), pos(3,:));
 % via_pos3 = [-1; 1]+linspace(0,1,10).*([-1;-1]-[-1;1]);
 % via_pos4 = [-1;-1]+linspace(0,1,10).*([1;-1]-[-1;-1]);
 % via_pos = [via_pos1, via_pos2, via_pos3, via_pos4];
-via_pos = [1, 2, 3, 4, 5; 2, 3, -3, 4, 5];
-u = [0,0,0,0,1,2,4,7,7,7,7];
-planner = CubicBSplinePlanner(via_pos, 'interpolation', u);
+via_pos = [0, 0, 0.6, 0.6, 0.6, 0.6, 0, 0, 0;...
+            0, 0.4, 0.4, 0, 0, 0.4, 0.4, 0, 0;...
+            0, 0, 0, 0, 0.4, 0.4, 0.4, 0.4, 0];
+uk = [0, 0.5, 0.8, 1.1, 1.6, 1.9, 2.2, 2.5, 3];
+planner = CubicBSplinePlanner(via_pos, 'interpolation', uk);
+% planner = CubicBSplinePlanner(via_pos, 'interpolation');
+planner.PlotAVP(0.005);
 planner.PlotBSpline(0.005); hold on;
 if size(via_pos,1)==3
     scatter3(via_pos(1,:), via_pos(2,:), via_pos(3,:));

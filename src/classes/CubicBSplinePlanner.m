@@ -27,12 +27,16 @@ classdef CubicBSplinePlanner < handle
 
     methods
         %% Constructor of Class and Other Settings
-        function obj = CubicBSplinePlanner(via_pos, option, u)
+        function obj = CubicBSplinePlanner(via_pos, option, uk)
             obj.nump = size(via_pos, 2);
             obj.pdegree = 3;
             if nargin>2
-                obj.knot_vec = u;
-                obj.uknot_vec = u(4:obj.nump+3);
+                obj.uknot_vec = uk;
+                obj.num_ctrlp = obj.nump+2;
+                obj.knot_vec = zeros(1, obj.num_ctrlp+obj.pdegree+1);
+                obj.knot_vec(1:3) = deal(uk(1));
+                obj.knot_vec(end-2:end) = deal(uk(end));
+                obj.knot_vec(4:end-3) = uk;
             else
                 obj.uknot_vec = obj.CalcUKnot(via_pos);
                 if strcmp(option, 'interpolation')
@@ -47,7 +51,11 @@ classdef CubicBSplinePlanner < handle
                     error('error option')
                 end
             end
-
+            if strcmp(option, 'interpolation')
+                obj.ctrl_pos = obj.CalcCtrlPos(via_pos);
+            elseif strcmp(option, 'approximation')
+                obj.ctrl_pos = obj.CalcApproCtrlPos(via_pos);
+            end
         end
 
         %% Calculate Control Position for Interpolation 
@@ -204,6 +212,12 @@ classdef CubicBSplinePlanner < handle
         end
 
         %% Generate B-Spline and Display
+        function [p, v, a] = GenerateMotion(obj, u)
+            p = obj.GeneratePos(u);
+            v = obj.GenerateVel(u);
+            a = obj.GenerateAcc(u);
+        end
+
         function pos = GeneratePos(obj, u)
             m = obj.num_ctrlp;
             b_coeff = zeros(m, 1);
@@ -226,16 +240,58 @@ classdef CubicBSplinePlanner < handle
             vel = obj.ctrl_pos*diff_bcoeff;
         end
 
+        function acc = GenerateAcc(obj, u)
+            m = obj.num_ctrlp;
+            diff2_bcoeff = zeros(m,1);
+            for idx=1:m
+                diff2_bcoeff(idx) = obj.DiffBSplineCoeff(3, idx, u, 2);
+            end
+            acc = obj.ctrl_pos*diff2_bcoeff;
+        end
+
         function curve = GenerateBSpline(obj, du)
             curve = [];
-            for u=0:du:1
+            for u=obj.uknot_vec(1):du:obj.uknot_vec(end)
                 p = obj.GeneratePos(u);
                 curve = [curve, p];
             end
         end
 
+        function PlotAVP(obj, du)
+            pos = []; vel = []; acc = [];
+            vel_norm = []; acc_norm = [];
+            for u=obj.uknot_vec(1):du:obj.uknot_vec(end)
+                [p, v, a] = obj.GenerateMotion(u);
+                pos = [pos, p]; vel = [vel, v]; acc = [acc, a];
+                vel_norm = [vel_norm, norm(v)];
+                acc_norm = [acc_norm, norm(a)];
+            end
+            t = obj.uknot_vec(1):du:obj.uknot_vec(end);
+            str_vel = {'vx', 'vy', 'vz', '|v|'};
+            figure
+            for idx=1:length(str_vel)
+                subplot(4,1,idx)
+                if idx~=4
+                    plot(t,vel(idx,:),'k-'); grid on; ylabel(str_vel{idx});
+                else
+                    plot(t,vel_norm,'k-'); grid on; ylabel(str_vel{idx});
+                end
+            end
+            str_acc = {'ax', 'ay', 'az', '|a|'};
+            figure
+            for idx=1:length(str_acc)
+                subplot(4,1,idx)
+                if idx~=4
+                    plot(t,acc(idx,:),'k-'); grid on; ylabel(str_acc{idx});
+                else
+                    plot(t,acc_norm,'k-'); grid on; ylabel(str_acc{idx});
+                end
+            end
+        end
+
         function PlotBSpline(obj, du)
             curve = obj.GenerateBSpline(du);
+            figure
             plot2(curve', 'k-'); grid on;
             xlabel('x'); ylabel('y'); zlabel('z');
         end

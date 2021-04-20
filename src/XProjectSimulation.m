@@ -112,12 +112,12 @@ sim_pos = [];
 pos = pos';
 for idx=1:size(pos,1)    
     tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
-    sim_q = [sim_q; tmp_q];
+    sim_q = [sim_q, tmp_q];
     tmp_pose = rbt.FKSolve(tmp_q);
     sim_pos = [sim_pos; tmp_pose.t'];
 end
 pos_err = pos-sim_pos;
-t = [0:sample_time:sample_time*(size(sim_q,1)-1)]';
+t = [0:sample_time:sample_time*(size(sim_q,2)-1)]';
 %% simulation with simscape and plot
 sim('simulink/x_project_g3.slx');
 
