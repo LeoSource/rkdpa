@@ -162,24 +162,10 @@ classdef CubicBSplinePlanner < handle
             else
                 den1 = obj.knot_vec(idx+p)-obj.knot_vec(idx);
                 num1 = u-obj.knot_vec(idx);
-                if abs(den1)<eps && abs(num1)<eps
-                    coef1 = 0;
-                elseif abs(den1)<eps
-                    den1 = 1;
-                    coef1 = num1/den1;
-                else
-                    coef1 = num1/den1;
-                end
+                coef1 = Divide(num1, den1);
                 den2 = obj.knot_vec(idx+p+1)-obj.knot_vec(idx+1);
                 num2 = obj.knot_vec(idx+p+1)-u;
-                if abs(den2)<eps && abs(num2)<eps
-                    coef2 = 0;
-                elseif abs(den2)<eps
-                    den2 = 1;
-                    coef2 = num2/den2;
-                else
-                    coef2 = num2/den2;
-                end
+                coef2 = Divide(num2, den2);
                 b_coeff = coef1*obj.CalcBSplineCoeff(p-1, idx, u)...
                             +coef2*obj.CalcBSplineCoeff(p-1, idx+1, u);
             end
