@@ -10,13 +10,15 @@ classdef PolyTrajPlanner < handle
         
         poly_params
         order
+        v_con
     end
 
     
     
     methods
         %% Constructor and Get the Polynomial Parameters
-        function obj = PolyTrajPlanner(pos, tf, order)
+        function obj = PolyTrajPlanner(pos, tf, v_con, order)
+            obj.v_con = v_con;
             obj.order = order;
             n = length(pos);
             obj.num = n;
@@ -33,7 +35,12 @@ classdef PolyTrajPlanner < handle
         %% Generate the Trajectory
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
-            for t=0:dt:obj.tf(end)
+            if length(obj.tf)==1
+                time = 0:obj.dt:obj.tf;
+            else
+                time = obj.tf;
+            end
+            for t=time(1):dt:time(end)
                 [p, v, a] = obj.GenerateMotion(t);
                 pos = [pos, p];
                 vel = [vel, v];
@@ -87,11 +94,15 @@ classdef PolyTrajPlanner < handle
                     params = obj.PolyAutoVel(pos, tf);
                 end
             elseif obj.order==5
-                rhs = [pos(1); pos(2); 0; 0; 0; 0];
-                lhs = obj.LhsMat(0, tf);
+                rhs = [pos(1); pos(2); obj.v_con(1); obj.v_con(2); 0; 0];
+                if length(obj.tf)==1
+                    lhs = obj.LhsMat(0, tf);
+                else
+                    lhs = obj.LhsMat(tf(1), tf(end));
+                end
                 params = lhs\rhs;                
             end
-                end
+        end
         
         function res = LhsMat(obj, t0, tf)
             if obj.order==3
@@ -167,9 +178,15 @@ classdef PolyTrajPlanner < handle
         %% Plot Function for Test and Presentation
         function PlotAVP(obj, dt)
             [pos, vel, acc] = obj.GenerateTraj(dt);
-            t = 0:dt:obj.tf(end);
+            if length(obj.tf)==1
+                time = 0:obj.dt:obj.tf;
+            else
+                time = obj.tf;
+            end
+            t = time(1):dt:time(end);
             motion_data = [pos; vel; acc];
             motion_name = {'position', 'velocity', 'acceleration'};
+            figure
             for idx=1:3
                 subplot(3, 1, idx);
                 plot(t, motion_data(idx, :)); grid on

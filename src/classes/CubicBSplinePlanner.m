@@ -211,11 +211,11 @@ classdef CubicBSplinePlanner < handle
             end
         end
 
-        %% Generate B-Spline and Display
-        function [p, v, a] = GenerateMotion(obj, u)
+        %% Generate B-Spline Curve, Velocity and Acceleration
+        function [p, v, a] = GenerateMotion(obj, u, du, ddu)
             p = obj.GeneratePos(u);
-            v = obj.GenerateVel(u);
-            a = obj.GenerateAcc(u);
+            v = obj.GenerateVel(u, du);
+            a = obj.GenerateAcc(u, du, ddu);
         end
 
         function pos = GeneratePos(obj, u)
@@ -231,22 +231,26 @@ classdef CubicBSplinePlanner < handle
             pos = obj.ctrl_pos*b_coeff;
         end
 
-        function vel = GenerateVel(obj, u)
+        function vel = GenerateVel(obj, u, du)
             m = obj.num_ctrlp;
             diff_bcoeff = zeros(m,1);
             for idx=1:m
                 diff_bcoeff(idx) = obj.DiffBSplineCoeff(3, idx, u, 1);
             end
-            vel = obj.ctrl_pos*diff_bcoeff;
+            % dp/dt=(dp/du)*(du/dt);
+            vel = obj.ctrl_pos*diff_bcoeff*du;
         end
 
-        function acc = GenerateAcc(obj, u)
+        function acc = GenerateAcc(obj, u, du, ddu)
             m = obj.num_ctrlp;
+            diff_bcoeff = zeros(m,1);
             diff2_bcoeff = zeros(m,1);
             for idx=1:m
+                diff_bcoeff(idx) = obj.DiffBSplineCoeff(3, idx, u, 1);
                 diff2_bcoeff(idx) = obj.DiffBSplineCoeff(3, idx, u, 2);
             end
-            acc = obj.ctrl_pos*diff2_bcoeff;
+            % ddp/ddt = (dp/du)*ddu+(ddp/ddu)*du^2
+            acc = obj.ctrl_pos*diff2_bcoeff*du^2+obj.ctrl_pos*diff_bcoeff*ddu;
         end
 
         function curve = GenerateBSpline(obj, du)
@@ -257,16 +261,27 @@ classdef CubicBSplinePlanner < handle
             end
         end
 
-        function PlotAVP(obj, du)
+        %% Plot Function for Test and Presentation
+        function PlotAVP(obj, dt)
             pos = []; vel = []; acc = [];
             vel_norm = []; acc_norm = [];
-            for u=obj.uknot_vec(1):du:obj.uknot_vec(end)
-                [p, v, a] = obj.GenerateMotion(u);
+            uk = obj.uknot_vec;
+            uplanner1 = PolyTrajPlanner(uk(1:2), uk(1:2), [0,1], 5);
+            uplanner2 = PolyTrajPlanner(uk(end-1:end), uk(end-1:end), [1,0], 5);
+            for t=uk(1):dt:uk(end)
+                if t>=uk(1) && t<=uk(2)
+                    [u,du,ddu] = uplanner1.GenerateMotion(t);
+                elseif t>=uk(end-1) && t<=uk(end)
+                    [u,du,ddu] = uplanner2.GenerateMotion(t);
+                else
+                    u = t; du = 1; ddu = 0;
+                end
+                [p, v, a] = obj.GenerateMotion(u, du, ddu);
                 pos = [pos, p]; vel = [vel, v]; acc = [acc, a];
                 vel_norm = [vel_norm, norm(v)];
                 acc_norm = [acc_norm, norm(a)];
             end
-            t = obj.uknot_vec(1):du:obj.uknot_vec(end);
+            t = uk(1):dt:uk(end);
             str_vel = {'vx', 'vy', 'vz', '|v|'};
             figure
             for idx=1:length(str_vel)

@@ -71,12 +71,29 @@ rbt.PlotWorkspace;
 
     case 'jtrajpoly'
 %% joint trajectory plan using polynomial trajectory
-q = [0, 2, 12, 5];
-% t = [0, 5, 7, 8, 10, 15, 18];
+q = [0, 0.5, 0.8, 1.1, 1.6, 1.9, 2.2, 2.5, 3];
+t = [0, 0.5, 0.8, 1.1, 1.6, 1.9, 2.2, 2.5, 3];
+dt = 0.005;
 % t = 18;
-t = 8;
-planner = PolyTrajPlanner(q, t, 3);
-% planner.PlotAVP(0.01);
+% t = 8;
+planner1 = PolyTrajPlanner(q(1:2), t(1:2), [0,1], 5);
+planner2 = PolyTrajPlanner(q(end-1:end),t(end-1:end),[1,0],5);
+pos = []; vel = []; acc = [];
+for tt=t(1):dt:t(end)
+    if tt>=t(1) && tt<=t(2)
+        [p, v, a] = planner1.GenerateMotion(tt);
+    elseif tt>=t(end-1) && tt<=t(end)
+        [p, v, a] = planner2.GenerateMotion(tt);
+    else
+        p = tt; v = 1; a = 0;
+    end
+    pos = [pos,p]; vel = [vel,v]; acc=[acc,a];
+end
+time=t(1):dt:t(end);
+figure
+subplot(3,1,1); plot(time,pos,'k-'); grid on; ylabel('u(t)');
+subplot(3,1,2); plot(time,vel,'k-'); grid on; ylabel('du(t)');
+subplot(3,1,3); plot(time,acc,'k-'); grid on; ylabel('ddu(t)');
 
 planner1 = CubicSplinePlanner(q, t, 'clamped', [0, 0]);
 % planner1.SetTimeOptimizedConstrtaints(10, 6);
