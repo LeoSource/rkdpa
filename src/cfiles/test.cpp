@@ -7,10 +7,8 @@
 #include <fstream>
 #include <algorithm>
 #include "PolyTrajPlanner.h"
-#include "LspbTrajPlanner.h"
 #include "ArcPathPlanner.h"
-#include "ArcTransPathPlanner.h"
-#include "CleanRobot.h"
+#include "MirrorTask.h"
 
 using namespace std;
 using namespace Eigen;
@@ -177,18 +175,14 @@ void Testmirrortask()
 {
 	Vector3d pos1, pos2, pos3, pos4;
 	pos1<<0.7, 0.8, 1; pos2<<-0.7, 0.8, 1; pos3<<-0.7, 0.8, 2.4; pos4<<0.7, 0.8, 2.4;
-	Matrix<double, 3, 4> corner_pos;
-	corner_pos<<pos1, pos2, pos3, pos4;
-	double radius = 0.04;
-	double tf = 60;
-	MatrixXd via_pos = RobotTools::CalcRectanglePath(corner_pos, 15, "s");
-	ArcTransPathPlanner cpath(via_pos, radius);
-	Vector2d via_path(0, cpath._distance);
-	LspbTrajPlanner planner(via_path, tf, 0.5, 2, "limitvel");
+	MirrorTask mirror_task(60, 0.04);
 	CleanRobot rbt = CreatRobot();
-	int ntime = tf/g_cycle_time+1;
-
-	const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos.csv";
+	Matrix<double, 5, 1> q_fdb;
+	q_fdb.setZero();
+	mirror_task.InitTask(&rbt, pos1, pos2, pos3, pos4, q_fdb);
+	BaseTask* task = &mirror_task;
+	
+	const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos1.csv";
 	ofstream ofile;
 	ofile.open(file_name, ios::out|ios::trunc);
 	if (!ofile.is_open())
@@ -198,17 +192,49 @@ void Testmirrortask()
 	else
 	{
 		cout<<"start to save data"<<endl;
-		for (int idx = 0; idx<ntime; idx++)
+		while (!task->_task_completed)
 		{
-			double t = idx*g_cycle_time;
-			RobotTools::JAVP javp = planner.GenerateMotion(t);
-			RobotTools::CLineAVP avp = cpath.GenerateMotion(javp.pos, javp.vel, javp.acc);
-			VectorXd q = rbt.IKSolve(avp.pos, "q2first", 0);
-			ofile<<q<<endl;
+			 MatrixXd q_cmd = task->RunTask(q_fdb);
+			 q_fdb = q_cmd;
+			 ofile<<q_cmd<<endl;
 		}
-		cout<<"succeed to save the data"<<endl;
 	}
+	cout<<"succeed to save the data"<<endl;
 	ofile.close();
+
+
+	//Matrix<double, 3, 4> corner_pos;
+	//corner_pos<<pos1, pos2, pos3, pos4;
+	//double radius = 0.04;
+	//double tf = 60;
+	//MatrixXd via_pos = RobotTools::CalcRectanglePath(corner_pos, 15, "s");
+	//ArcTransPathPlanner cpath(via_pos, radius);
+	//Vector2d via_path(0, cpath._distance);
+	//LspbTrajPlanner planner(via_path, tf, 0.5, 2, "limitvel");
+	//
+	//int ntime = tf/g_cycle_time+1;
+	//
+	//const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos.csv";
+	//ofstream ofile;
+	//ofile.open(file_name, ios::out|ios::trunc);
+	//if (!ofile.is_open())
+	//{
+	//	cout<<"failed to open the file"<<endl;
+	//}
+	//else
+	//{
+	//	cout<<"start to save data"<<endl;
+	//	for (int idx = 0; idx<ntime; idx++)
+	//	{
+	//		double t = idx*g_cycle_time;
+	//		RobotTools::JAVP javp = planner.GenerateMotion(t);
+	//		RobotTools::CLineAVP avp = cpath.GenerateMotion(javp.pos, javp.vel, javp.acc);
+	//		VectorXd q = rbt.IKSolve(avp.pos, "q2first", 0);
+	//		ofile<<q<<endl;
+	//	}
+	//	cout<<"succeed to save the data"<<endl;
+	//}
+	//ofile.close();
 }
 
 void Testother()

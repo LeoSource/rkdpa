@@ -23,6 +23,8 @@ public:
 
 	LspbTrajPlanner(VectorXd pos, double tf, double max_vel, double max_acc, char* option);
 
+	void InitPlanner(VectorXd pos, double tf, double max_vel, double max_acc, char* option);
+
 	~LspbTrajPlanner();
 
 	RobotTools::JAVP GenerateMotion(double t);

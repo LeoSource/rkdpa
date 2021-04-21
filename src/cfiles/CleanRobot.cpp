@@ -85,7 +85,7 @@ VectorXd CleanRobot::IKJnt3(Vector3d pos, double alpha, double q3)
 	double lx = _mdh_table(2, 1)+_mdh_table(4, 2), ly = _mdh_table(2, 2);
 	double tmp_value = pos(1)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1;
 	q(3) = tmp_value/(c1*c3)-w;
-	q(1) = pos(2)-s3*c5*ty-c3*tz-s3*q(3)-h;
+	q(1) = pos(2)-s3*c5*ty-c3*tz-s3*(q(3)+w)-h;
 
 	return q;
 }

@@ -79,30 +79,27 @@ namespace MathTools
 			return 1;
 	}
 
-	double LimitNum(double min_value, double& value, double max_value)
+	void LimitNum(double min_value, double& value, double max_value)
 	{
 		if (value > max_value)
 			value = max_value;
 		else if (value < min_value)
 			value = min_value;
 		
-		return value;
 	}
 
-	double LimitMin(double min_value, double& value)
+	void LimitMin(double min_value, double& value)
 	{
 		if (value < min_value)
 			value = min_value;
 
-		return value;
 	}
 
-	double LimitMax(double max_value, double &value)
+	void LimitMax(double max_value, double &value)
 	{
 		if (value > max_value)
 			value = max_value;
 
-		return value;
 	}
 
 	bool Any(VectorXd vec)

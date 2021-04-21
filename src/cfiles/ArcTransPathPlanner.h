@@ -37,6 +37,8 @@ public:
 
 	ArcTransPathPlanner(MatrixXd pos, double radius);
 
+	void InitPlanner(MatrixXd pos, double radius);
+
 	Vector3d GeneratePath(double varp);
 
 	RobotTools::CLineAVP GenerateMotion(double varp, double varv, double vara);

@@ -11,6 +11,16 @@ ArcTransPathPlanner::ArcTransPathPlanner(MatrixXd pos, double radius)
 	CalcArcInfo(pos);
 }
 
+void ArcTransPathPlanner::InitPlanner(MatrixXd pos, double radius)
+{
+	_radius = radius;
+	_nump = pos.cols();
+	_numarc = _nump-2;
+	_p_initial = pos.col(0);
+	_p_goal = pos.rightCols(1);
+	CalcArcInfo(pos);
+}
+
 void ArcTransPathPlanner::CalcArcInfo(MatrixXd pos)
 {
 	_center.setZero(3, _numarc);

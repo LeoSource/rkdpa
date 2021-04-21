@@ -20,11 +20,11 @@ namespace MathTools
 
 	int Sign(double x);
 
-	double LimitNum(double min_value, double& value, double max_value);
+	void LimitNum(double min_value, double& value, double max_value);
 
-	double LimitMin(double min_value, double& value);
+	void LimitMin(double min_value, double& value);
 
-	double LimitMax(double max_value, double& value);
+	void LimitMax(double max_value, double& value);
 
 	bool Any(VectorXd vec);
 
