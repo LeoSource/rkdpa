@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'ctrajbspline';
+test_mode = 'ctrajarctrans';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -240,26 +240,17 @@ circlepath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 %% cartesian trajectory for points using arc to transmit between 2 line paths
 % pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
 pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.8, 0.2, 0.7]; pos3 = [-0.8, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
-radius = 0.04;
-tf = 60; dt = 0.01;
-% via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 0.1, [-1,0,1]);
-% via_pos = CalcRectanglePath1([pos1', pos2', pos3', pos4'], 0.1, 's');
-via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 16, 'm');
+tf = 60; dt = 0.01; radius = 0.04;
+via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 'm');
 cpath = ArcTransPathPlanner(via_pos, radius);
 planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
 [s, sv, sa] = planner.GenerateTraj(dt);
 [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
 
 plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'ro');
-grid on
-xlabel('x'); ylabel('y'); zlabel('z');
-hold on
+grid on; xlabel('x'); ylabel('y'); zlabel('z'); hold on;
 plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
 cpath.PlotTraj(s, sv, sa, tf, dt);
-
-% comparison test with Cpp
-[s, sv, sa] = planner.GenerateMotion(54);
-[pos, vel, acc] = cpath.GenerateMotion(s, sv, sa)
 
     case 'ctrajpoly'
 %% cartesian trajectory plan using polynomial trajectory
@@ -353,6 +344,58 @@ plot2(pos', 'r--'); hold on; plot2(sim_pos', 'k-'); grid on; axis([-inf, inf, 0.
 xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)'); legend('cmd\_pos', 'sim\_pos');
     case 'mirrortask'
 %%  comparison with cpp
+stowed_pos = [0, 0, 0, 0, 0]'; pre_clean = 0; clean_completed = 0;
+pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+q = stowed_pos;
+q_clean_start = rbt.IKSolve(pos1, 'q2first', 0);
+dt = 0.01;
+sim_q = [];
+% pre-clean action
+for idx=1:5
+    jplanner(idx) = LspbTrajPlanner([q(idx), q_clean_start(idx)], 10, 1, 2, 'limitvel');
+end
+for idx=1:5
+    [s(idx,:), sv(idx,:), sa(idx,:)] = jplanner(idx).GenerateTraj(dt);
+end
+sim_q = [sim_q, s];
+% clean mirror action
+tf = 60; radius = 0.04;
+via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 15, 's');
+cpath = ArcTransPathPlanner(via_pos, radius);
+planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
+[s, sv, sa] = planner.GenerateTraj(dt);
+[pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
+ik_option = 'q2first';
+alpha = zeros(1, length(s));
+pos = pos';
+for idx=1:size(pos,1)
+    tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
+    sim_q = [sim_q, tmp_q];
+end
+% post-clean action
+clear s sv sa
+for idx=1:5
+    jplanner(idx) = LspbTrajPlanner([tmp_q(idx), stowed_pos(idx)], 10, 1, 2, 'limitvel');
+end
+for idx=1:5
+    [s(idx,:), sv(idx,:), sa(idx,:)] = jplanner(idx).GenerateTraj(dt);
+end
+sim_q = [sim_q, s];
+
+t = linspace(0, 20+tf, size(sim_q,2));
+plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');
+grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
+q_cpp = load('./data/mirrortask_jpos1.csv');
+q_cpp = reshape(q_cpp, rbt.nlinks, length(q_cpp)/5);
+tt = g_cycle_time*[0:size(q_cpp,2)-1];
+for idx=1:rbt.nlinks
+    figure
+    plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
+    xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+    legend('matlab\_data', 'cpp\_data');
+end
+
+
 pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
 radius = 0.04;
 tf = 60; dt = 0.01;
@@ -368,7 +411,7 @@ sim_q = [];
 pos = pos';
 for idx=1:size(pos,1)    
     tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
-    sim_q = [sim_q; tmp_q];
+    sim_q = [sim_q, tmp_q];
 end
 t = 0:dt:tf;
 tt = 0:g_cycle_time:tf;
@@ -377,8 +420,8 @@ q_cpp = load('./data/mirrortask_jpos.csv');
 q_cpp = reshape(q_cpp, rbt.nlinks, length(tt));
 for idx=1:rbt.nlinks
     figure(idx)
-    plot(t, sim_q(:,idx), 'b--', tt, q_cpp(idx, :), 'r-');
-    xlabel('time'); ylabel(['q', num2str(idx)]);
+    plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx, :), 'r-');
+    xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
     legend('matlab\_data', 'cpp\_data');
 end
 
