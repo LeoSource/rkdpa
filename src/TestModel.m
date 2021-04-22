@@ -238,12 +238,12 @@ circlepath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 
     case 'ctrajarctrans'
 %% cartesian trajectory for points using arc to transmit between 2 line paths
-% pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
-pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.8, 0.2, 0.7]; pos3 = [-0.8, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
+pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+% pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.8, 0.2, 0.7]; pos3 = [-0.8, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
 tf = 60; dt = 0.01; radius = 0.04;
-via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 'm');
+via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
 cpath = ArcTransPathPlanner(via_pos, radius);
-planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
+planner = LspbTrajPlanner([0, cpath.distance], tf, 0.4, 2, 'limitvel');
 [s, sv, sa] = planner.GenerateTraj(dt);
 [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
 

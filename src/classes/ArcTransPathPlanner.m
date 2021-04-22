@@ -133,6 +133,7 @@ classdef ArcTransPathPlanner < handle
                 ac(2) = -varv^2*sin(s/r)/r+vara*cos(s/r);
                 a = obj.rot{idx/2}*ac;
             end
+            v = [v; norm(v)]; a = [a;norm(a)];
         end
         
         function [pos, vel, acc] = GenerateTraj(obj, varp, varv, vara)
@@ -156,31 +157,24 @@ classdef ArcTransPathPlanner < handle
         end            
         
         function PlotTraj(obj, varp, varv, vara, tf, dt)
-            [pos, vel, ~] = obj.GenerateTraj(varp, varv, vara);
+            [pos, vel, acc] = obj.GenerateTraj(varp, varv, vara);
+            str_pos = {'px', 'py', 'pz'};
+            str_vel = {'vx', 'vy', 'vz', '|v|'};
+            str_acc = {'ax', 'ay', 'az', '|a|'};
             time=0:dt:tf;
             figure
-            subplot(3,1,1)
-            plot(time, pos(1,:));
-            ylabel('p\_x');
-            subplot(3,1,2)
-            plot(time, pos(2,:));
-            ylabel('p\_y');
-            subplot(3,1,3)
-            plot(time, pos(3,:));
-            ylabel('p\_z');
-            suptitle('cartesian position');
-
+            for idx=1:3
+                subplot(3,1,idx); plot(time, pos(idx,:)); grid on; ylabel(str_pos{idx});
+            end
             figure
-            subplot(3,1,1)
-            plot(time, vel(1,:));
-            ylabel('v\_x');
-            subplot(3,1,2)
-            plot(time, vel(2,:));
-            ylabel('v\_y');
-            subplot(3,1,3)
-            plot(time,vel(3,:));
-            ylabel('v\_z');        
-            suptitle('cartesian velocity');
+            for idx=1:4
+                subplot(4,1,idx); plot(time, vel(idx,:)); grid on; ylabel(str_vel{idx});
+            end
+            figure
+            for idx=1:4
+                subplot(4,1,idx); plot(time, acc(idx,:)); grid on; ylabel(str_acc{idx});
+            end
+     
         end
     end
       
