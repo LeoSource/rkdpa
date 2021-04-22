@@ -23,9 +23,13 @@ protected:
 public:
 	MirrorTask() {}
 
-	MirrorTask(double tf, double radius);
+	MirrorTask(CleanRobot* rbt):BaseTask(rbt) {}
+
+	MirrorTask(CleanRobot* rbt, double tf, double radius);
 
 	void InitTask(CleanRobot* rbt, Vector3d pos1, Vector3d pos2, Vector3d pos3, Vector3d pos4, VectorXd q_fdb);
+
+	int RunLogicOperation(int state, int pre_state, char* operation) override;
 
 	void SetTrajPos(MatrixXd traj_pos, VectorXd q_fdb) override;
 

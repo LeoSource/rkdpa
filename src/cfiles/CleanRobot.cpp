@@ -20,6 +20,7 @@ CleanRobot::CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorX
 		else
 			_qlimit.row(idx)<<-2, 2;
 	}
+	_hold_jpos = MatrixXd::Zero(5, 1);
 }
 
 void CleanRobot::SetJntLimit(MatrixXd qlimit)
@@ -168,4 +169,15 @@ MatrixXd CleanRobot::CalcJw(VectorXd q)
 	jw = jaco.bottomRows(3);
 
 	return jw;
+}
+
+
+void CleanRobot::UpdateJntHoldPos(VectorXd q)
+{
+	_hold_jpos = q;
+}
+
+VectorXd CleanRobot::HoldJntPos()
+{
+	return _hold_jpos;
 }

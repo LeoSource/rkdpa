@@ -2,6 +2,8 @@
 //
 
 #include "stdafx.h"
+#include <Windows.h>
+#include <conio.h>
 #include "GlobalParams.h"
 #include <iostream>
 #include <fstream>
@@ -9,9 +11,13 @@
 #include "PolyTrajPlanner.h"
 #include "ArcPathPlanner.h"
 #include "MirrorTask.h"
+#include "InitialTask.h"
+#include "HoldTask.h"
 
 using namespace std;
 using namespace Eigen;
+
+char operation[10] = {};
 
 enum ID_test
 {
@@ -27,7 +33,8 @@ enum ID_test
 	jacobian = 9,
 	iksolver = 10,
 	mirrortask = 11,
-	other = 12
+	other = 12,
+	simulation = 13
 };
 
 CleanRobot CreatRobot()
@@ -175,12 +182,16 @@ void Testmirrortask()
 {
 	Vector3d pos1, pos2, pos3, pos4;
 	pos1<<0.7, 0.8, 1; pos2<<-0.7, 0.8, 1; pos3<<-0.7, 0.8, 2.4; pos4<<0.7, 0.8, 2.4;
-	MirrorTask mirror_task(60, 0.04);
 	CleanRobot rbt = CreatRobot();
+	MirrorTask mirror_task(&rbt, 60, 0.04);
+	InitialTask initial_task(&rbt);
 	Matrix<double, 5, 1> q_fdb;
 	q_fdb.setZero();
 	mirror_task.InitTask(&rbt, pos1, pos2, pos3, pos4, q_fdb);
-	BaseTask* task = &mirror_task;
+	vector<BaseTask*> task_data;
+	task_data.push_back(&initial_task);
+	task_data.push_back(&mirror_task);
+	int running_state = 0;
 	
 	const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos1.csv";
 	ofstream ofile;
@@ -192,49 +203,15 @@ void Testmirrortask()
 	else
 	{
 		cout<<"start to save data"<<endl;
-		while (!task->_task_completed)
+		while (!task_data[running_state]->_task_completed)
 		{
-			 MatrixXd q_cmd = task->RunTask(q_fdb);
+			 VectorXd q_cmd = task_data[running_state]->RunTask(q_fdb);
 			 q_fdb = q_cmd;
 			 ofile<<q_cmd<<endl;
 		}
 	}
 	cout<<"succeed to save the data"<<endl;
 	ofile.close();
-
-
-	//Matrix<double, 3, 4> corner_pos;
-	//corner_pos<<pos1, pos2, pos3, pos4;
-	//double radius = 0.04;
-	//double tf = 60;
-	//MatrixXd via_pos = RobotTools::CalcRectanglePath(corner_pos, 15, "s");
-	//ArcTransPathPlanner cpath(via_pos, radius);
-	//Vector2d via_path(0, cpath._distance);
-	//LspbTrajPlanner planner(via_path, tf, 0.5, 2, "limitvel");
-	//
-	//int ntime = tf/g_cycle_time+1;
-	//
-	//const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos.csv";
-	//ofstream ofile;
-	//ofile.open(file_name, ios::out|ios::trunc);
-	//if (!ofile.is_open())
-	//{
-	//	cout<<"failed to open the file"<<endl;
-	//}
-	//else
-	//{
-	//	cout<<"start to save data"<<endl;
-	//	for (int idx = 0; idx<ntime; idx++)
-	//	{
-	//		double t = idx*g_cycle_time;
-	//		RobotTools::JAVP javp = planner.GenerateMotion(t);
-	//		RobotTools::CLineAVP avp = cpath.GenerateMotion(javp.pos, javp.vel, javp.acc);
-	//		VectorXd q = rbt.IKSolve(avp.pos, "q2first", 0);
-	//		ofile<<q<<endl;
-	//	}
-	//	cout<<"succeed to save the data"<<endl;
-	//}
-	//ofile.close();
 }
 
 void Testother()
@@ -255,9 +232,80 @@ void Testother()
 	ofile.close();
 }
 
+DWORD WINAPI ThreadProc(LPVOID lpParameter)
+{
+	//char* a = (char*)lpParameter;
+	while (!_kbhit())
+	{
+		cin>>operation;
+		Sleep(10);
+	}
+
+	return 0;
+}
+
+
+void Simulation()
+{
+	CleanRobot rbt = CreatRobot();
+	MirrorTask mirror_task(&rbt, 60, 0.04);
+	InitialTask initial_task(&rbt);
+	HoldTask hold_task(&rbt);
+	vector<BaseTask*> task_data;
+	task_data.push_back(&initial_task);
+	task_data.push_back(&hold_task);
+	task_data.push_back(&mirror_task);
+
+	Vector3d pos1, pos2, pos3, pos4;
+	pos1<<0.7, 0.8, 1; pos2<<-0.7, 0.8, 1; pos3<<-0.7, 0.8, 2.4; pos4<<0.7, 0.8, 2.4;	
+	Matrix<double, 3, 4> corner_pos;
+	corner_pos<<pos1, pos2, pos3, pos4;
+	Matrix<double, 5, 1> q_fdb;
+	q_fdb<<0.4, 0.2, 0, 0.1, 0;//initial joint position
+	int running_state=0,pre_state = 0;
+
+	const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos1.csv";
+	ofstream ofile;
+	ofile.open(file_name, ios::out|ios::trunc);
+	HANDLE thread = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
+
+	if (!ofile.is_open())
+	{
+		cout<<"failed to open the file"<<endl;
+	}
+	else
+	{
+		cout<<"start to simulation"<<endl;
+		while (true)
+		{
+			running_state = task_data[running_state]->RunLogicOperation(running_state, pre_state, operation);
+			if (running_state!=pre_state)
+			{
+				task_data[running_state]->SetTrajPos(corner_pos, q_fdb);
+				cout<<"running state: "<<running_state<<endl;
+				if (running_state==2)
+				{
+					*operation = {};
+					cout<<"start to clean the mirror"<<endl;
+				}
+			}
+			VectorXd q_cmd = task_data[running_state]->RunTask(q_fdb);
+			q_fdb = q_cmd;
+			ofile<<q_cmd<<endl;
+
+			pre_state = running_state;
+			Sleep(0.01);
+		}
+
+	}
+	cout<<"succeed to simulation and save the data"<<endl;
+	CloseHandle(thread);
+	ofile.close();
+}
+
 int main()
 {
-	ID_test test_mode = mirrortask;
+	ID_test test_mode = simulation;
 	switch (test_mode)
 	{
 	case dhmodel:
@@ -294,6 +342,10 @@ int main()
 
 	case mirrortask:
 		Testmirrortask();
+		break;
+
+	case simulation:
+		Simulation();
 		break;
 
 	case other:

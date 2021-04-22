@@ -18,6 +18,7 @@ private:
 	vector<MDHLink> _links;
 	Pose _tool;
 	MatrixXd _qlimit;
+	VectorXd _hold_jpos;
 
 public:
 	CleanRobot(){}
@@ -25,8 +26,6 @@ public:
 	CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorXd offset, Pose tool);
 
 	void SetJntLimit(MatrixXd qlimit);
-
-	Pose Transform(VectorXd q, int s_idx, int e_idx);
 
 	Pose FKSolve(VectorXd q);
 
@@ -38,11 +37,17 @@ public:
 
 	MatrixXd CalcJw(VectorXd q);
 
+	void UpdateJntHoldPos(VectorXd q);
+
+	VectorXd HoldJntPos();
+
 	~CleanRobot() {}
 
 private:
 	VectorXd IKJnt3(Vector3d pos, double alpha, double q3);
 
 	VectorXd IKJnt2(Vector3d pos, double alpha);
+
+	Pose Transform(VectorXd q, int s_idx, int e_idx);
 };
 
