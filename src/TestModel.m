@@ -151,7 +151,7 @@ plot(0:dt:tf, acc, 'k-'); grid on; ylabel('acceleration');
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
-planner = LspbTrajPlanner([34,20], 6, 10, 4);
+planner = LspbTrajPlanner([32,28], 6, 10, [1,4]);
 planner.PlotAVP(0.01);
 
 trajplanner = DoubleSVelTrajPlanner([0, 10],[0, 0], 5, 10, 30);
