@@ -76,7 +76,9 @@ classdef LspbTrajPlanner < handle
         
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
-            for t = obj.t0:dt:obj.tf
+            time_pnts = (obj.tf-obj.t0)/dt;
+            for idx = 0:time_pnts
+                t = obj.t0+dt*idx;
                 [p, v, a] = obj.GenerateMotion(t);
                 pos = [pos, p];
                 vel = [vel, v];
