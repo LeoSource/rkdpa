@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'jtrajlspb';
+test_mode = 'ctrajarctrans';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -240,19 +240,59 @@ circlepath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 %% cartesian trajectory for points using arc to transmit between 2 line paths
 pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
 % pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.8, 0.2, 0.7]; pos3 = [-0.8, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
-tf = 60; dt = 0.01; radius = 0.04;
-via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
-cpath = ArcTransPathPlanner(via_pos, radius);
-planner = LspbTrajPlanner([0, cpath.distance], tf, 0.4, 2, 'limitvel');
-[s, sv, sa] = planner.GenerateTraj(dt);
-planner.PlotAVP(0.01);
-[pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
+continuity = 0;
+if continuity
+    tf = 60; dt = 0.01; radius = 0.04;
+    via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
+    cpath = ArcTransPathPlanner(via_pos, radius);
+    planner = LspbTrajPlanner([0, cpath.distance], 0.4, 0.8, tf);
+    [s, sv, sa] = planner.GenerateTraj(dt);
+    planner.PlotAVP(0.01);
+    [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
 
-figure
-plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'ro');
-grid on; xlabel('x'); ylabel('y'); zlabel('z'); hold on;
-plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
-cpath.PlotTraj(s, sv, sa, tf, dt);
+    figure
+    plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'ro');
+    grid on; xlabel('x'); ylabel('y'); zlabel('z'); hold on;
+    plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
+    cpath.PlotTraj(s, sv, sa, tf, dt);
+else
+    dt = 0.01;
+    via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
+    pos = []; vel = []; acc = [];
+    for idx=1:size(via_pos,2)-1
+        dis = norm(via_pos(:,idx+1)-via_pos(:,idx));
+        line_dir = (via_pos(:,idx+1)-via_pos(:,idx))/dis;
+        jplanner = LspbTrajPlanner([0,dis], 0.4, 0.8);
+        [s,sv,sa] = jplanner.GenerateTraj(dt);
+        p = via_pos(:,idx)+s.*line_dir;
+        v = sv.*line_dir;
+        a = sa.*line_dir;
+        pos = [pos, p]; vel = [vel, v]; acc = [acc, a];
+    end
+    vel_norm = []; acc_norm = [];
+    for idx=1:size(pos,2)
+        vel_norm = [vel_norm, norm(vel(:,idx))];
+        acc_norm = [acc_norm, norm(acc(:,idx))];
+    end
+    time = [0:size(pos,2)-1]*dt;
+    figure
+    plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'ro');
+    grid on; xlabel('x'); ylabel('y'); zlabel('z'); hold on;
+    plot3(pos(1,:), pos(2,:), pos(3,:), 'b-');
+    figure
+    subplot(3,1,1); plot(time, pos(1,:)); grid on; ylabel('px');
+    subplot(3,1,2); plot(time, pos(2,:)); grid on; ylabel('py');
+    subplot(3,1,3); plot(time, pos(3,:)); grid on; ylabel('pz');
+    figure
+    subplot(4,2,1); plot(time, vel(1,:)); grid on; ylabel('vx');
+    subplot(4,2,3); plot(time, vel(2,:)); grid on; ylabel('vy');
+    subplot(4,2,5); plot(time, vel(3,:)); grid on; ylabel('vz');
+    subplot(4,2,7); plot(time, vel_norm); grid on; ylabel('|v|');
+    subplot(4,2,2); plot(time, acc(1,:)); grid on; ylabel('ax');
+    subplot(4,2,4); plot(time, acc(2,:)); grid on; ylabel('ay');
+    subplot(4,2,6); plot(time, acc(3,:)); grid on; ylabel('az');
+    subplot(4,2,8); plot(time, acc_norm); grid on; ylabel('|a|');
+end
 
     case 'ctrajpoly'
 %% cartesian trajectory plan using polynomial trajectory
@@ -354,17 +394,19 @@ dt = 0.01;
 sim_q = [];
 % pre-clean action
 for idx=1:5
-    jplanner(idx) = LspbTrajPlanner([q(idx), q_clean_start(idx)], 10, 1, 2, 'limitvel');
+    jplanner(idx) = LspbTrajPlanner([q(idx), q_clean_start(idx)], 1, 2);
 end
+tf_preclean = max([jplanner(1).tf, jplanner(2).tf, jplanner(3).tf, jplanner(4).tf, jplanner(5).tf]);
 for idx=1:5
+    jplanner(idx) = LspbTrajPlanner([q(idx), q_clean_start(idx)], 1, 2, tf_preclean);
     [s(idx,:), sv(idx,:), sa(idx,:)] = jplanner(idx).GenerateTraj(dt);
 end
 sim_q = [sim_q, s];
 % clean mirror action
 tf = 60; radius = 0.04;
-via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 15, 's');
+via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
 cpath = ArcTransPathPlanner(via_pos, radius);
-planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
+planner = LspbTrajPlanner([0, cpath.distance], 0.5, 2, tf);
 [s, sv, sa] = planner.GenerateTraj(dt);
 [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
 ik_option = 'q2first';
@@ -377,9 +419,11 @@ end
 % post-clean action
 clear s sv sa
 for idx=1:5
-    jplanner(idx) = LspbTrajPlanner([tmp_q(idx), stowed_pos(idx)], 10, 1, 2, 'limitvel');
+    jplanner(idx) = LspbTrajPlanner([tmp_q(idx), stowed_pos(idx)], 1, 2);
 end
+tf_postclean = max([jplanner(1).tf, jplanner(2).tf, jplanner(3).tf, jplanner(4).tf, jplanner(5).tf]);
 for idx=1:5
+    jplanner(idx) = LspbTrajPlanner([tmp_q(idx), stowed_pos(idx)], 1, 2, tf_postclean);
     [s(idx,:), sv(idx,:), sa(idx,:)] = jplanner(idx).GenerateTraj(dt);
 end
 sim_q = [sim_q, s];
@@ -393,36 +437,6 @@ tt = g_cycle_time*[0:size(q_cpp,2)-1];
 for idx=1:rbt.nlinks
     figure
     plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
-    xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
-    legend('matlab\_data', 'cpp\_data');
-end
-
-
-pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
-radius = 0.04;
-tf = 60; dt = 0.01;
-via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 15, 's');
-cpath = ArcTransPathPlanner(via_pos, radius);
-planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
-[s, sv, sa] = planner.GenerateTraj(dt);
-[pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
-ik_option = 'q2first';
-alpha = zeros(1, length(s));
-
-sim_q = [];
-pos = pos';
-for idx=1:size(pos,1)    
-    tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
-    sim_q = [sim_q, tmp_q];
-end
-t = 0:dt:tf;
-tt = 0:g_cycle_time:tf;
-
-q_cpp = load('./data/mirrortask_jpos.csv');
-q_cpp = reshape(q_cpp, rbt.nlinks, length(tt));
-for idx=1:rbt.nlinks
-    figure(idx)
-    plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx, :), 'r-');
     xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
     legend('matlab\_data', 'cpp\_data');
 end
