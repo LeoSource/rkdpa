@@ -14,6 +14,7 @@ classdef ArcTransPathPlanner < handle
         pt
         line_vec
         distance
+        dis_insterval
     
         nump
         numarc
@@ -24,6 +25,7 @@ classdef ArcTransPathPlanner < handle
     
     
     methods
+        %% Class Constructor
         function obj = ArcTransPathPlanner(pos, radius)
             obj.p_initial = pos(:,1);
             obj.p_goal = pos(:,end);
@@ -39,9 +41,10 @@ classdef ArcTransPathPlanner < handle
                 obj.CalcSemicircleInfo(pos);
                 obj.trans_type = 'semicircle';
             end
+            obj.dis_insterval = obj.CalcDisInsterval();
         end
         
-        
+        %% Calculate Arc Transition
         function CalcArcInfo(obj, pos)
             for idx=1:obj.numarc
                 [obj.center(:,idx), obj.theta(idx), pt1, pt2] = obj.CalcArcPoints(pos(:,idx), pos(:,idx+1), pos(:,idx+2));
@@ -62,6 +65,24 @@ classdef ArcTransPathPlanner < handle
             obj.distance = sum(obj.dl)+sum(obj.dr);
         end
         
+        function [center, theta, pt1, pt2] = CalcArcPoints(obj, p1, p2, p3)
+            p21 = p1-p2; p23 = p3-p2;
+            tmp_cos = dot(p21, p23)/norm(p21)/norm(p23);
+            theta = acos(tmp_cos);
+            
+            p2t1 = obj.radius/tan(0.5*theta)*p21/norm(p21);
+            pt1 = p2+p2t1;
+            p2t2 = obj.radius/tan(0.5*theta)*p23/norm(p23);
+            pt2 = p2+p2t2;
+            
+            pt1t2 = pt2-pt1;
+            pt1m1 = 0.5*pt1t2;
+            p2m1 = p2t1+pt1m1;
+            p2c = obj.radius/sin(0.5*theta)/norm(p2m1)*p2m1;
+            center = p2+p2c;            
+        end
+        
+        %% Calculate Semicircle Transition
         function CalcSemicircleInfo(obj, pos)
             for idx=1:obj.numarc
                 p1 = pos(:,2*idx-1); p2 = pos(:,2*idx); p3 = pos(:,2*idx+1); p4 = pos(:,2*idx+2);
@@ -82,33 +103,6 @@ classdef ArcTransPathPlanner < handle
             obj.distance = sum(obj.dl)+sum(obj.dr);
         end
         
-        
-        function rot = CalcArcRot(obj, center, p1, p2)
-            px = p1-center;
-            n = px/norm(px);
-            a = cross(px, (p2-center));
-            a = a/norm(a);
-            o = cross(a, n);
-            rot = [n, o, a];
-        end
-        
-        function [center, theta, pt1, pt2] = CalcArcPoints(obj, p1, p2, p3)
-            p21 = p1-p2; p23 = p3-p2;
-            tmp_cos = dot(p21, p23)/norm(p21)/norm(p23);
-            theta = acos(tmp_cos);
-            
-            p2t1 = obj.radius/tan(0.5*theta)*p21/norm(p21);
-            pt1 = p2+p2t1;
-            p2t2 = obj.radius/tan(0.5*theta)*p23/norm(p23);
-            pt2 = p2+p2t2;
-            
-            pt1t2 = pt2-pt1;
-            pt1m1 = 0.5*pt1t2;
-            p2m1 = p2t1+pt1m1;
-            p2c = obj.radius/sin(0.5*theta)/norm(p2m1)*p2m1;
-            center = p2+p2c;            
-        end
-
         function [center, pt1, pt2] = CalcSemicirclePoints(obj, p1, p2, p3, p4)
             p21 = p1-p2; p34 = p4-p3;
             p2t1 = obj.radius*p21/norm(p21);
@@ -118,7 +112,17 @@ classdef ArcTransPathPlanner < handle
             center = 0.5*(pt1+pt2);
         end
         
-        function p = GeneratePath(obj, varp)
+        %% Useful and Universal Functions
+        function rot = CalcArcRot(obj, center, p1, p2)
+            px = p1-center;
+            n = px/norm(px);
+            a = cross(px, (p2-center));
+            a = a/norm(a);
+            o = cross(a, n);
+            rot = [n, o, a];
+        end
+
+        function dis = CalcDisInsterval(obj)
             dis = zeros(1,length(obj.dl)+length(obj.dr)+1);
             m = dis(1);
             for idx=2:length(dis)
@@ -129,15 +133,29 @@ classdef ArcTransPathPlanner < handle
                 end
                 dis(idx) = m;
             end
-            idx = obj.CalcPosidx(dis, varp);
+        end
+        
+        function idx = CalcPosidx(obj, varp)
+            if varp>obj.dis_insterval(end)
+                idx = length(obj.dis_insterval)-1;
+            elseif varp<obj.dis_insterval(1)
+                idx = 1;
+            else
+                idx = discretize(varp, obj.dis_insterval);
+            end
+        end            
+        
+        %% Generate and Plot Trajectory 
+        function p = GeneratePath(obj, varp)
+            idx = obj.CalcPosidx(varp);
             if mod(idx,2)==1
                 if idx==1
                     p = obj.p_initial+obj.line_vec(:,idx)*varp;
                 else
-                    p = obj.pt(:,idx-1)+obj.line_vec(:,(idx+1)/2)*(varp-dis(idx));
+                    p = obj.pt(:,idx-1)+obj.line_vec(:,(idx+1)/2)*(varp-obj.dis_insterval(idx));
                 end
             else
-                th = (varp-dis(idx))/obj.radius;
+                th = (varp-obj.dis_insterval(idx))/obj.radius;
                 parc = zeros(3,1);
                 parc(1) = obj.radius*cos(th);
                 parc(2) = obj.radius*sin(th);
@@ -147,22 +165,12 @@ classdef ArcTransPathPlanner < handle
         
         function [p, v, a] = GenerateMotion(obj, varp, varv, vara)
             p = obj.GeneratePath(varp);
-            dis = zeros(1,length(obj.dl)+length(obj.dr)+1);
-            m = dis(1);
-            for idx=2:length(dis)
-                if mod(idx,2)==0
-                    m = m+obj.dl(idx/2);
-                else
-                    m = m+obj.dr((idx-1)/2);
-                end
-                dis(idx) = m;
-            end
-            idx = obj.CalcPosidx(dis, varp);
+            idx = obj.CalcPosidx(varp);
             if mod(idx,2)==1
                 v = varv*obj.line_vec(:,(idx+1)/2);
                 a = vara*obj.line_vec(:,(idx+1)/2);
             else
-                s = varp-dis(idx);
+                s = varp-obj.dis_insterval(idx);
                 r = obj.radius;
                 vc=zeros(3,1); ac = zeros(3,1);
                 vc(1) = -varv*sin(s/r);
@@ -184,16 +192,6 @@ classdef ArcTransPathPlanner < handle
                 acc = [acc, a];
             end
         end
-
-        function idx = CalcPosidx(obj, dis, varp)
-            if varp>dis(end)
-                idx = length(dis)-1;
-            elseif varp<dis(1)
-                idx = 1;
-            else
-                idx = discretize(varp, dis);
-            end
-        end            
         
         function PlotTraj(obj, varp, varv, vara, tf, dt)
             [pos, vel, acc] = obj.GenerateTraj(varp, varv, vara);
@@ -209,9 +207,9 @@ classdef ArcTransPathPlanner < handle
             for idx=1:4
                 subplot(4,2,2*idx-1); plot(time, vel(idx,:), 'k-'); grid on; ylabel(str_vel{idx});
                 subplot(4,2,2*idx); plot(time, acc(idx,:), 'k-'); grid on; ylabel(str_acc{idx});
-            end
-     
+            end    
         end
+        
     end
       
 end
