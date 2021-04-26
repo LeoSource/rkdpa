@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'ctrajarctrans';
+test_mode = 'ctrajbspline';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -174,26 +174,14 @@ xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
 figure
 time = 0:0.01:2;
-subplot(3,1,1)
-plot(time, pos(:,1));
-xlabel('x\_position');
-subplot(3,1,2)
-plot(time, pos(:,2));
-xlabel('y\_position');
-subplot(3,1,3)
-plot(time, pos(:,3));
-xlabel('z\_position');
+subplot(3,1,1); plot(time, pos(:,1)); xlabel('px');
+subplot(3,1,2); plot(time, pos(:,2)); xlabel('py');
+subplot(3,1,3); plot(time, pos(:,3)); xlabel('pz');
 
 figure
-subplot(3,1,1)
-plot(time, vel(:,1));
-xlabel('x\_velocity');
-subplot(3,1,2)
-plot(time, vel(:,2));
-xlabel('y\_velocity');
-subplot(3,1,3)
-plot(time, vel(:,3));
-xlabel('z\_velocity');
+subplot(3,1,1); plot(time, vel(:,1)); xlabel('vx');
+subplot(3,1,2); plot(time, vel(:,2)); xlabel('vy');
+subplot(3,1,3); plot(time, vel(:,3)); xlabel('vz');
 
     case 'ctrajarc'
 %% cartesian arc path trajectory plan using lspb
@@ -342,12 +330,17 @@ plot3(pos(1,:), pos(2,:), pos(3,:));
 % via_pos3 = [-1; 1]+linspace(0,1,10).*([-1;-1]-[-1;1]);
 % via_pos4 = [-1;-1]+linspace(0,1,10).*([1;-1]-[-1;-1]);
 % via_pos = [via_pos1, via_pos2, via_pos3, via_pos4];
-via_pos = [0, 0, 0.6, 0.6, 0.6, 0.6, 0, 0, 0;...
-            0, 0.4, 0.4, 0, 0, 0.4, 0.4, 0, 0;...
-            0, 0, 0, 0, 0.4, 0.4, 0.4, 0.4, 0];
-uk = [0, 0.5, 0.8, 1.1, 1.6, 1.9, 2.2, 2.5, 3];
-planner = CubicBSplinePlanner(via_pos, 'interpolation', uk);
-% planner = CubicBSplinePlanner(via_pos, 'interpolation');
+% via_pos = [0, 0, 0.6, 0.6, 0.6, 0.6, 0, 0, 0;...
+%             0, 0.4, 0.4, 0, 0, 0.4, 0.4, 0, 0;...
+%             0, 0, 0, 0, 0.4, 0.4, 0.4, 0.4, 0];
+% uk = [0, 0.5, 0.8, 1.1, 1.6, 1.9, 2.2, 2.5, 3];
+npts = 15; center = [0,0,0]'; radius = 0.5;
+theta = linspace(0, 2*pi, npts);
+via_pos1 = center+[radius*cos(theta); radius*sin(theta); zeros(1,npts)];
+via_pos2 = center+[0;0;-0.1]+[0.8*radius*cos(theta); 0.8*radius*sin(theta); zeros(1, npts)];
+via_pos3 = center+[0;0;-0.2]+[0.6*radius*cos(theta); 0.6*radius*sin(theta); zeros(1, npts)];
+via_pos = [via_pos1, via_pos2];
+planner = CubicBSplinePlanner(via_pos, 'interpolation', 40);
 planner.PlotAVP(0.005);
 planner.PlotBSpline(0.005); hold on;
 if size(via_pos,1)==3

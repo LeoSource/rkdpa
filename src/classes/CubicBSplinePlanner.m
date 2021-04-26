@@ -31,30 +31,24 @@ classdef CubicBSplinePlanner < handle
             obj.nump = size(via_pos, 2);
             obj.pdegree = 3;
             if nargin>2
-                obj.uknot_vec = uk;
-                obj.num_ctrlp = obj.nump+2;
-                obj.knot_vec = zeros(1, obj.num_ctrlp+obj.pdegree+1);
-                obj.knot_vec(1:3) = deal(uk(1));
-                obj.knot_vec(end-2:end) = deal(uk(end));
-                obj.knot_vec(4:end-3) = uk;
+                if isscalar(uk)
+                    obj.uknot_vec = uk*obj.CalcUKnot(via_pos);
+                else
+                    obj.uknot_vec = uk;
+                end
             else
                 obj.uknot_vec = obj.CalcUKnot(via_pos);
-                if strcmp(option, 'interpolation')
-                    obj.num_ctrlp = obj.nump+2;
-                    obj.knot_vec = obj.CalcKnotVec();
-                    obj.ctrl_pos = obj.CalcCtrlPos(via_pos);
-                elseif strcmp(option, 'approximation')
-                    obj.num_ctrlp = 16;
-                    obj.knot_vec = obj.CalcApproKnotVec();
-                    obj.ctrl_pos = obj.CalcApproCtrlPos(via_pos);
-                else
-                    error('error option')
-                end
             end
             if strcmp(option, 'interpolation')
+                obj.num_ctrlp = obj.nump+2;
+                obj.knot_vec = obj.CalcKnotVec();
                 obj.ctrl_pos = obj.CalcCtrlPos(via_pos);
             elseif strcmp(option, 'approximation')
+                obj.num_ctrlp = 16;
+                obj.knot_vec = obj.CalcApproKnotVec();
                 obj.ctrl_pos = obj.CalcApproCtrlPos(via_pos);
+            else
+                error('error option')
             end
         end
 
@@ -120,9 +114,7 @@ classdef CubicBSplinePlanner < handle
             knot_vec = zeros(1, m+p+1);
             knot_vec(1:3) = deal(uk(1));
             knot_vec(end-2:end) = deal(uk(end));
-            for idx=1:obj.nump
-                knot_vec(idx+3) = uk(idx);
-            end
+            knot_vec(4:end-3) = uk;
         end
 
         function uk = CalcUKnot(obj, q)
