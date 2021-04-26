@@ -2,6 +2,7 @@ classdef ArcTransPathPlanner < handle
 % plan a continuous path according to the given points
 % arc transits between 2 lines
 % ref: https://blog.csdn.net/qq_26565435/article/details/98789361
+% ref: Robotics: Modelling, Plannig and Control, chapter 4.3
     
     properties
         center
@@ -18,6 +19,7 @@ classdef ArcTransPathPlanner < handle
         numarc
         p_initial
         p_goal
+        trans_type
     end
     
     
@@ -25,10 +27,18 @@ classdef ArcTransPathPlanner < handle
         function obj = ArcTransPathPlanner(pos, radius)
             obj.p_initial = pos(:,1);
             obj.p_goal = pos(:,end);
-            obj.radius = radius;
             obj.nump = size(pos, 2);
-            obj.numarc = obj.nump-2;
-            obj.CalcArcInfo(pos);
+            if radius>0
+                obj.numarc = obj.nump-2;
+                obj.radius = radius;
+                obj.CalcArcInfo(pos);
+                obj.trans_type = 'arc';
+            else
+                obj.numarc = obj.nump/2-1;
+                obj.radius = 0.5*norm(pos(:,3)-pos(:,2));
+                obj.CalcSemicircleInfo(pos);
+                obj.trans_type = 'semicircle';
+            end
         end
         
         
@@ -48,6 +58,26 @@ classdef ArcTransPathPlanner < handle
                 end
                 obj.line_vec(:,idx) = (pos(:,idx+1)-pos(:,idx))/norm(pos(:,idx+1)-pos(:,idx));
             end
+            obj.line_vec(:,obj.numarc+1) = (pos(:,end)-pos(:,end-1))/norm(pos(:,end)-pos(:,end-1));
+            obj.distance = sum(obj.dl)+sum(obj.dr);
+        end
+        
+        function CalcSemicircleInfo(obj, pos)
+            for idx=1:obj.numarc
+                p1 = pos(:,2*idx-1); p2 = pos(:,2*idx); p3 = pos(:,2*idx+1); p4 = pos(:,2*idx+2);
+                [obj.center(:,idx), pt1, pt2] = obj.CalcSemicirclePoints(p1,p2,p3,p4);
+                obj.pt(:,2*idx-1) = pt1;
+                obj.pt(:,2*idx) = pt2;
+                obj.dr(idx) = pi*obj.radius;
+                obj.rot{idx} = obj.CalcArcRot(obj.center(:,idx), pt1, pos(:,2*idx));
+                if idx~=1
+                    obj.dl(idx) = norm(obj.pt(:,2*idx-1)-obj.pt(:,2*idx-2));
+                else
+                    obj.dl(idx) = norm(pos(:,1)-obj.pt(:,1));
+                end
+                obj.line_vec(:,idx) = (pos(:,2*idx)-pos(:,2*idx-1))/norm(pos(:,2*idx)-pos(:,2*idx-1));
+            end
+            obj.dl(obj.numarc+1) = norm(pos(:,end)-obj.pt(:,end));
             obj.line_vec(:,obj.numarc+1) = (pos(:,end)-pos(:,end-1))/norm(pos(:,end)-pos(:,end-1));
             obj.distance = sum(obj.dl)+sum(obj.dr);
         end
@@ -77,6 +107,15 @@ classdef ArcTransPathPlanner < handle
             p2m1 = p2t1+pt1m1;
             p2c = obj.radius/sin(0.5*theta)/norm(p2m1)*p2m1;
             center = p2+p2c;            
+        end
+
+        function [center, pt1, pt2] = CalcSemicirclePoints(obj, p1, p2, p3, p4)
+            p21 = p1-p2; p34 = p4-p3;
+            p2t1 = obj.radius*p21/norm(p21);
+            p3t2 = obj.radius*p34/norm(p34);
+            pt1 = p2+p2t1;
+            pt2 = p3+p3t2;
+            center = 0.5*(pt1+pt2);
         end
         
         function p = GeneratePath(obj, varp)
@@ -164,15 +203,12 @@ classdef ArcTransPathPlanner < handle
             time=0:dt:tf;
             figure
             for idx=1:3
-                subplot(3,1,idx); plot(time, pos(idx,:)); grid on; ylabel(str_pos{idx});
+                subplot(3,1,idx); plot(time, pos(idx,:), 'k-'); grid on; ylabel(str_pos{idx});
             end
             figure
             for idx=1:4
-                subplot(4,1,idx); plot(time, vel(idx,:)); grid on; ylabel(str_vel{idx});
-            end
-            figure
-            for idx=1:4
-                subplot(4,1,idx); plot(time, acc(idx,:)); grid on; ylabel(str_acc{idx});
+                subplot(4,2,2*idx-1); plot(time, vel(idx,:), 'k-'); grid on; ylabel(str_vel{idx});
+                subplot(4,2,2*idx); plot(time, acc(idx,:), 'k-'); grid on; ylabel(str_acc{idx});
             end
      
         end
