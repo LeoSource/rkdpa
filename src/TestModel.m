@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'jtrajlspb';
+test_mode = 'ctrajarctrans';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -245,14 +245,32 @@ max_vel = 0.4; max_acc = 0.8;
 if continuity
     dt = 0.01;
     via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
-    cpath = ArcTransPathPlanner(via_pos, 0);
-    vmax = sqrt(max_acc*cpath.radius);
-    planner = LspbTrajPlanner([0, cpath.distance], vmax, max_acc);
-    [s, sv, sa] = planner.GenerateTraj(dt);
-    planner.PlotAVP(0.01);
+    cpath = ArcTransPathPlanner(via_pos, 0);    
+    varc = sqrt(max_acc*cpath.radius);
+    s= []; sv = []; sa = [];
+    for idx=1:length(cpath.dis_insterval)-1
+        if mod(idx,2)==1
+            if idx==1
+                vel_cons = [0, varc];
+            elseif idx==length(cpath.dis_insterval)-1
+                vel_cons = [varc, 0];
+            else
+                vel_cons = [varc, varc];
+            end
+            jplanner = LspbTrajPlanner([cpath.dis_insterval(idx), cpath.dis_insterval(idx+1)],max_vel,max_acc,[],vel_cons);
+            [s_tmp, sv_tmp, sa_tmp] = jplanner.GenerateTraj(dt);
+        else
+            t_len = (cpath.dis_insterval(idx+1)-cpath.dis_insterval(idx))/varc;
+            num_insterval = floor(t_len/dt+1);
+            sa_tmp = zeros(1, num_insterval);
+            sv_tmp = ones(1, num_insterval)*varc;
+            s_tmp = linspace(cpath.dis_insterval(idx), cpath.dis_insterval(idx+1), num_insterval);
+        end
+        s = [s, s_tmp]; sv = [sv, sv_tmp]; sa = [sa, sa_tmp];
+    end   
     [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
-
     tf = dt*(length(s)-1);
+    
     figure
     plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'ro');
     grid on; xlabel('x'); ylabel('y'); zlabel('z'); hold on;
