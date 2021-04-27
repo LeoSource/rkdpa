@@ -27,43 +27,20 @@ for idx=1:size(t,1)
     cart_pos = [cart_pos, tmp_frame.t];
 end
 sim('simulink/test_model');
-sim_pos(:,1) = sim_pos_x;
-sim_pos(:,2) = sim_pos_y;
-sim_pos(:,3) = sim_pos_z;
+sim_pos(:,1) = sim_pos_x; sim_pos(:,2) = sim_pos_y; sim_pos(:,3) = sim_pos_z;
 %figure
-figure(1)
-subplot(2,1,1)
-plot(t,sim_pos_x ,t, cart_pos(1,:),'--');
-xlabel('time(s)');
-ylabel('pos_x(m)');
-legend('simscape model', 'mdh model');
-grid on
-subplot(2,1,2)
-plot(t, sim_pos_x - cart_pos(1,:)');
-legend('position error');
-
-figure(2)
-subplot(2,1,1)
-plot(t,sim_pos_y ,t, cart_pos(2,:),'--');
-xlabel('time(s)');
-ylabel('pos_y(m)');
-legend('simscape model', 'mdh model');
-grid on
-subplot(2,1,2)
-plot(t, sim_pos_y - cart_pos(2,:)');
-legend('position error');
-
-figure(3)
-subplot(2,1,1)
-plot(t,sim_pos_z ,t, cart_pos(3,:),'--');
-xlabel('time(s)');
-ylabel('pos_z(m)');
-legend('simscape model', 'mdh model');
-grid on
-subplot(2,1,2)
-plot(t, sim_pos_z - cart_pos(3,:)');
-legend('position error');
-
+figure
+subplot(2,1,1); plot(t,sim_pos_x ,t, cart_pos(1,:),'--'); grid on;
+xlabel('time(s)'); ylabel('pos_x(m)'); legend('simscape model', 'mdh model');
+subplot(2,1,2); plot(t, sim_pos_x - cart_pos(1,:)'); legend('position error');
+figure
+subplot(2,1,1); plot(t,sim_pos_y ,t, cart_pos(2,:),'--'); grid on;
+xlabel('time(s)'); ylabel('pos_y(m)'); legend('simscape model', 'mdh model');
+subplot(2,1,2); plot(t, sim_pos_y - cart_pos(2,:)'); legend('position error');
+figure
+subplot(2,1,1); plot(t,sim_pos_z ,t, cart_pos(3,:),'--'); grid on;
+xlabel('time(s)'); ylabel('pos_z(m)'); legend('simscape model', 'mdh model');
+subplot(2,1,2); plot(t, sim_pos_z - cart_pos(3,:)');legend('position error');
 
     case  'workspace'
 %% validation for the workspace of cleanrobot    
@@ -76,13 +53,13 @@ t = [0, 0.5, 0.8, 1.1, 1.6, 1.9, 2.2, 2.5, 3];
 dt = 0.005;
 % t = 18;
 % t = 8;
-planner1 = PolyTrajPlanner(q(1:2), t(1:2), [0,1], 5);
-planner2 = PolyTrajPlanner(q(end-1:end),t(end-1:end),[1,0],5);
+planner1 = PolyTrajPlanner(q(1:3), t(1:3), [0,1], 3);
+planner2 = PolyTrajPlanner(q(end-2:end),t(end-2:end),[1,0],3);
 pos = []; vel = []; acc = [];
 for tt=t(1):dt:t(end)
-    if tt>=t(1) && tt<=t(2)
+    if tt>=t(1) && tt<=t(3)
         [p, v, a] = planner1.GenerateMotion(tt);
-    elseif tt>=t(end-1) && tt<=t(end)
+    elseif tt>=t(end-2) && tt<=t(end)
         [p, v, a] = planner2.GenerateMotion(tt);
     else
         p = tt; v = 1; a = 0;
@@ -151,7 +128,7 @@ plot(0:dt:tf, acc, 'k-'); grid on; ylabel('acceleration');
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
-planner = LspbTrajPlanner([30,0], 20, 10, [], [5,2]);
+planner = LspbTrajPlanner([0,60], 2, 1, 60);
 planner.PlotAVP(0.01);
 
 trajplanner = DoubleSVelTrajPlanner([10, 0],[0, 0], 5, 10, 30);
@@ -177,7 +154,6 @@ time = 0:0.01:2;
 subplot(3,1,1); plot(time, pos(:,1)); xlabel('px');
 subplot(3,1,2); plot(time, pos(:,2)); xlabel('py');
 subplot(3,1,3); plot(time, pos(:,3)); xlabel('pz');
-
 figure
 subplot(3,1,1); plot(time, vel(:,1)); xlabel('vx');
 subplot(3,1,2); plot(time, vel(:,2)); xlabel('vy');
@@ -204,7 +180,6 @@ np = length(pos_cpp)/3;
 pos_cpp = reshape(pos_cpp, 3, np);
 f3 = plot3(pos_cpp(1,:), pos_cpp(2,:), pos_cpp(3,:), 'r-');
 legend([f2, f3], 'matlab\_data', 'cpp\_data');
-
 arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 
     case 'ctrajcircle'
@@ -322,27 +297,31 @@ plot3(pos(1,:), pos(2,:), pos(3,:));
 
     case 'ctrajbspline'
 %% cartesian trajectory plan using B-spline
-% via_pos = [83, -64, 42, -98, -13, 140, 43, -65, -45, 71;...
-%             -54, 10, 79, 23, 125, 81, 32, -17, -89, 90;...
-%             119, 124, 226, 222, 102, 92, 92, 134, 182, 192];
-% via_pos1 = [1; -1]+linspace(0,1,10).*([1;1]-[1;-1]);
-% via_pos2 = [1; 1]+linspace(0,1,10).*([-1;1]-[1;1]);
-% via_pos3 = [-1; 1]+linspace(0,1,10).*([-1;-1]-[-1;1]);
-% via_pos4 = [-1;-1]+linspace(0,1,10).*([1;-1]-[-1;-1]);
-% via_pos = [via_pos1, via_pos2, via_pos3, via_pos4];
-% via_pos = [0, 0, 0.6, 0.6, 0.6, 0.6, 0, 0, 0;...
-%             0, 0.4, 0.4, 0, 0, 0.4, 0.4, 0, 0;...
-%             0, 0, 0, 0, 0.4, 0.4, 0.4, 0.4, 0];
-% uk = [0, 0.5, 0.8, 1.1, 1.6, 1.9, 2.2, 2.5, 3];
-npts = 15; center = [0,0,0]'; radius = 0.5;
-theta = linspace(0, 2*pi, npts);
-via_pos1 = center+[radius*cos(theta); radius*sin(theta); zeros(1,npts)];
-via_pos2 = center+[0;0;-0.1]+[0.8*radius*cos(theta); 0.8*radius*sin(theta); zeros(1, npts)];
-via_pos3 = center+[0;0;-0.2]+[0.6*radius*cos(theta); 0.6*radius*sin(theta); zeros(1, npts)];
-via_pos = [via_pos1, via_pos2];
-planner = CubicBSplinePlanner(via_pos, 'interpolation', 40);
-planner.PlotAVP(0.005);
-planner.PlotBSpline(0.005); hold on;
+%{
+hemisphere simulation
+npts = [15, 10, 8, 6];
+center = [0, 0, 0, 0; 0, 0, 0, 0; 0, -0.1, -0.2, -0.3];
+radius = [0.5, 0.4, 0.3, 0.2];
+via_pos = [];
+for idx=1:length(npts)
+    theta = linspace(0, 2*pi, npts(idx));
+    tmp_pos = center(:,idx)+[radius(idx)*cos(theta); radius(idx)*sin(theta); zeros(1,npts(idx))];
+    via_pnts{idx} = tmp_pos;
+    via_pos = [via_pos, tmp_pos];
+end
+%}
+npts = [15, 12, 10, 8, 6, 4];
+center = [0,0,0,0,0,0; 0,0,0,0,0,0; 0,-0.06,-0.12,-0.18,-0.24,-0.3];
+elli_params = [0.7, 0.6, 0.5, 0.4, 0.3, 0.2; 0.5, 0.4, 0.3, 0.2, 0.1, 0.05];
+via_pos = [];
+for idx=1:length(npts)
+    theta = linspace(0,2*pi,npts(idx)+1);
+    tmp_pos = center(:,idx)+[elli_params(1,idx)*cos(theta); elli_params(2,idx)*sin(theta); zeros(1,npts(idx)+1)];
+    via_pos = [via_pos, tmp_pos];
+end
+planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
+planner.PlotAVP(0.01);
+planner.PlotBSpline(0.01); hold on;
 if size(via_pos,1)==3
     scatter3(via_pos(1,:), via_pos(2,:), via_pos(3,:));
 else

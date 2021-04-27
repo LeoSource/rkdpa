@@ -44,7 +44,7 @@ classdef CubicBSplinePlanner < handle
                 obj.knot_vec = obj.CalcKnotVec();
                 obj.ctrl_pos = obj.CalcCtrlPos(via_pos);
             elseif strcmp(option, 'approximation')
-                obj.num_ctrlp = 16;
+                obj.num_ctrlp = 20;
                 obj.knot_vec = obj.CalcApproKnotVec();
                 obj.ctrl_pos = obj.CalcApproCtrlPos(via_pos);
             else
@@ -244,16 +244,21 @@ classdef CubicBSplinePlanner < handle
         function PlotAVP(obj, dt)
             pos = []; vel = []; acc = [];
             uk = obj.uknot_vec;
-            uplanner1 = PolyTrajPlanner(uk(1:2), uk(1:2), [0,1], 5);
-            uplanner2 = PolyTrajPlanner(uk(end-1:end), uk(end-1:end), [1,0], 5);
+%             uplanner1 = PolyTrajPlanner(uk(1:2), uk(1:2), [0,1], 5);
+%             uplanner2 = PolyTrajPlanner(uk(end-1:end), uk(end-1:end)-uk(end-1), [1,0], 5);
+            npts = 3;
+%             uplanner1 = PolyTrajPlanner(uk(1:npts), uk(1:npts), [0,1], 3);
+%             uplanner2 = PolyTrajPlanner(uk(end-npts+1:end), uk(end-npts+1:end)-uk(end-npts+1), [1,0], 3);
+            uplanner = LspbTrajPlanner([uk(1),uk(end)],2,1,uk(end));
             for t=uk(1):dt:uk(end)
-                if t>=uk(1) && t<=uk(2)
-                    [u,du,ddu] = uplanner1.GenerateMotion(t);
-                elseif t>=uk(end-1) && t<=uk(end)
-                    [u,du,ddu] = uplanner2.GenerateMotion(t);
-                else
-                    u = t; du = 1; ddu = 0;
-                end
+%                 if t>=uk(1) && t<=uk(npts)
+%                     [u,du,ddu] = uplanner1.GenerateMotion(t);
+%                 elseif t>=uk(end-npts+1) && t<=uk(end)
+%                     [u,du,ddu] = uplanner2.GenerateMotion(t-uk(end-npts+1));
+%                 else
+%                     u = t; du = 1; ddu = 0;
+%                 end
+                [u,du,ddu] = uplanner.GenerateMotion(t);
                 [p, v, a] = obj.GenerateMotion(u, du, ddu);
                 pos = [pos, p]; vel = [vel, v]; acc = [acc, a];
             end
