@@ -152,8 +152,8 @@ classdef PolyTrajPlanner < handle
                 rhs(2*(n-1)) = pos(n);
                 lhs(2*(n-1)+1, 1:4) = obj.PolyVel(t(1));
                 lhs(2*(n-1)+n, 4*n-7:4*n-4) = obj.PolyVel(t(n));
-                rhs(2*(n-1)+1) = 2;
-                rhs(2*(n-1)+n) = -3;
+                rhs(2*(n-1)+1) = obj.v_con(1);
+                rhs(2*(n-1)+n) = obj.v_con(2);
                 for idx=2:n-1
                     rhs(2*idx-2) = pos(idx);
                     rhs(2*idx-1) = pos(idx);
