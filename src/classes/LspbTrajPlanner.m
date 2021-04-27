@@ -123,8 +123,6 @@ classdef LspbTrajPlanner < handle
         end
         
         function [p, v, a] = GenerateMotion(obj, t)
-%             vm = obj.vmax*obj.dir;
-%             am = obj.amax*obj.dir;
             if obj.maxvel_reached
                 if t>=obj.t0 && t<obj.ta+obj.t0
                     p = obj.q0+obj.v0*(t-obj.t0)+0.5*(obj.vmax-obj.v0)/obj.ta*(t-obj.t0)^2;

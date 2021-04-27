@@ -194,6 +194,7 @@ classdef CubicBSplinePlanner < handle
             p = obj.GeneratePos(u);
             v = obj.GenerateVel(u, du);
             a = obj.GenerateAcc(u, du, ddu);
+            v = [v; norm(v)]; a = [a; norm(a)];
         end
 
         function pos = GeneratePos(obj, u)
@@ -242,7 +243,6 @@ classdef CubicBSplinePlanner < handle
         %% Plot Function for Test and Presentation
         function PlotAVP(obj, dt)
             pos = []; vel = []; acc = [];
-            vel_norm = []; acc_norm = [];
             uk = obj.uknot_vec;
             uplanner1 = PolyTrajPlanner(uk(1:2), uk(1:2), [0,1], 5);
             uplanner2 = PolyTrajPlanner(uk(end-1:end), uk(end-1:end), [1,0], 5);
@@ -256,29 +256,14 @@ classdef CubicBSplinePlanner < handle
                 end
                 [p, v, a] = obj.GenerateMotion(u, du, ddu);
                 pos = [pos, p]; vel = [vel, v]; acc = [acc, a];
-                vel_norm = [vel_norm, norm(v)];
-                acc_norm = [acc_norm, norm(a)];
             end
             t = uk(1):dt:uk(end);
             str_vel = {'vx', 'vy', 'vz', '|v|'};
-            figure
-            for idx=1:length(str_vel)
-                subplot(4,1,idx)
-                if idx~=4
-                    plot(t,vel(idx,:),'k-'); grid on; ylabel(str_vel{idx});
-                else
-                    plot(t,vel_norm,'k-'); grid on; ylabel(str_vel{idx});
-                end
-            end
             str_acc = {'ax', 'ay', 'az', '|a|'};
             figure
-            for idx=1:length(str_acc)
-                subplot(4,1,idx)
-                if idx~=4
-                    plot(t,acc(idx,:),'k-'); grid on; ylabel(str_acc{idx});
-                else
-                    plot(t,acc_norm,'k-'); grid on; ylabel(str_acc{idx});
-                end
+            for idx=1:length(str_vel)
+                subplot(4,2,2*idx-1); plot(t,vel(idx,:),'k-'); grid on; ylabel(str_vel{idx});
+                subplot(4,2,2*idx); plot(t,acc(idx,:),'k-'); grid on; ylabel(str_acc{idx});
             end
         end
 
