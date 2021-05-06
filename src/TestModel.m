@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'mirrortask';
+test_mode = 'jtrajlspb';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -128,7 +128,7 @@ plot(0:dt:tf, acc, 'k-'); grid on; ylabel('acceleration');
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
-planner = LspbTrajPlanner([0,60], 2, 1, 60);
+planner = LspbTrajPlanner([0,0], 2, 1);
 planner.PlotAVP(0.01);
 planner = LspbTrajPlanner([20, 10], 16, 10, [0,3]);
 [p, v, a] = planner.GenerateMotion(1)
@@ -205,6 +205,11 @@ circlepath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 %% cartesian trajectory for points using arc to transmit between 2 line paths
 pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
 % pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.8, 0.2, 0.7]; pos3 = [-0.8, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
+via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
+% cpath = ArcTransPathPlanner(via_pos, 0);   
+% splanner = LspbTrajPlanner([0,cpath.distance], 0.5 , 2);
+% [s, sv, sa] = splanner.GenerateMotion(10);
+% [pos, vel, acc] = cpath.GenerateMotion(s, sv, sa)
 continuity = 1;
 max_vel = 0.4; max_acc = 0.8;
 if continuity
@@ -213,23 +218,23 @@ if continuity
     cpath = ArcTransPathPlanner(via_pos, 0);    
     varc = sqrt(max_acc*cpath.radius);
     s= []; sv = []; sa = [];
-    for idx=1:length(cpath.dis_insterval)-1
+    for idx=1:length(cpath.dis_interval)-1
         if mod(idx,2)==1
             if idx==1
                 vel_cons = [0, varc];
-            elseif idx==length(cpath.dis_insterval)-1
+            elseif idx==length(cpath.dis_interval)-1
                 vel_cons = [varc, 0];
             else
                 vel_cons = [varc, varc];
             end
-            jplanner = LspbTrajPlanner([cpath.dis_insterval(idx), cpath.dis_insterval(idx+1)],max_vel,max_acc,[],vel_cons);
+            jplanner = LspbTrajPlanner([cpath.dis_interval(idx), cpath.dis_interval(idx+1)],max_vel,max_acc,[],vel_cons);
             [s_tmp, sv_tmp, sa_tmp] = jplanner.GenerateTraj(dt);
         else
-            t_len = (cpath.dis_insterval(idx+1)-cpath.dis_insterval(idx))/varc;
-            num_insterval = floor(t_len/dt+1);
-            sa_tmp = zeros(1, num_insterval);
-            sv_tmp = ones(1, num_insterval)*varc;
-            s_tmp = linspace(cpath.dis_insterval(idx), cpath.dis_insterval(idx+1), num_insterval);
+            t_len = (cpath.dis_interval(idx+1)-cpath.dis_interval(idx))/varc;
+            num_interval = floor(t_len/dt+1);
+            sa_tmp = zeros(1, num_interval);
+            sv_tmp = ones(1, num_interval)*varc;
+            s_tmp = linspace(cpath.dis_interval(idx), cpath.dis_interval(idx+1), num_interval);
         end
         s = [s, s_tmp]; sv = [sv, sv_tmp]; sa = [sa, sa_tmp];
     end   

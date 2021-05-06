@@ -138,14 +138,20 @@ classdef LspbTrajPlanner < handle
                     a = -obj.amax;
                 end
             else
-                if t>=obj.t0 && t<=obj.t0+obj.ta
-                    p = obj.q0+obj.v0*(t-obj.t0)+0.5*(obj.vmax-obj.v0)/obj.ta*(t-obj.t0)^2;
-                    v = obj.v0+(obj.vmax-obj.v0)/obj.ta*(t-obj.t0);
-                    a = obj.amax;
-                elseif t> obj.tf-obj.td && t<=obj.tf
-                    p = obj.qf-obj.vf*(obj.tf-t)-0.5*(obj.vmax-obj.vf)/obj.td*(obj.tf-t)^2;
-                    v = obj.vf+(obj.vmax-obj.vf)/obj.td*(obj.tf-t);
-                    a = -obj.amax;
+                if abs(obj.tf-obj.t0)<1e-5
+                    p = obj.q0;
+                    v = 0; 
+                    a = 0;
+                else
+                    if t>=obj.t0 && t<=obj.t0+obj.ta
+                        p = obj.q0+obj.v0*(t-obj.t0)+0.5*(obj.vmax-obj.v0)/obj.ta*(t-obj.t0)^2;
+                        v = obj.v0+(obj.vmax-obj.v0)/obj.ta*(t-obj.t0);
+                        a = obj.amax;
+                    elseif t> obj.tf-obj.td && t<=obj.tf
+                        p = obj.qf-obj.vf*(obj.tf-t)-0.5*(obj.vmax-obj.vf)/obj.td*(obj.tf-t)^2;
+                        v = obj.vf+(obj.vmax-obj.vf)/obj.td*(obj.tf-t);
+                        a = -obj.amax;
+                    end
                 end
             end
             p = p*obj.dir; v = v*obj.dir; a = a*obj.dir;
