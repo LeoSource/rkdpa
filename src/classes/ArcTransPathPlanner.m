@@ -14,7 +14,7 @@ classdef ArcTransPathPlanner < handle
         pt
         line_vec
         distance
-        dis_insterval
+        dis_interval
     
         nump
         numarc
@@ -41,7 +41,7 @@ classdef ArcTransPathPlanner < handle
                 obj.CalcSemicircleInfo(pos);
                 obj.trans_type = 'semicircle';
             end
-            obj.dis_insterval = obj.CalcDisInsterval();
+            obj.dis_interval = obj.CalcDisInsterval();
         end
         
         %% Calculate Arc Transition
@@ -136,12 +136,12 @@ classdef ArcTransPathPlanner < handle
         end
         
         function idx = CalcPosidx(obj, varp)
-            if varp>obj.dis_insterval(end)
-                idx = length(obj.dis_insterval)-1;
-            elseif varp<obj.dis_insterval(1)
+            if varp>obj.dis_interval(end)
+                idx = length(obj.dis_interval)-1;
+            elseif varp<obj.dis_interval(1)
                 idx = 1;
             else
-                idx = discretize(varp, obj.dis_insterval);
+                idx = discretize(varp, obj.dis_interval);
             end
         end            
         
@@ -152,10 +152,10 @@ classdef ArcTransPathPlanner < handle
                 if idx==1
                     p = obj.p_initial+obj.line_vec(:,idx)*varp;
                 else
-                    p = obj.pt(:,idx-1)+obj.line_vec(:,(idx+1)/2)*(varp-obj.dis_insterval(idx));
+                    p = obj.pt(:,idx-1)+obj.line_vec(:,(idx+1)/2)*(varp-obj.dis_interval(idx));
                 end
             else
-                th = (varp-obj.dis_insterval(idx))/obj.radius;
+                th = (varp-obj.dis_interval(idx))/obj.radius;
                 parc = zeros(3,1);
                 parc(1) = obj.radius*cos(th);
                 parc(2) = obj.radius*sin(th);
@@ -170,7 +170,7 @@ classdef ArcTransPathPlanner < handle
                 v = varv*obj.line_vec(:,(idx+1)/2);
                 a = vara*obj.line_vec(:,(idx+1)/2);
             else
-                s = varp-obj.dis_insterval(idx);
+                s = varp-obj.dis_interval(idx);
                 r = obj.radius;
                 vc=zeros(3,1); ac = zeros(3,1);
                 vc(1) = -varv*sin(s/r);
