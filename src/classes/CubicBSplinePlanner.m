@@ -133,11 +133,11 @@ classdef CubicBSplinePlanner < handle
             n = obj.nump; m = obj.num_ctrlp; p =3;
             d = (n+1)/(m-p+1);
             uk = obj.uknot_vec;
-            knot_vec = zeros(1, m+p+1);
+            knot_vec = zeros(m+p+1,1);
             for jidx=2:m-p
-                idx = floor(jidx*d);
-                alph = jidx*d-idx;
-                knot_vec(jidx+p) = (1-alph)*uk(idx-1)+alph*uk(idx);
+                idx = floor((jidx-1)*d);
+                alph = (jidx-1)*d-idx;
+                knot_vec(jidx+p) = (1-alph)*uk(idx)+alph*uk(idx+1);
             end
             knot_vec(1:p+1) = deal(uk(1));
             knot_vec(m+1:m+p+1) = deal(uk(end));
