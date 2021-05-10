@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'jtrajlspb';
+test_mode = 'mirrortask';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -305,6 +305,19 @@ plot3(pos(1,:), pos(2,:), pos(3,:));
     case 'ctrajbspline'
 %% cartesian trajectory plan using B-spline
 %{
+interpolation test with cpp
+via_pos = [1, 2, 3, 4, 5; 2, 3, -3, 4, 5; 0, 0, 0, 0, 0];
+planner = CubicBSplinePlanner(via_pos, 'interpolation', 5);
+pos = []; vel = []; acc = [];
+for u=planner.knot_vec(1):0.01:planner.knot_vec(end)
+    [p,v,a] = planner.GenerateMotion(u,1,0);
+    pos = [pos, p]; vel = [vel, v]; acc = [acc, a];
+end
+cpp_data = load('./data/test_bspline.csv');
+cpp_data = reshape(cpp_data, 3, []);
+%}
+
+%{
 hemisphere simulation
 npts = [15, 10, 8, 6];
 center = [0, 0, 0, 0; 0, 0, 0, 0; 0, -0.1, -0.2, -0.3];
@@ -411,23 +424,23 @@ s = []; sv = []; sa = [];
 via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
 cpath = ArcTransPathPlanner(via_pos, 0);
 varc = sqrt(camax*cpath.radius);
-for idx=1:length(cpath.dis_insterval)-1
+for idx=1:length(cpath.dis_interval)-1
     if mod(idx,2)==1
         if idx==1
             vel_cons = [0, varc];
-        elseif idx==length(cpath.dis_insterval)-1
+        elseif idx==length(cpath.dis_interval)-1
             vel_cons = [varc, 0];
         else
             vel_cons = [varc, varc];
         end
-        splanner = LspbTrajPlanner([cpath.dis_insterval(idx), cpath.dis_insterval(idx+1)], cvmax, camax,[],vel_cons);
+        splanner = LspbTrajPlanner([cpath.dis_interval(idx), cpath.dis_interval(idx+1)], cvmax, camax,[],vel_cons);
         [s_tmp, sv_tmp, sa_tmp] = splanner.GenerateTraj(dt);
     else
-        t_len = (cpath.dis_insterval(idx+1)-cpath.dis_insterval(idx))/varc;
-        num_interval = floor(t_len+1);
+        t_len = (cpath.dis_interval(idx+1)-cpath.dis_interval(idx))/varc;
+        num_interval = floor(t_len/dt+1);
         sa_tmp = zeros(1, num_interval);
         sv_tmp = ones(1, num_interval)*varc;
-        s_tmp = linspace(cpath.dis_insterval(idx),cpath.dis_insterval(idx+1), num_interval);
+        s_tmp = linspace(cpath.dis_interval(idx),cpath.dis_interval(idx+1), num_interval);
     end
     s =[s, s_tmp]; sv = [sv, sv_tmp]; sa = [sa, sa_tmp];
 end
@@ -454,15 +467,15 @@ sim_q = [sim_q, s];
 t = 0:dt:dt*(size(sim_q,2)-1);
 plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');
 grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
-% q_cpp = load('./data/mirrortask_jpos1.csv');
-% q_cpp = reshape(q_cpp, rbt.nlinks, length(q_cpp)/5);
-% tt = g_cycle_time*[0:size(q_cpp,2)-1];
+q_cpp = load('./data/mirrortask_jpos1.csv');
+q_cpp = reshape(q_cpp, rbt.nlinks, length(q_cpp)/5);
+tt = g_cycle_time*[0:size(q_cpp,2)-1];
 for idx=1:rbt.nlinks
     figure
     plot(t, sim_q(idx,:), 'b--'); xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
-%     plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
-%     xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
-%     legend('matlab\_data', 'cpp\_data');
+    plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
+    xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+    legend('matlab\_data', 'cpp\_data');
 end
 
 
