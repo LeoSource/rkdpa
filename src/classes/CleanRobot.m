@@ -84,7 +84,7 @@ classdef CleanRobot < handle
         end
         
         %% Inverse Kinematics with Analytical Solution    
-        function q = IKSolve(obj, pos, option, alpha)
+        function q = IKSolve(obj, pos, option, alpha, q_in)
             %%to simplify the problem of end-effector's pose: theta5 = alpha-theta1
             q = zeros(5,1);
             ty = obj.tool(2); tz = obj.tool(3);
@@ -92,9 +92,9 @@ classdef CleanRobot < handle
             height_limit = obj.arm.qlim(2,:)+tz+obj.links{2}.offset;
             switch option
                 case 'q3first0'
-                    q = obj.IKJnt3(pos, alpha, 0);
+                    q = obj.IKJnt3(pos, alpha, 0, q_in);
                 case 'q3firstn'
-                    q = obj.IKJnt3(pos, alpha, -pi/6);
+                    q = obj.IKJnt3(pos, alpha, -pi/6, q_in);
                 case 'q2first'
                     if pos(3)>height_limit(2)
                         q(2) = obj.arm.qlim(2,2);
@@ -106,7 +106,7 @@ classdef CleanRobot < handle
                     a = pos(1)+sin(alpha)*ty;
                     b = pos(2)-cos(alpha)*ty;
                     c = obj.arm.d(3)+obj.arm.a(5);
-                    q(1) = CalcTransEqua(a, b, c);
+                    q(1) = CalcTransEqua(a, b, c, q_in(1));
                     q(5) = alpha-q(1);
 
                     s1 = sin(q(1)); c1 = cos(q(1));
@@ -115,7 +115,7 @@ classdef CleanRobot < handle
                     a = c1*(pos(3)-q(2)-h);
                     b = -pos(2)-s1*s5*ty+c1*ly+s1*lx;
                     c = c1*tz;
-                    q(3) = CalcTransEqua(a, b, c);
+                    q(3) = CalcTransEqua(a, b, c, q_in(3));
                     s3 = sin(q(3)); c3 = cos(q(3));
                     tmp_value = pos(2)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1;
                     q(4) = tmp_value/(c1*c3)-w;                    
@@ -124,13 +124,14 @@ classdef CleanRobot < handle
             end
         end
         
-        function q = IKJnt3(obj, pos, alpha, q3)
+        function q = IKJnt3(obj, pos, alpha, q3, q_in)
+            q = zeros(5,1);
             ty = obj.tool(2); tz = obj.tool(3);
             q(3) = q3;
             a = pos(1)+sin(alpha)*ty;
             b = pos(2)-cos(alpha)*ty;
             c = obj.arm.d(3)+obj.arm.a(5);
-            q(1) = CalcTransEqua(a, b, c);
+            q(1) = CalcTransEqua(a, b, c, q_in(1));
             q(5) = alpha-q(1);
 
             s1 = sin(q(1)); c1 = cos(q(1));
