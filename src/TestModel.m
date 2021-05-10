@@ -7,7 +7,7 @@ addpath('tools');
 
 rbt = CleanRobot;
 g_cycle_time = 0.001;
-test_mode = 'mirrortask';
+test_mode = 'ctrajline';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -143,23 +143,25 @@ trajplanner.PlotMotion(0.001, 'pvaj');
 pos_initial = [0, 0, 0];
 pos_goal = [3, 4, 5];
 line_length = norm(pos_goal-pos_initial);
-planner = LspbTrajPlanner([0, line_length], 2, 5, 5, 'limitvel');
+planner = LspbTrajPlanner([0, line_length], 2, 5, 5);
 [p, v, ~] = planner.GenerateTraj(0.01);
 pos = pos_initial+p'.*(pos_goal-pos_initial)/line_length;
 vel = v'.*(pos_goal-pos_initial)/line_length;
-plot2(pos);
-grid on
+figure
+plot2(pos); grid on; hold on;
+scatter3(pos_initial(1), pos_initial(2), pos_initial(3));
+scatter3(pos_goal(1), pos_goal(2), pos_goal(3));
 xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
 figure
-time = 0:0.01:2;
-subplot(3,1,1); plot(time, pos(:,1)); xlabel('px');
-subplot(3,1,2); plot(time, pos(:,2)); xlabel('py');
-subplot(3,1,3); plot(time, pos(:,3)); xlabel('pz');
+time = 0:0.01:5;
+subplot(3,1,1); plot(time, pos(:,1)); ylabel('px');
+subplot(3,1,2); plot(time, pos(:,2)); ylabel('py');
+subplot(3,1,3); plot(time, pos(:,3)); ylabel('pz');
 figure
-subplot(3,1,1); plot(time, vel(:,1)); xlabel('vx');
-subplot(3,1,2); plot(time, vel(:,2)); xlabel('vy');
-subplot(3,1,3); plot(time, vel(:,3)); xlabel('vz');
+subplot(3,1,1); plot(time, vel(:,1)); ylabel('vx');
+subplot(3,1,2); plot(time, vel(:,2)); ylabel('vy');
+subplot(4,1,3); plot(time, vel(:,3)); ylabel('vz');
 
     case 'ctrajarc'
 %% cartesian arc path trajectory plan using lspb

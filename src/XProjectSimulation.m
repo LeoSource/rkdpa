@@ -13,9 +13,9 @@ g_stowed_pos = [0;0;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
-task = 'mirror';
+task = 'sphere';
 show_power = 0;
-q0 = [0,0,0,0,0]';
+q0 = [0.2,0.8,0,0,0]';
 sim_q = []; sim_pos = [];
 switch task
     case clean_task(1)
@@ -105,10 +105,52 @@ switch task
         [pos, vel, acc] = circlepath.GenerateTraj(alpha, alpv, alpa);
         ik_option = 'q3firstn';
     case clean_task(4)
-        %% wipe the washbasin 
+        %% wipe the washbasin
+        dt = 0.01;
+        npts = [15, 10, 8, 6];
+        center = [0, 0, 0, 0; 0.5, 0.5, 0.5, 0.5; 0.8-0, 0.8-0.1, 0.8-0.2, 0.8-0.3];
+        radius = [0.5, 0.4, 0.3, 0.2];
+        via_pos = [];
+        for idx=1:length(npts)
+            theta = linspace(0, 2*pi, npts(idx)+1);
+            tmp_pos = center(:,idx)+[radius(idx)*cos(theta); radius(idx)*sin(theta); zeros(1,npts(idx)+1)];
+            via_pos = [via_pos, tmp_pos];
+        end
+        pos = [];
+        % pre-clean action
+        q = q0;
+        pos0 = rbt.FKSolve(q).t;
+        line_length = norm(via_pos(:,1)-pos0);
+        uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
+        [up, uv, ~] = uplanner.GenerateTraj(dt);
+        pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
+        pos = [pos, pos_tmp];
+        % clean washbasin action
+        planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
+        uplanner = LspbTrajPlanner([planner.uknot_vec(1),planner.uknot_vec(end)],2,1,planner.uknot_vec(end));
+        for t=planner.uknot_vec(1):dt:planner.uknot_vec(end)
+            [u,du,ddu] = uplanner.GenerateMotion(t);
+            [p,v,a] = planner.GenerateMotion(u,du,ddu);
+            pos = [pos, p];
+        end
+        % post-clean action
+        posn = rbt.FKSolve(g_stowed_pos).t;
+        line_length = norm(posn-via_pos(:,end));
+        uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
+        [up, uv, ~] = uplanner.GenerateTraj(dt);
+        pos_tmp = via_pos(:,end)+up.*(posn-via_pos(:,end))/line_length;
+        pos = [pos, pos_tmp];
+        % robot inverse kinematics
         ik_option = 'q3firstn';
+        alpha = zeros(size(pos,2),1);
+        sim_pos = [];
+        for idx=1:size(pos,2)
+            tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alpha(idx));
+            sim_q = [sim_q, tmp_q];
+            sim_pos = [sim_pos, rbt.FKSolve(tmp_q).t];
+        end
     case clean_task(5)
-        %% wipe the washbasin 
+        %% wipe the toilet 
         ik_option = 'q3firstn';
     otherwise
         error('CleanRobot can not accomplish the task');
@@ -122,57 +164,59 @@ end
 % alpha = [];
 switch task    
     case clean_task(4)%sphere
-        dt = 0.01;
-        step = 1*pi/180;
-        origin = [0; 0.5; 0.5];
-        radius = 0.3;
-        pos = [0; origin(2)+radius; origin(3)];
-        interp_phi = [0:-15:-90]*pi/180;
-        for idx=1:length(interp_phi)-1
-            pos_z = pos(3,end);
-            tmp_alpha = 0:step:2*pi;
-            alpha = [alpha, tmp_alpha];
-            r = sqrt(radius^2-(pos_z-origin(3))^2);
-            tmp_pos = [-sin(tmp_alpha)*r; origin(2)+cos(tmp_alpha)*r; pos_z*ones(1,length(tmp_alpha))];
-            pos = [pos, tmp_pos];
-
-            phi = interp_phi(idx):-step:interp_phi(idx+1);
-            tmp_pos = [zeros(1,length(phi)); 0.5+0.3*cos(phi); 0.5+0.3*sin(phi)];
-            pos = [pos, tmp_pos];
-            alpha = [alpha, zeros(1,length(phi))];
-        end
-        pos = pos(:,2:end);
+%         dt = 0.01;
+%         step = 1*pi/180;
+%         origin = [0; 0.5; 0.5];
+%         radius = 0.3;
+%         pos = [0; origin(2)+radius; origin(3)];
+%         interp_phi = [0:-15:-90]*pi/180;
+%         for idx=1:length(interp_phi)-1
+%             pos_z = pos(3,end);
+%             tmp_alpha = 0:step:2*pi;
+%             alpha = [alpha, tmp_alpha];
+%             r = sqrt(radius^2-(pos_z-origin(3))^2);
+%             tmp_pos = [-sin(tmp_alpha)*r; origin(2)+cos(tmp_alpha)*r; pos_z*ones(1,length(tmp_alpha))];
+%             pos = [pos, tmp_pos];
+% 
+%             phi = interp_phi(idx):-step:interp_phi(idx+1);
+%             tmp_pos = [zeros(1,length(phi)); 0.5+0.3*cos(phi); 0.5+0.3*sin(phi)];
+%             pos = [pos, tmp_pos];
+%             alpha = [alpha, zeros(1,length(phi))];
+%         end
+%         pos = pos(:,2:end);
     case clean_task(5)%ellipsoid
-        dt = 0.01;
-        step = 1*pi/180;
-        origin = [0; 0.5; 1];
-        a = 0.4; b = 0.5; c = 0.3;
-        pos = [0; origin(2)+b; origin(3)];
-        interp_phi = [0: -15: -90]*pi/180;
-        for idx=1:length(interp_phi)-1
-            pos_z = pos(3,end);
-            tmp_alpha = 0:step:2*pi;
-            alpha = [alpha, tmp_alpha];
-            rs_value = sqrt(abs(1-(pos_z-origin(3))^2/c^2));
-            a_new = a*rs_value; b_new = b*rs_value;
-            tmp_pos = [-a_new*sin(tmp_alpha); b_new*cos(tmp_alpha)+origin(2); pos_z*ones(1,length(tmp_alpha))];
-            pos = [pos, tmp_pos];
-            
-            phi = interp_phi(idx):-step:interp_phi(idx+1);
-            tmp_pos = [zeros(1,length(phi)); origin(2)+b*cos(phi); origin(3)+c*sin(phi)];
-            pos = [pos, tmp_pos];
-            alpha = [alpha, zeros(1,length(phi))];
-        end
-        pos = pos(:,2:end);      
+%         dt = 0.01;
+%         step = 1*pi/180;
+%         origin = [0; 0.5; 1];
+%         a = 0.4; b = 0.5; c = 0.3;
+%         pos = [0; origin(2)+b; origin(3)];
+%         interp_phi = [0: -15: -90]*pi/180;
+%         for idx=1:length(interp_phi)-1
+%             pos_z = pos(3,end);
+%             tmp_alpha = 0:step:2*pi;
+%             alpha = [alpha, tmp_alpha];
+%             rs_value = sqrt(abs(1-(pos_z-origin(3))^2/c^2));
+%             a_new = a*rs_value; b_new = b*rs_value;
+%             tmp_pos = [-a_new*sin(tmp_alpha); b_new*cos(tmp_alpha)+origin(2); pos_z*ones(1,length(tmp_alpha))];
+%             pos = [pos, tmp_pos];
+%             
+%             phi = interp_phi(idx):-step:interp_phi(idx+1);
+%             tmp_pos = [zeros(1,length(phi)); origin(2)+b*cos(phi); origin(3)+c*sin(phi)];
+%             pos = [pos, tmp_pos];
+%             alpha = [alpha, zeros(1,length(phi))];
+%         end
+%         pos = pos(:,2:end);      
     otherwise         
 end
 
-t = [0:g_cycle_time:g_cycle_time*(size(sim_q,2)-1)]';
+t = [0:dt:dt*(size(sim_q,2)-1)]';
 %% simulation with simscape and plot
 figure
 plot2(sim_pos', 'r-');
 if strcmp(task, 'mirror')
     hold on; plot2([pos1', pos2', pos3', pos4', pos1']', '--'); hold off;
+elseif strcmp(task, 'sphere')
+    hold on; plot2(pos', '--'); plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'o'); hold off;
 end
 grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
