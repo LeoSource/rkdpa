@@ -108,15 +108,15 @@ switch task
         %% wipe the washbasin
         dt = 0.01;
         npts = [15, 10, 8, 6];
-        center = [0, 0, 0, 0; 0.5, 0.5, 0.5, 0.5; 0.8-0, 0.8-0.1, 0.8-0.2, 0.8-0.3];
-        radius = [0.5, 0.4, 0.3, 0.2];
+        center = [0, 0, 0, 0; 0.7, 0.7, 0.7, 0.7; 0.6-0, 0.6-0.1, 0.6-0.2, 0.6-0.3];
+        radius = [0.4, 0.3, 0.2, 0.1];
         via_pos = [];
         for idx=1:length(npts)
             theta = linspace(0, 2*pi, npts(idx)+1);
             tmp_pos = center(:,idx)+[radius(idx)*cos(theta); radius(idx)*sin(theta); zeros(1,npts(idx)+1)];
             via_pos = [via_pos, tmp_pos];
         end
-        pos = [];
+        pos = []; alph = [];
         % pre-clean action
         q = q0;
         pos0 = rbt.FKSolve(q).t;
@@ -125,28 +125,33 @@ switch task
         [up, uv, ~] = uplanner.GenerateTraj(dt);
         pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
         pos = [pos, pos_tmp];
+        alph = [alph; zeros(size(pos,2) ,1)];
         % clean washbasin action
         planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
         uplanner = LspbTrajPlanner([planner.uknot_vec(1),planner.uknot_vec(end)],2,1,planner.uknot_vec(end));
+        aplanner = LspbTrajPlanner([0,2*pi*length(npts)], 1, 2, 60);
         for t=planner.uknot_vec(1):dt:planner.uknot_vec(end)
             [u,du,ddu] = uplanner.GenerateMotion(t);
             [p,v,a] = planner.GenerateMotion(u,du,ddu);
             pos = [pos, p];
         end
+        alph = [alph; aplanner.GenerateTraj(dt)'];
         % post-clean action
-        posn = rbt.FKSolve(g_stowed_pos).t;
+%         posn = rbt.FKSolve(g_stowed_pos).t;
+        posn = center(:,1);
         line_length = norm(posn-via_pos(:,end));
         uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
         [up, uv, ~] = uplanner.GenerateTraj(dt);
         pos_tmp = via_pos(:,end)+up.*(posn-via_pos(:,end))/line_length;
         pos = [pos, pos_tmp];
+        max_alph = alph(end);
+        alph = [alph; ones(size(pos,2) ,1)*max_alph];
         % robot inverse kinematics
         ik_option = 'q3firstn';
-        alpha = zeros(size(pos,2),1);
-        sim_pos = [];
+        sim_pos = []; pre_q = q;
         for idx=1:size(pos,2)
-            tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alpha(idx));
-            sim_q = [sim_q, tmp_q];
+            tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alph(idx), pre_q);
+            sim_q = [sim_q, tmp_q]; pre_q = tmp_q;
             sim_pos = [sim_pos, rbt.FKSolve(tmp_q).t];
         end
     case clean_task(5)
@@ -221,7 +226,8 @@ end
 grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
 figure
-plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');
+yyaxis left; plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':');
+yyaxis right; plot(t, sim_q(5,:), '-');
 grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
 
 if show_power
