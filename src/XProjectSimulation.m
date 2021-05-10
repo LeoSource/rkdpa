@@ -4,25 +4,80 @@ clc
 
 addpath('classes');
 addpath('tools');
-% TO DO: optimize the sphere and ellipsoid path planner like ArcPathPlanner
+
 rbt = CleanRobot;
+g_jvmax = [pi, 0.15, 0.8*pi, 0.5, 0.8*pi];
+g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi];
+g_cvmax = 0.4; g_camax = 0.8;
+g_stowed_pos = [0;0;0;0;0];
+g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
 task = 'mirror';
-interp_pos = [];
+q0 = [0,0,0,0,0]';
+sim_q = [];
 switch task
     case clean_task(1)
-        % wipe the mirror
+        dt = g_cycle_time;
         pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
-        radius = 0.04;
-        tf = 60; dt = 0.001;
-        via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 15, 's');
-        cpath = ArcTransPathPlanner(via_pos, radius);
-        planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
-        [s, sv, sa] = planner.GenerateTraj(dt);
+        % pre-clean action
+        q = q0;
+        q_clean_start = rbt.IKSolve(pos1, 'q2first', 0);
+        for idx=1:5
+            jplanner(idx) = LspbTrajPlanner([q(idx), q_clean_start(idx)], g_jvmax(idx), g_jamax(idx));
+        end
+        tf_preclean = max([jplanner(1).tf, jplanner(2).tf, jplanner(3).tf, jplanner(4).tf, jplanner(5).tf]);
+        for idx=1:5
+            jplanner(idx) = LspbTrajPlanner([q(idx), q_clean_start(idx)], g_jvmax(idx), g_jamax(idx), tf_preclean);
+            [s(idx,:), sv(idx,:), sa(idx,:)] = jplanner(idx).GenerateTraj(dt);
+        end
+        sim_q = [sim_q, s];
+        % clean mirror action
+        clear s sv sa
+        s = []; sv = []; sa = [];
+        via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
+        cpath = ArcTransPathPlanner(via_pos, 0);
+        varc = sqrt(g_camax*cpath.radius);
+        for idx=1:length(cpath.dis_interval)-1
+            if mod(idx,2)==1
+                if idx==1
+                    vel_cons = [0,varc];
+                elseif idx==length(cpath.dis_interval)-1
+                    vel_cons = [varc,0];
+                else
+                    vel_cons = [varc,varc];
+                end
+                splanner = LspbTrajPlanner([cpath.dis_interval(idx),cpath.dis_interval(idx+1)],g_cvmax,g_camax,[],vel_cons);
+                [s_tmp,sv_tmp,sa_tmp] = splanner.GenerateTraj(dt);
+            else
+                t_len = (cpath.dis_interval(idx+1)-cpath.dis_interval(idx))/varc;
+                num_interval = floor(t_len+1);
+                sa_tmp = zeros(1, num_interval);
+                sv_tmp = ones(1, num_interval)*varc;
+                s_tmp = linspace(cpath.dis_interval(idx),cpath.dis_interval(idx+1), num_interval);
+            end
+            s =[s, s_tmp]; sv = [sv, sv_tmp]; sa = [sa, sa_tmp];
+        end
         [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
         ik_option = 'q2first';
         alpha = zeros(1, length(s));
+        pos = pos';
+        for idx=1:size(pos,1)
+            tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
+            sim_q = [sim_q, tmp_q];
+        end
+        % post-clean action
+        clear s sv sa
+        for idx=1:5
+            jplanner(idx) = LspbTrajPlanner([tmp_q(idx), g_stowed_pos(idx)], g_jvmax(idx), g_jamax(idx));
+        end
+        tf_postclean = max([jplanner(1).tf, jplanner(2).tf, jplanner(3).tf, jplanner(4).tf, jplanner(5).tf]);
+        for idx=1:5
+            jplanner(idx) = LspbTrajPlanner([tmp_q(idx), g_stowed_pos(idx)], g_jvmax(idx), g_jamax(idx), tf_postclean);
+            [s(idx,:), sv(idx,:), sa(idx,:)] = jplanner(idx).GenerateTraj(dt);
+        end
+        sim_q = [sim_q, s];
+
     case clean_task(2)
         % wipe the table
         pos1 = [0.8, 0.4, 0.7]; pos2 = [-0.8, 0.4, 0.7]; pos3 = [-0.8, 1.0, 0.7]; pos4 = [0.8, 1.0, 0.7];
@@ -107,16 +162,15 @@ switch task
     otherwise         
 end
 
-sim_q = [];
-sim_pos = [];
-pos = pos';
-for idx=1:size(pos,1)    
-    tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
-    sim_q = [sim_q, tmp_q];
-    tmp_pose = rbt.FKSolve(tmp_q);
-    sim_pos = [sim_pos; tmp_pose.t'];
-end
-pos_err = pos-sim_pos;
+% sim_pos = [];
+% pos = pos';
+% for idx=1:size(pos,1)    
+%     tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
+%     sim_q = [sim_q, tmp_q];
+%     tmp_pose = rbt.FKSolve(tmp_q);
+%     sim_pos = [sim_pos; tmp_pose.t'];
+% end
+% pos_err = pos-sim_pos;
 t = [0:sample_time:sample_time*(size(sim_q,2)-1)]';
 %% simulation with simscape and plot
 sim('simulink/x_project_g3.slx');
