@@ -14,10 +14,12 @@ g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'circle', 'sphere', 'ellipsoid'};
 task = 'mirror';
+show_power = 0;
 q0 = [0,0,0,0,0]';
-sim_q = [];
+sim_q = []; sim_pos = [];
 switch task
     case clean_task(1)
+        %% wipe the mirror
         dt = g_cycle_time;
         pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
         % pre-clean action
@@ -51,7 +53,7 @@ switch task
                 [s_tmp,sv_tmp,sa_tmp] = splanner.GenerateTraj(dt);
             else
                 t_len = (cpath.dis_interval(idx+1)-cpath.dis_interval(idx))/varc;
-                num_interval = floor(t_len+1);
+                num_interval = floor(t_len/dt+1);
                 sa_tmp = zeros(1, num_interval);
                 sv_tmp = ones(1, num_interval)*varc;
                 s_tmp = linspace(cpath.dis_interval(idx),cpath.dis_interval(idx+1), num_interval);
@@ -59,11 +61,11 @@ switch task
             s =[s, s_tmp]; sv = [sv, sv_tmp]; sa = [sa, sa_tmp];
         end
         [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
+        % robot inverse kinematics
         ik_option = 'q2first';
         alpha = zeros(1, length(s));
-        pos = pos';
-        for idx=1:size(pos,1)
-            tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
+        for idx=1:size(pos,2)
+            tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alpha(idx));    
             sim_q = [sim_q, tmp_q];
         end
         % post-clean action
@@ -77,9 +79,12 @@ switch task
             [s(idx,:), sv(idx,:), sa(idx,:)] = jplanner(idx).GenerateTraj(dt);
         end
         sim_q = [sim_q, s];
-
+        for idx=1:size(sim_q,2)
+            pose_tmp = rbt.FKSolve(sim_q(:,idx));
+            sim_pos = [sim_pos, pose_tmp.t];
+        end
     case clean_task(2)
-        % wipe the table
+        %% wipe the table
         pos1 = [0.8, 0.4, 0.7]; pos2 = [-0.8, 0.4, 0.7]; pos3 = [-0.8, 1.0, 0.7]; pos4 = [0.8, 1.0, 0.7];
         radius = 0.04;
         tf = 60; dt = 0.01;
@@ -91,7 +96,7 @@ switch task
         ik_option = 'q3first0';
         alpha = zeros(1, length(s));
     case clean_task(3)
-        % wipe the washbasin 
+        %% wipe the washbasin 
         center = [0; 0.5; 0.5]; radius = 0.3; n_vec = [0;0;1];
         circlepath = ArcPathPlanner(center, n_vec, radius, 'circle');
         tf = 10; dt = 0.01;
@@ -100,10 +105,10 @@ switch task
         [pos, vel, acc] = circlepath.GenerateTraj(alpha, alpv, alpa);
         ik_option = 'q3firstn';
     case clean_task(4)
-        %wipe the washbasin 
+        %% wipe the washbasin 
         ik_option = 'q3firstn';
     case clean_task(5)
-        %wipe the washbasin 
+        %% wipe the washbasin 
         ik_option = 'q3firstn';
     otherwise
         error('CleanRobot can not accomplish the task');
@@ -111,7 +116,7 @@ end
 
 
 %% trajectory plan
-sample_time = 0.001;
+% sample_time = 0.001;
 % tf = 20;
 % pos = [];
 % alpha = [];
@@ -162,66 +167,44 @@ switch task
     otherwise         
 end
 
-% sim_pos = [];
-% pos = pos';
-% for idx=1:size(pos,1)    
-%     tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
-%     sim_q = [sim_q, tmp_q];
-%     tmp_pose = rbt.FKSolve(tmp_q);
-%     sim_pos = [sim_pos; tmp_pose.t'];
-% end
-% pos_err = pos-sim_pos;
-t = [0:sample_time:sample_time*(size(sim_q,2)-1)]';
+t = [0:g_cycle_time:g_cycle_time*(size(sim_q,2)-1)]';
 %% simulation with simscape and plot
-sim('simulink/x_project_g3.slx');
-
-figure(1)
-plot2(pos, '--');
-grid on
-hold on
-plot2(sim_pos, 'r');
-legend('cmd\_pos', 'sim\_pos');
-xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
-hold off
-
-figure(2)
-plot(t,sim_q(:,1),'-', t, sim_q(:,2), '--', t, sim_q(:,3), '-.', t, sim_q(:,4), ':', t, sim_q(:,5), '-');
-grid on
-title('joint position');
-legend('q1', 'q2', 'q3', 'q4', 'q5');
-
 figure
-plot(pos_err);
-grid on
-title('cartesian position error');
-legend('x', 'y', 'z');
-
-time = 0:dt:tf;
-figure
-plot(time,dq(:,1), '-', time, dq(:,2), '--', time, dq(:,3), '-.', time, dq(:,4), ':', time, dq(:,5), '-');
-grid on
-title('joint velocity');
-legend('dq1', 'dq2', 'dq3', 'dq4', 'dq5');
-
-figure
-plot(time,tau(:,1), '-', time, tau(:,2), '--', time, tau(:,3), '-.', time, tau(:,4), ':', time, tau(:,5), '-');
-grid on
-title('joint torque');
-legend('tau1', 'tau2', 'tau3', 'tau4', 'tau5');
-
-figure
-power = dq.*tau;
-for idx=1:5
-    max_dq(idx) = max(dq(:,idx));
-    max_tau(idx) = max(tau(:,idx));
-    max_power(idx) = max(power(:,idx));
+plot2(sim_pos', 'r-');
+if strcmp(task, 'mirror')
+    hold on; plot2([pos1', pos2', pos3', pos4', pos1']', '--'); hold off;
 end
-plot(time,power(:,1), '-', time, power(:,2), '--', time, power(:,3), '-.', time, power(:,4), ':', time, power(:,5), '-');
-grid on
-title('joint actuator power');
-legend('power1', 'power2', 'power3', 'power4', 'power5');
-disp(['max_q = ', num2str(max_dq)]);    
-disp(['max_tau = ', num2str(max_tau)]);   
-disp(['max_power = ', num2str(max_power)]);
+grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
+figure
+plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');
+grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
+
+if show_power
+    sim('simulink/x_project_g3.slx');
+    
+    time = 0:dt:tf;
+    figure
+    plot(time,dq(:,1), '-', time, dq(:,2), '--', time, dq(:,3), '-.', time, dq(:,4), ':', time, dq(:,5), '-');
+    grid on
+    title('joint velocity');
+    legend('dq1', 'dq2', 'dq3', 'dq4', 'dq5');
+    
+    figure
+    plot(time,tau(:,1), '-', time, tau(:,2), '--', time, tau(:,3), '-.', time, tau(:,4), ':', time, tau(:,5), '-');
+    grid on; title('joint torque'); legend('tau1', 'tau2', 'tau3', 'tau4', 'tau5');
+    
+    figure
+    power = dq.*tau;
+    for idx=1:5
+        max_dq(idx) = max(dq(:,idx));
+        max_tau(idx) = max(tau(:,idx));
+        max_power(idx) = max(power(:,idx));
+    end
+    plot(time,power(:,1), '-', time, power(:,2), '--', time, power(:,3), '-.', time, power(:,4), ':', time, power(:,5), '-');
+    grid on; title('joint actuator power'); legend('power1', 'power2', 'power3', 'power4', 'power5');
+    disp(['max_q = ', num2str(max_dq)]);    
+    disp(['max_tau = ', num2str(max_tau)]);   
+    disp(['max_power = ', num2str(max_power)]);
+end
 
