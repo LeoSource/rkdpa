@@ -1,14 +1,20 @@
 function [sim_pos,sim_q] = CleanMirror(rbt,via_pos,q0,dt)
 
-    global g_cvmax g_stowed_pos g_camax
-    sim_pos = []; sim_q = []; pos = [];
+    global g_cvmax g_stowed_pos g_camax g_jvmax g_jamax
+    sim_pos = []; sim_q = []; pos = []; alph = [];
     % pre-clean action
     pos0 = rbt.FKSolve(q0).t;
     line_length = norm(via_pos(:,1)-pos0);
+    alph0 = q0(1)+q0(end);
+    alphplanner = LspbTrajPlanner([alph0,0], g_jvmax(1), g_jamax(end));
     uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
+    tf_pre = max(alphplanner.tf,uplanner.tf);
+    alphplanner = LspbTrajPlanner([alph0,0], g_jvmax(1), g_jamax(end), tf_pre);
+    uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax, tf_pre);
     [up,~,~] = uplanner.GenerateTraj(dt);
     pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
     pos = [pos, pos_tmp];
+    alph = [alph, alphplanner.GenerateTraj(dt)];
     % clean mirror action
     s = []; sv = []; sa = [];
     cpath = ArcTransPathPlanner(via_pos, 0);
@@ -35,6 +41,7 @@ function [sim_pos,sim_q] = CleanMirror(rbt,via_pos,q0,dt)
     end
     [pos_tmp, vel, acc] = cpath.GenerateTraj(s, sv, sa);
     pos = [pos, pos_tmp];
+    alph = [alph, zeros(1,size(pos_tmp,2))];
     % post-clean action
     posn = rbt.FKSolve(g_stowed_pos).t;
     line_length = norm(posn-via_pos(:,end));
@@ -42,12 +49,12 @@ function [sim_pos,sim_q] = CleanMirror(rbt,via_pos,q0,dt)
     [up,~,~] = uplanner.GenerateTraj(dt);
     pos_tmp = via_pos(:,end)+up.*(posn-via_pos(:,end))/line_length;
     pos = [pos, pos_tmp];
+    alph = [alph, zeros(1,size(pos_tmp,2))];
     % robot inverse kinematics
     ik_option = 'q2first';
-    alph = zeros(size(pos,2),1);
     pre_q = q0;
     for idx=1:size(pos,2)
-        tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alph(idx), pre_q);    
+        tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alph(idx), pre_q);
         sim_q = [sim_q, tmp_q]; pre_q = tmp_q;
         pose_tmp = rbt.FKSolve(tmp_q);
         sim_pos = [sim_pos, pose_tmp.t];
