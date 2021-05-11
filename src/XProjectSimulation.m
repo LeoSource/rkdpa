@@ -14,10 +14,9 @@ g_stowed_pos = [0;0;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
-task = 'mirror';
+task = 'ellipsoid';
 show_power = 0;
 q0 = [0.2,0.8,0,0,0]';
-sim_q = []; sim_pos = [];
 switch task
     case clean_task(1)
         %% wipe the mirror
@@ -51,44 +50,8 @@ switch task
             tmp_pos = center(:,idx)+[radius(idx)*cos(theta); radius(idx)*sin(theta); zeros(1,npts(idx)+1)];
             via_pos = [via_pos, tmp_pos];
         end
-        pos = []; alph = [];
-        % pre-clean action
-        q = q0;
-        pos0 = rbt.FKSolve(q).t;
-        line_length = norm(via_pos(:,1)-pos0);
-        uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
-        [up, uv, ~] = uplanner.GenerateTraj(dt);
-        pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
-        pos = [pos, pos_tmp];
-        alph = [alph; zeros(size(pos,2) ,1)];
-        % clean washbasin action
-        planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
-        uplanner = LspbTrajPlanner([planner.uknot_vec(1),planner.uknot_vec(end)],2,1,planner.uknot_vec(end));
-        aplanner = LspbTrajPlanner([0,2*pi*length(npts)], 1, 2, 60);
-        for t=planner.uknot_vec(1):dt:planner.uknot_vec(end)
-            [u,du,ddu] = uplanner.GenerateMotion(t);
-            [p,v,a] = planner.GenerateMotion(u,du,ddu);
-            pos = [pos, p];
-        end
-        alph = [alph; aplanner.GenerateTraj(dt)'];
-        % post-clean action
-%         posn = rbt.FKSolve(g_stowed_pos).t;
-        posn = center(:,1);
-        line_length = norm(posn-via_pos(:,end));
-        uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
-        [up, uv, ~] = uplanner.GenerateTraj(dt);
-        pos_tmp = via_pos(:,end)+up.*(posn-via_pos(:,end))/line_length;
-        pos = [pos, pos_tmp];
-        max_alph = alph(end);
-        alph = [alph; ones(size(pos_tmp,2) ,1)*max_alph];
-        % robot inverse kinematics
-        ik_option = 'q3firstn';
-        sim_pos = []; pre_q = q;
-        for idx=1:size(pos,2)
-            tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alph(idx), pre_q);
-            sim_q = [sim_q, tmp_q]; pre_q = tmp_q;
-            sim_pos = [sim_pos, rbt.FKSolve(tmp_q).t];
-        end
+        [sim_pos, sim_q, pos] = CleanSurface(rbt,npts,center(:,1),via_pos,q0,dt);
+        
     case clean_task(4)
         %% wipe the toilet 
         dt = 0.01;
@@ -102,43 +65,7 @@ switch task
             tmp_pos = center(:,idx)+[elli_params(1,idx)*cos(theta); elli_params(2,idx)*sin(theta); zeros(1,npts(idx)+1)];
             via_pos = [via_pos, tmp_pos];
         end
-        pos = []; alph = [];
-        % pre-clean action
-        q = q0;
-        pos0 = rbt.FKSolve(q).t;
-        line_length = norm(via_pos(:,1)-pos0);
-        uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
-        [up, ~, ~] = uplanner.GenerateTraj(dt);
-        pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
-        pos = [pos, pos_tmp];
-        alph = [alph; zeros(size(pos,2),1)];
-        % clean toilet action
-        planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
-        uplanner = LspbTrajPlanner([planner.uknot_vec(1),planner.uknot_vec(end)],2,1,planner.uknot_vec(end));
-        aplanner = LspbTrajPlanner([0,2*pi*length(npts)], 1, 2, 60);
-        for t=planner.uknot_vec(1):dt:planner.uknot_vec(end)
-            [u,du,ddu] = uplanner.GenerateMotion(t);
-            [p,v,a] = planner.GenerateMotion(u,du,ddu);
-            pos = [pos, p];
-        end
-        alph = [alph; aplanner.GenerateTraj(dt)'];
-        % post-clean action
-        posn = center(:,1);
-        line_length = norm(posn-via_pos(:,end));
-        uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
-        [up,~,~] = uplanner.GenerateTraj(dt);
-        pos_tmp = via_pos(:,end)+up.*(posn-via_pos(:,end))/line_length;
-        pos = [pos, pos_tmp];
-        max_alph = alph(end);
-        alph = [alph; ones(size(pos_tmp,2),1)*max_alph];
-        % robot inverse kinematics        
-        ik_option = 'q3firstn';
-        sim_pos = []; pre_q = q;
-        for idx=1:size(pos,2)
-            tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alph(idx), pre_q);
-            sim_q = [sim_q, tmp_q]; pre_q = tmp_q;
-            sim_pos = [sim_pos, rbt.FKSolve(tmp_q).t];
-        end
+        [sim_pos, sim_q, pos] = CleanSurface(rbt,npts,center(:,1),via_pos,q0,dt);
         
     otherwise
         error('CleanRobot can not accomplish the task');

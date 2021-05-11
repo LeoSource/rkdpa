@@ -6,8 +6,13 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
+global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos
+g_jvmax = [pi, 0.15, 0.8*pi, 0.5, 0.8*pi];
+g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi];
+g_cvmax = 0.4; g_camax = 0.8;
+g_stowed_pos = [0;0;0;0;0];
 g_cycle_time = 0.001;
-test_mode = 'ctrajline';
+test_mode = 'mirrortask';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -401,70 +406,11 @@ plot2(pos', 'r--'); hold on; plot2(sim_pos', 'k-'); grid on; axis([-inf, inf, 0.
 xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)'); legend('cmd\_pos', 'sim\_pos');
     case 'mirrortask'
 %%  comparison with cpp
-jvmax = [pi, 0.15, 0.8*pi, 0.5, 0.8*pi];
-jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi];
-cvmax = 0.4; camax = 0.8;
-stowed_pos = [0, 0, 0, 0, 0]'; pre_clean = 0; clean_completed = 0;
+q0 = [0.2,0.8,0,0,0]';
 pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
-q = stowed_pos;
-q_clean_start = rbt.IKSolve(pos1, 'q2first', 0);
-dt = 0.001;
-sim_q = [];
-% pre-clean action
-for idx=1:5
-    jplanner(idx) = LspbTrajPlanner([q(idx), q_clean_start(idx)], jvmax(idx), jamax(idx));
-end
-tf_preclean = max([jplanner(1).tf, jplanner(2).tf, jplanner(3).tf, jplanner(4).tf, jplanner(5).tf]);
-for idx=1:5
-    jplanner(idx) = LspbTrajPlanner([q(idx), q_clean_start(idx)], jvmax(idx), jamax(idx), tf_preclean);
-    [s(idx,:), sv(idx,:), sa(idx,:)] = jplanner(idx).GenerateTraj(dt);
-end
-sim_q = [sim_q, s];
-% clean mirror action
-clear s sv sa
-s = []; sv = []; sa = [];
+dt = 0.01;
 via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
-cpath = ArcTransPathPlanner(via_pos, 0);
-varc = sqrt(camax*cpath.radius);
-for idx=1:length(cpath.dis_interval)-1
-    if mod(idx,2)==1
-        if idx==1
-            vel_cons = [0, varc];
-        elseif idx==length(cpath.dis_interval)-1
-            vel_cons = [varc, 0];
-        else
-            vel_cons = [varc, varc];
-        end
-        splanner = LspbTrajPlanner([cpath.dis_interval(idx), cpath.dis_interval(idx+1)], cvmax, camax,[],vel_cons);
-        [s_tmp, sv_tmp, sa_tmp] = splanner.GenerateTraj(dt);
-    else
-        t_len = (cpath.dis_interval(idx+1)-cpath.dis_interval(idx))/varc;
-        num_interval = floor(t_len/dt+1);
-        sa_tmp = zeros(1, num_interval);
-        sv_tmp = ones(1, num_interval)*varc;
-        s_tmp = linspace(cpath.dis_interval(idx),cpath.dis_interval(idx+1), num_interval);
-    end
-    s =[s, s_tmp]; sv = [sv, sv_tmp]; sa = [sa, sa_tmp];
-end
-[pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
-ik_option = 'q2first';
-alpha = zeros(1, length(s));
-pos = pos';
-for idx=1:size(pos,1)
-    tmp_q = rbt.IKSolve(pos(idx,:), ik_option, alpha(idx));    
-    sim_q = [sim_q, tmp_q];
-end
-% post-clean action
-clear s sv sa
-for idx=1:5
-    jplanner(idx) = LspbTrajPlanner([tmp_q(idx), stowed_pos(idx)], jvmax(idx), jamax(idx));
-end
-tf_postclean = max([jplanner(1).tf, jplanner(2).tf, jplanner(3).tf, jplanner(4).tf, jplanner(5).tf]);
-for idx=1:5
-    jplanner(idx) = LspbTrajPlanner([tmp_q(idx), stowed_pos(idx)], jvmax(idx), jamax(idx), tf_postclean);
-    [s(idx,:), sv(idx,:), sa(idx,:)] = jplanner(idx).GenerateTraj(dt);
-end
-sim_q = [sim_q, s];
+[~, sim_q] = CleanMirror(rbt, via_pos, q0, dt);
 
 t = 0:dt:dt*(size(sim_q,2)-1);
 plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');
