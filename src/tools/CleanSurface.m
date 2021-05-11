@@ -1,15 +1,27 @@
 function [sim_pos, sim_q, pos] = CleanSurface(rbt,npts,posn,via_pos,q0,dt)
 
-    global g_cvmax g_camax
+    global g_cvmax g_camax g_jvmax g_jamax
     sim_pos = []; sim_q = []; pos = []; alph = [];
     % pre-clean action
-    pos0 = rbt.FKSolve(q0).t;
+    jplanner = LspbTrajPlanner([q0(3),-pi/6], g_jvmax(3), g_jamax(3));
+    [jpos,~,~] = jplanner.GenerateTraj(dt);
+    tmp_q = [ones(1,length(jpos))*q0(1); ones(1,length(jpos))*q0(2); jpos;...
+             ones(1,length(jpos))*q0(4); ones(1,length(jpos))*q0(5)];
+    for idx=1:length(jpos)
+        sim_pos = [sim_pos, rbt.FKSolve(tmp_q(:,idx)).t];
+    end
+    sim_q = [sim_q, tmp_q];
+    pos0 = rbt.FKSolve(tmp_q(:,end)).t;
     line_length = norm(via_pos(:,1)-pos0);
     uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
-    [up, uv, ~] = uplanner.GenerateTraj(dt);
+    alphplanner = LspbTrajPlanner([q0(1)+q0(5),0], g_jvmax(1), g_jamax(1));
+    tf_preclean = max(uplanner.tf, alphplanner.tf);
+    uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax, tf_preclean);
+    alphplanner = LspbTrajPlanner([q0(1)+q0(5),0], g_jvmax(1), g_jamax(1), tf_preclean);
+    [up, ~, ~] = uplanner.GenerateTraj(dt);
     pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
     pos = [pos, pos_tmp];
-    alph = [alph; zeros(size(pos,2) ,1)];
+    alph = [alph; alphplanner.GenerateTraj(dt)'];
     % clean washbasin action
     planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
     uplanner = LspbTrajPlanner([planner.uknot_vec(1),planner.uknot_vec(end)],2,1,planner.uknot_vec(end));
@@ -24,7 +36,7 @@ function [sim_pos, sim_q, pos] = CleanSurface(rbt,npts,posn,via_pos,q0,dt)
     %         posn = rbt.FKSolve(g_stowed_pos).t;
     line_length = norm(posn-via_pos(:,end));
     uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
-    [up, uv, ~] = uplanner.GenerateTraj(dt);
+    [up, ~, ~] = uplanner.GenerateTraj(dt);
     pos_tmp = via_pos(:,end)+up.*(posn-via_pos(:,end))/line_length;
     pos = [pos, pos_tmp];
     max_alph = alph(end);
