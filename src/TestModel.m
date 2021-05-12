@@ -12,7 +12,7 @@ g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi];
 g_cvmax = 0.4; g_camax = 0.8;
 g_stowed_pos = [0;0;0;0;0];
 g_cycle_time = 0.001;
-test_mode = 'mirrortask';
+test_mode = 'ctrajcircle';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -193,20 +193,34 @@ arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 
     case 'ctrajcircle'
 %% cartesian circle path trajectory plan using lspb
-center = [1;2;3]; n_vec = [1;0;0]; radius = 0.5;
+% test for spatial helix
+center = [0,0.7,1]';
+radius = 0.6;
+interval = 0.05;
+v = interval/2/pi;
+theta_end = radius/v;
+theta = 0:0.01*pi:theta_end;
+r = v*theta;
+x = center(1)+r.*cos(theta);
+y = center(2)*ones(size(theta));
+z = center(3)+r.*sin(theta);
+plot3(x,y,z); grid on
+
+% test for spatial circle
+%{
+center = [1;2;3]; n_vec = [1;0;0]; radius = 0.5; tf = 4;
 circlepath = ArcPathPlanner(center, n_vec, radius, 'circle');
-planner = LspbTrajPlanner([0, circlepath.theta], 2, 4, 2, 'limitvel');
+planner = LspbTrajPlanner([0, circlepath.theta], 2, 4, tf);
 [alp, alpv, alpa] = planner.GenerateTraj(0.01);
 [pos, vel, acc] = circlepath.GenerateTraj(alp, alpv, alpa);
-
 plot3(pos(1,:), pos(2,:), pos(3,:));
 grid on
 xlabel('x'); ylabel('y'); zlabel('z');
-circlepath.PlotTraj(alp, alpv, alpa, 2, 0.01);
-
+circlepath.PlotTraj(alp, alpv, alpa, tf, 0.01);
+%}
 % comparison test with Cpp
-[alp, alpv, alpa] = planner.GenerateMotion(2);
-[pos, vel, acc] = circlepath.GenerateMotion(alp, alpv, alpa)
+% [alp, alpv, alpa] = planner.GenerateMotion(2);
+% [pos, vel, acc] = circlepath.GenerateMotion(alp, alpv, alpa)
 
     case 'ctrajarctrans'
 %% cartesian trajectory for points using arc to transmit between 2 line paths
@@ -410,7 +424,7 @@ q0 = [0.2,0.8,0,0,0]';
 pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
 dt = 0.01;
 via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
-[~, sim_q] = CleanMirror(rbt, via_pos, q0, dt);
+[~, sim_q] = CleanRectMirror(rbt, via_pos, q0, dt);
 
 t = 0:dt:dt*(size(sim_q,2)-1);
 plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');
@@ -425,6 +439,36 @@ for idx=1:rbt.nlinks
     xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
     legend('matlab\_data', 'cpp\_data');
 end
+
+    case 'washbasin'
+%% comparison with cpp
+q0 = [0.2,0.8,0,0,0]';
+dt = 0.01;
+npts = [15, 10, 8, 6];
+center = [0, 0, 0, 0; 0.7, 0.7, 0.7, 0.7; 0.6-0, 0.6-0.1, 0.6-0.2, 0.6-0.3];
+radius = [0.4, 0.3, 0.2, 0.1];
+via_pos = [];
+for idx=1:length(npts)
+    theta = linspace(0, 2*pi, npts(idx)+1);
+    tmp_pos = center(:,idx)+[radius(idx)*cos(theta); radius(idx)*sin(theta); zeros(1,npts(idx)+1)];
+    via_pos = [via_pos, tmp_pos];
+end
+[sim_pos, sim_q, pos] = CleanSurface(rbt,npts,center(:,1),via_pos,q0,dt);
+
+t = 0:dt:dt*(size(sim_q,2)-1);
+plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');
+grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
+q_cpp = load('./data/mirrortask_jpos1.csv');
+q_cpp = reshape(q_cpp, rbt.nlinks, length(q_cpp)/5);
+tt = g_cycle_time*[0:size(q_cpp,2)-1];
+for idx=1:rbt.nlinks
+    figure
+    plot(t, sim_q(idx,:), 'b--'); xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+    plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
+    xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+    legend('matlab\_data', 'cpp\_data');
+end
+
 
 
 end

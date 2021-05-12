@@ -94,8 +94,8 @@ classdef ArcPathPlanner < handle
             for idx=1:length(varp)
                 [p, v, a] = obj.GenerateMotion(varp(idx), varv(idx), vara(idx));
                 pos = [pos, p];
-                vel = [vel, v];
-                acc = [acc, a];
+                v = [v; norm(v)]; a = [a; norm(a)];
+                vel = [vel, v]; acc = [acc, a];
             end
         end
 
@@ -103,28 +103,14 @@ classdef ArcPathPlanner < handle
             [pos, vel, ~] = obj.GenerateTraj(varp, varv, vara);
             time=0:dt:tf;
             figure
-            subplot(3,1,1)
-            plot(time, pos(1,:));
-            ylabel('p\_x');
-            subplot(3,1,2)
-            plot(time, pos(2,:));
-            ylabel('p\_y');
-            subplot(3,1,3)
-            plot(time, pos(3,:));
-            ylabel('p\_z');
-            suptitle('cartesian position');
-
+            subplot(3,1,1); plot(time, pos(1,:)); ylabel('px');
+            subplot(3,1,2); plot(time, pos(2,:)); ylabel('py');
+            subplot(3,1,3); plot(time, pos(3,:)); ylabel('pz');
             figure
-            subplot(3,1,1)
-            plot(time, vel(1,:));
-            ylabel('v\_x');
-            subplot(3,1,2)
-            plot(time, vel(2,:));
-            ylabel('v\_y');
-            subplot(3,1,3)
-            plot(time,vel(3,:));
-            ylabel('v\_z');        
-            suptitle('cartesian velocity');
+            subplot(4,1,1); plot(time, vel(1,:)); ylabel('vx');
+            subplot(4,1,2); plot(time, vel(2,:)); ylabel('vy');
+            subplot(4,1,3); plot(time, vel(3,:)); ylabel('vz');
+            subplot(4,1,4); plot(time, vel(4,:)); ylabel('|v|');
         end
     
     end
