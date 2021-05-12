@@ -196,15 +196,41 @@ arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
 % test for spatial helix
 center = [0,0.7,1]';
 radius = 0.6;
-interval = 0.05;
+interval = 0.08;
 v = interval/2/pi;
 theta_end = radius/v;
-theta = 0:0.01*pi:theta_end;
-r = v*theta;
-x = center(1)+r.*cos(theta);
-y = center(2)*ones(size(theta));
-z = center(3)+r.*sin(theta);
-plot3(x,y,z); grid on
+thplanner = LspbTrajPlanner([0,theta_end], 0.7, 0.2);
+[thp, thv, tha] = thplanner.GenerateTraj(0.01);
+r = v*thp;
+x = center(1)+r.*cos(thp);
+y = center(2)*ones(size(thp));
+z = center(3)+r.*sin(thp);
+dx = -r.*sin(thp).*thv;
+dy = zeros(size(thp));
+dz = r.*cos(thp).*thv;
+ddx = -r.*sin(thp).*tha-r.*cos(thp).*thv.^2;
+ddy = zeros(size(thp));
+ddz = r.*cos(thp).*tha-r.*sin(thp).*thv.^2;
+for idx=1:length(thp)
+    v(idx) = sqrt(dx(idx)^2+dy(idx)^2+dz(idx)^2);
+    a(idx) = sqrt(ddx(idx)^2+ddy(idx)^2+ddz(idx)^2);
+end
+
+t = linspace(0,thplanner.tf,length(thp));
+figure
+plot3(x,y,z); grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+figure
+subplot(4,1,1); plot(t,dx); ylabel('vx');
+subplot(4,1,2); plot(t,dy); ylabel('vy');
+subplot(4,1,3); plot(t,dz); ylabel('vz');
+subplot(4,1,4); plot(t,v); ylabel('|v|');
+figure
+subplot(4,1,1); plot(t,ddx); ylabel('ax');
+subplot(4,1,2); plot(t,ddy); ylabel('ay');
+subplot(4,1,3); plot(t,ddz); ylabel('az');
+subplot(4,1,4); plot(t,a); ylabel('|a|');
+figure
+thplanner.PlotAVP(0.01);
 
 % test for spatial circle
 %{
