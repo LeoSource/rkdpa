@@ -1,4 +1,4 @@
-function [sim_pos,sim_q] = CleanMirror(rbt,via_pos,q0,dt)
+function [sim_pos,sim_q] = CleanRectMirror(rbt,via_pos,q0,dt)
 
     global g_cvmax g_stowed_pos g_camax g_jvmax g_jamax
     sim_pos = []; sim_q = []; pos = []; alph = [];
