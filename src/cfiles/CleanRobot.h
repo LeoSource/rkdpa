@@ -13,11 +13,11 @@ public:
 	VectorXd _offset;
 	Matrix<int, Dynamic, 1> _type;
 	int _nlinks;
+	MatrixXd _qlimit;
 
 private:
 	vector<MDHLink> _links;
 	Pose _tool;
-	MatrixXd _qlimit;
 	VectorXd _hold_jpos;
 
 public:

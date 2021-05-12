@@ -26,6 +26,7 @@ public:
 	MatrixXd _pt;
 	MatrixXd _line_vec;
 	double _distance;
+	VectorXd _dis_interval;
 
 	int _nump;
 	int _numarc;
@@ -43,7 +44,7 @@ public:
 
 	RobotTools::CLineAVP GenerateMotion(double varp, double varv, double vara);
 
-	~ArcTransPathPlanner();
+	~ArcTransPathPlanner() {}
 
 private:
 	void CalcArcInfo(MatrixXd pos);
@@ -51,5 +52,13 @@ private:
 	Matrix3d CalcArcRot(Vector3d center, Vector3d p1, Vector3d p2);
 
 	ArcData CalcArcPoints(Vector3d p1, Vector3d p2, Vector3d p3);
+
+	void CalcSemicircleInfo(MatrixXd pos);
+
+	ArcData CalcSemicirclePoints(Vector3d p1, Vector3d p2, Vector3d p3, Vector3d p4);
+
+	VectorXd CalcDisInterval();
+
+	int CalcPosIdx(double varp);
 };
 

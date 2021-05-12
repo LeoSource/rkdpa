@@ -23,7 +23,7 @@ public:
 		return q_fdb;
 	}
 
-	void SetTrajPos(MatrixXd traj_pos, VectorXd q_fdb) override {}
+	void SetTrajPos(MatrixXd traj_pos, int num_section, VectorXd q_fdb) override {}
 
 	~InitialTask() {}
 };

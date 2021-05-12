@@ -26,12 +26,18 @@ namespace MathTools
 
 	void LimitMax(double max_value, double& value);
 
+	void LimitVector(VectorXd min_vec, VectorXd* value, VectorXd max_vec);
+
 	bool Any(VectorXd vec);
 
 	double Norm(VectorXd vec);
 
 	Vector3d Cross(Vector3d v1, Vector3d v2);
+
+	int Factorial(int n);
 }
+
+using Vector5d = Matrix<double, 5, 1>;
 
 namespace RobotTools
 {
@@ -62,7 +68,7 @@ namespace RobotTools
 		Matrix3d rot;
 	};
 
-	MatrixXd CalcRectanglePath(MatrixXd corner_pos, int cycle_num, char* option);
+	MatrixXd CalcRectanglePath(MatrixXd corner_pos, char* option);
 
 	Pose PoseProduct(Pose p1, Pose p2);
 

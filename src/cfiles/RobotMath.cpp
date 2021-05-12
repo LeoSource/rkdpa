@@ -102,6 +102,14 @@ namespace MathTools
 
 	}
 
+	void LimitVector(VectorXd min_vec, VectorXd* value, VectorXd max_vec)
+	{
+		for (int idx = 0; idx<value->size(); idx++)
+		{
+			LimitNum(min_vec(idx), (*value)(idx), max_vec(idx));
+		}
+	}
+
 	bool Any(VectorXd vec)
 	{
 		for (int idx = 0; idx<vec.size(); idx++)
@@ -129,7 +137,13 @@ namespace MathTools
 		return v1.cross(v2);
 	}
 
-
+	int Factorial(int n)
+	{
+		if (n==0)
+			return 1;
+		else
+			return n*Factorial(n-1);
+	}
 
 
 
@@ -138,8 +152,9 @@ namespace MathTools
 
 namespace RobotTools
 {
-	MatrixXd CalcRectanglePath(MatrixXd corner_pos, int cycle_num, char* option)
+	MatrixXd CalcRectanglePath(MatrixXd corner_pos, char* option)
 	{
+		double interval = 0.1;
 		Vector3d step_vec1, step_vec2, start_pos1, start_pos2;
 		if (strcmp(option, "s") == 0)
 		{
@@ -155,6 +170,7 @@ namespace RobotTools
 			start_pos1 = corner_pos.col(0);
 			start_pos2 = corner_pos.col(3);
 		}
+		int cycle_num = step_vec1.norm()/interval;
 		int numvp = 2*cycle_num;
 		double step = step_vec1.norm() / (cycle_num-1);
 		step_vec1.normalize();

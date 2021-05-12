@@ -2,96 +2,240 @@
 #include "LspbTrajPlanner.h"
 
 
-LspbTrajPlanner::LspbTrajPlanner(VectorXd pos, double tf, double max_vel, double max_acc, char* option)
+LspbTrajPlanner::LspbTrajPlanner(Vector2d pos, double max_vel, double max_acc)
 {
-	InitPlanner(pos, tf, max_vel, max_acc, option);
+	InitPlanner(pos, max_vel, max_acc);
 }
 
-void LspbTrajPlanner::InitPlanner(VectorXd pos, double tf, double max_vel, double max_acc, char* option)
+LspbTrajPlanner::LspbTrajPlanner(Vector2d pos, double max_vel, double max_acc, double tf)
 {
+	InitPlanner(pos, max_vel, max_acc, tf);
+}
+
+LspbTrajPlanner::LspbTrajPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration)
+{
+	InitPlanner(pos, max_vel, max_acc, duration);
+}
+
+LspbTrajPlanner::LspbTrajPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration, Vector2d vel_con)
+{
+	InitPlanner(pos, max_vel, max_acc, duration, vel_con);
+}
+
+void LspbTrajPlanner::InitPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration, Vector2d vel_con)
+{
+	_np = (int)pos.size();
+	_dir = MathTools::Sign(pos(1)-pos(0));
+	double h = fabs(pos(1)-pos(0));
+	if (h>pow(max_vel, 2)/max_acc)
+		_maxvel_reached = true;
+	else
+		_maxvel_reached = false;
+	TransformPVA(pos, vel_con, max_vel, max_acc);
+	SetVelConstraint(h);
+}
+
+void LspbTrajPlanner::InitPlanner(Vector2d pos, double max_vel, double max_acc, double tf)
+{
+	_np = (int)pos.size();
+	_dir = MathTools::Sign(pos(1)-pos(0));
+	double h = fabs(pos(1)-pos(0));
+	if (h>pow(max_vel, 2)/max_acc)
+		_maxvel_reached = true;
+	else
+		_maxvel_reached = false;
+	Vector2d vel_con(0, 0);
+	TransformPVA(pos, vel_con, max_vel, max_acc);
+	SetTimeLimit(h, tf);
+}
+
+void LspbTrajPlanner::InitPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration)
+{
+	_np = (int)pos.size();
+	_dir = MathTools::Sign(pos(1)-pos(0));
+	double h = fabs(pos(1)-pos(0));
+	if (h>pow(max_vel, 2)/max_acc)
+		_maxvel_reached = true;
+	else
+		_maxvel_reached = false;
+	Vector2d vel_con(0, 0);
+	TransformPVA(pos, vel_con, max_vel, max_acc);
+	SetTimeLimit(h, duration);
+}
+
+void LspbTrajPlanner::InitPlanner(Vector2d pos, double max_vel, double max_acc)
+{
+	_np = (int)pos.size();
+	_dir = MathTools::Sign(pos(1)-pos(0));
+	double h = fabs(pos(1)-pos(0));
+	if (h>pow(max_vel, 2)/max_acc)
+		_maxvel_reached = true;
+	else
+		_maxvel_reached = false;
+	Vector2d vel_con(0, 0);
+	TransformPVA(pos, vel_con, max_vel, max_acc);
+	SetNoTimeLimit(h);
+}
+
+void LspbTrajPlanner::TransformPVA(Vector2d pos, Vector2d vel, double max_vel, double max_acc)
+{
+	_q0 = pos(0)*_dir;
+	_qf = pos(1)*_dir;
+	_v0 = vel(0)*_dir;
+	_vf = vel(1)*_dir;
+	_vmax = 0.5*(_dir+1)*max_vel-0.5*(_dir-1)*max_vel;
+	_amax = 0.5*(_dir+1)*max_acc-0.5*(_dir-1)*max_acc;
+}
+
+void LspbTrajPlanner::SetNoTimeLimit(double h)
+{
+	_t0 = 0;
+	if (_maxvel_reached)
+	{
+		_ta = _vmax/_amax;
+		_tf = h/_vmax+_vmax/_amax;
+	}
+	else
+	{
+		_ta = sqrt(h/_amax);
+		_tf = 2*_ta;
+		_vmax = h/_ta;
+	}
+	_td = _ta;
+}
+
+void LspbTrajPlanner::SetTimeLimit(double h, double tf)
+{
+	_t0 = 0;
 	_tf = tf;
-	_pos = pos;
-	_np = pos.size();
-	_max_vel = fabs(max_vel)*MathTools::Sign(pos(1)-pos(0));
-	_max_acc = fabs(max_acc)*MathTools::Sign(pos(1)-pos(0));
-	_max_jerk = 100;
-	if (strcmp(option, "limitacc")==0)
+	double tlen = _tf-_t0;
+	assert(tlen>=h/_vmax+_vmax/_amax);
+
+	if (_maxvel_reached)
 	{
-		double tmp_acc = 4*fabs(pos(1)-pos(0))/pow(tf, 2);
-
-		assert(fabs(max_acc)>=tmp_acc);
-
-		double tc_tmp = (pow(tf, 2)*_max_acc-4*(pos(1)-pos(0)))/_max_acc;
-		MathTools::LimitMin(0, tc_tmp);
-		_tc = tf*0.5-0.5*sqrt(tc_tmp);
+		double a = 1;
+		double b = -tlen*_amax;
+		double c = h*_amax;
+		_vmax = (-b-sqrt(pow(b, 2)-4*a*c))/2/a;
+		_ta = _vmax/_amax;
 	}
-	else if (strcmp(option, "limitvel")==0)
+	else
 	{
-		double low_value = fabs(pos(1)-pos(0))/tf;
-		double up_value = 2*low_value;
+		_vmax = 2*h/tlen;
+		_ta = 0.5*tlen;
+		_amax = _vmax/_ta;
+	}
+	_td = _ta;
+}
 
-		assert(fabs(max_vel) > low_value);
+void LspbTrajPlanner::SetTimeLimit(double h, Vector2d duration)
+{
+	_t0 = duration(0);
+	_tf = duration(1);
+	double tlen = _tf-_t0;
+	assert(tlen>=h/_vmax+_vmax/_amax);
 
-		if ((fabs(max_vel) > low_value)&&(fabs(max_vel) < up_value))
-		{
-			_uniform_vel = true;
-			_tc = (pos(0)-pos(1)+_max_vel*tf)/_max_vel;
-			_max_acc = pow(_max_vel, 2)/(pos(0)-pos(1)+_max_vel*tf);
-		}
-		else if (fabs(max_vel)>=up_value)
-		{
-			_uniform_vel = false;
-			_tc = 0.5*tf;
-			_max_vel = 2*(pos(1)-pos(0))/tf;
-			_max_acc = _max_vel/_tc;
-		}
+	if (_maxvel_reached)
+	{
+		double a = 1;
+		double b = -tlen*_amax;
+		double c = h*_amax;
+		_vmax = (-b-sqrt(pow(b, 2)-4*a*c))/2/a;
+		_ta = _vmax/_amax;
+	}
+	else
+	{
+		_vmax = 2*h/tlen;
+		_ta = 0.5*tlen;
+		_amax = _vmax/_ta;
+	}
+	_td = _ta;
+}
+
+void LspbTrajPlanner::SetVelConstraint(double h)
+{
+	_t0 = 0;
+	assert(h*_amax>=0.5*fabs(pow(_v0, 2)+pow(_vf, 2)));
+
+	if (h*_amax>pow(_vmax, 2)-0.5*(pow(_v0, 2)+pow(_vf, 2)))
+	{
+		_maxvel_reached = true;
+		_ta = (_vmax-_v0)/_amax;
+		_td = (_vmax-_vf)/_amax;
+		_tf = h/_vmax+0.5*_vmax/_amax*pow(1-_v0/_vmax, 2)+0.5*_vmax/_amax*pow(1-_vf/_vmax, 2);
+	}
+	else
+	{
+		_maxvel_reached = false;
+		_vmax = sqrt(h*_amax+0.5*(pow(_v0, 2)+pow(_vf, 2)));
+		_ta = (_vmax-_v0)/_amax;
+		_td = (_vmax-_vf)/_amax;
+		_tf = _ta+_td;
 	}
 }
+
 
 RobotTools::JAVP LspbTrajPlanner::GenerateMotion(double t)
 {
 	RobotTools::JAVP avp;
-	if (_uniform_vel)
+	if (_maxvel_reached)
 	{
-		if ((t>=0) && (t<=_tc))
+		if ((t>=_t0) && (t<=_t0+_ta))
 		{
-			avp.pos = _pos(0) + 0.5*_max_acc*pow(t, 2);
-			avp.vel = _max_acc*t;
-			avp.acc = _max_acc;
+			avp.pos = _q0+_v0*(t-_t0)+0.5*(_vmax-_v0)/_ta*pow(t-_t0, 2);
+			avp.vel = _v0+(_vmax-_v0)/_ta*(t-_t0);
+			avp.acc = _amax;
 		}
-		else if ((t>_tc) && (t<=(_tf-_tc)))
+		else if ((t>_t0+_ta) && (t<=(_tf-_td)))
 		{
-			avp.pos = _pos(0) + _max_acc*_tc*(t - 0.5*_tc);
-			avp.vel = _max_acc*_tc;
+			avp.pos = _q0+0.5*_v0*_ta+_vmax*(t-_t0-0.5*_ta);
+			avp.vel = _vmax;
 			avp.acc = 0;
 		}
-		else if ((t>(_tf-_tc)) && (t<=_tf))
+		else if ((t>(_tf-_td)) && (t<=_tf))
 		{
-			avp.pos = _pos(1) - 0.5*_max_acc*pow((_tf - t), 2);
-			avp.vel = _max_acc*(_tf - t);
-			avp.acc = -_max_acc;
+			avp.pos = _qf-_vf*(_tf-t)-0.5*(_vmax-_vf)/_td*pow(_tf-t, 2);
+			avp.vel = _vf+(_vmax-_vf)/_td*(_tf-t);
+			avp.acc = -_amax;
 		}
 	}
 	else
 	{
-		if ((t>=0) && (t<=_tc))
+		if (fabs(_tf-_t0)<EPS)
 		{
-			avp.pos = _pos(0) + 0.5*_max_acc*pow(t, 2);
-			avp.vel = _max_acc*t;
-			avp.acc = _max_acc;
+			avp.pos = _q0;
+			avp.vel = 0;
+			avp.acc = 0;
 		}
-		else if ((t>_tc) && (t<=_tf))
+		else
 		{
-			avp.pos = _pos(1) - 0.5*_max_vel*pow((_tf - t), 2) / (_tf - _tc);
-			avp.vel = -_max_vel / (_tf - _tc)*(t - _tf);
-			avp.acc = -_max_acc;
+			if ((t>=_t0)&&(t<=_t0+_ta))
+			{
+				avp.pos = _q0+_v0*(t-_t0)+0.5*(_vmax-_v0)/_ta*pow(t-_t0, 2);
+				avp.vel = _v0+(_vmax-_v0)/_ta*(t-_t0);
+				avp.acc = _amax;
+			}
+			else if ((t>_tf-_td)&&(t<=_tf))
+			{
+				avp.pos = _qf-_vf*(_tf-t)-0.5*(_vmax-_vf)/_td*pow(_tf-t, 2);
+				avp.vel = _vf+(_vmax-_vf)/_td*(_tf-t);
+				avp.acc = -_amax;
+			}
 		}
 	}
+	avp.pos *= _dir;
+	avp.vel *= _dir;
+	avp.acc *= _dir;
 
 	return avp;
 }
 
-
-LspbTrajPlanner::~LspbTrajPlanner()
+double LspbTrajPlanner::GetFinalTime()
 {
+	return _tf;
+}
+
+double LspbTrajPlanner::GetDuratoin()
+{
+	return (_tf-_t0);
 }

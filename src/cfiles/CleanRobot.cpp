@@ -64,6 +64,7 @@ VectorXd CleanRobot::IKSolve(Vector3d pos, char* option, double alpha)
 	else if (strcmp(option, "q2first")==0)
 		q = IKJnt2(pos, alpha);
 
+	//MathTools::LimitVector(_qlimit.col(0), &q, _qlimit.col(1));
 	return q;
 }
 

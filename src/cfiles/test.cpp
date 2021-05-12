@@ -13,6 +13,7 @@
 #include "MirrorTask.h"
 #include "InitialTask.h"
 #include "HoldTask.h"
+#include "SurfaceTask.h"
 
 using namespace std;
 using namespace Eigen;
@@ -32,7 +33,7 @@ enum ID_test
 	ctrajbspline = 8,
 	jacobian = 9,
 	iksolver = 10,
-	mirrortask = 11,
+	bspline = 11,
 	other = 12,
 	simulation = 13
 };
@@ -80,8 +81,9 @@ void Testjtrajlspb()
 {
 	Vector2d pos;
 	pos << 20, 10;
-	LspbTrajPlanner planner(pos, 2, 16, 10, "limitvel");
-	RobotTools::JAVP avp = planner.GenerateMotion(2);
+	Vector2d duration(0, 3);
+	LspbTrajPlanner planner(pos, 16, 10, duration);
+	RobotTools::JAVP avp = planner.GenerateMotion(2.2);
 	cout << avp.pos << endl;
 	cout << avp.vel << endl;
 	cout << avp.acc << endl;
@@ -94,7 +96,7 @@ void Testctrajarc()
 	ArcPathPlanner arcpath(pos1, pos2, pos3);
 	Vector2d via_pos(0, arcpath._theta);
 	double tf = 2;
-	LspbTrajPlanner planner(via_pos, tf, 2, 2, "limitvel");
+	LspbTrajPlanner planner(via_pos, 2, 2);
 	int ntime = tf/g_cycle_time+1;
 
 	//const char* file_name = "../data/traj_pos.csv";
@@ -127,7 +129,7 @@ void Testctrajcircle()
 	double radius = 0.5;
 	ArcPathPlanner circlepath(center, n_vec, radius);
 	Vector2d via_pos(0, circlepath._theta);
-	LspbTrajPlanner planner(via_pos, 2, 4, 2, "limitvel");
+	LspbTrajPlanner planner(via_pos, 4, 2);
 	RobotTools::JAVP javp = planner.GenerateMotion(2);
 	RobotTools::CLineAVP avp = circlepath.GenerateMotion(javp.pos, javp.vel, javp.acc);
 	cout<<avp.pos<<endl;
@@ -138,16 +140,16 @@ void Testctrajcircle()
 void Testctrajarctrans()
 {
 	Vector3d pos1, pos2, pos3, pos4;
-	pos1<<0.8, 0.2, 0.7; pos2<<-0.8, 0.2, 0.7; pos3<<-0.8, 0.8, 0.7; pos4<<0.8, 0.8, 0.7;
+	pos1<<0.7, 0.8, 1; pos2<<-0.7, 0.8, 1; pos3<<-0.7, 0.8, 2.4; pos4<<0.7, 0.8, 2.4;
 	Matrix<double, 3, 4> corner_pos;
 	corner_pos<<pos1, pos2, pos3, pos4;
 	double radius = 0.04;
 	double tf = 60;
-	MatrixXd via_pos = RobotTools::CalcRectanglePath(corner_pos, 16, "m");
-	ArcTransPathPlanner cpath(via_pos, radius);
+	MatrixXd via_pos = RobotTools::CalcRectanglePath(corner_pos,"s");
+	ArcTransPathPlanner cpath(via_pos, 0);
 	Vector2d via_path(0, cpath._distance);
-	LspbTrajPlanner planner(via_path, tf, 0.5, 2, "limitvel");
-	RobotTools::JAVP javp = planner.GenerateMotion(54);
+	LspbTrajPlanner planner(via_path, 0.5, 2);
+	RobotTools::JAVP javp = planner.GenerateMotion(10);
 	RobotTools::CLineAVP avp = cpath.GenerateMotion(javp.pos, javp.vel, javp.acc);
 	cout<<avp.pos<<endl;
 	cout<<avp.vel<<endl;
@@ -178,22 +180,46 @@ void Testjacobian()
 	cout<<jaco<<endl<<endl;
 }
 
-void Testmirrortask()
+void TestBSpline()
 {
-	Vector3d pos1, pos2, pos3, pos4;
-	pos1<<0.7, 0.8, 1; pos2<<-0.7, 0.8, 1; pos3<<-0.7, 0.8, 2.4; pos4<<0.7, 0.8, 2.4;
-	CleanRobot rbt = CreatRobot();
-	MirrorTask mirror_task(&rbt, 60, 0.04);
-	InitialTask initial_task(&rbt);
-	Matrix<double, 5, 1> q_fdb;
-	q_fdb.setZero();
-	mirror_task.InitTask(&rbt, pos1, pos2, pos3, pos4, q_fdb);
-	vector<BaseTask*> task_data;
-	task_data.push_back(&initial_task);
-	task_data.push_back(&mirror_task);
-	int running_state = 0;
-	
-	const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos1.csv";
+	double tf = 60;
+	double dt = 0.01;
+	int np = tf/dt+1;
+	int npts[] = { 15,12,10,8,6,4 };
+	double center[] = { 0,0,0,0,0,0, 0,0,0,0,0,0, 0,-0.06,-0.12,-0.18,-0.24,-0.3 };
+	double elli_params[] = { 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05 };
+	Matrix<double, 3, 6, RowMajor> origin(center);
+	Matrix<double, 2, 6, RowMajor> elli(elli_params);
+	Matrix<double, 3, 61> via_pos;
+	vector<Vector3d> vp;
+	for (int midx = 0; midx<sizeof(npts)/sizeof(npts[0]); midx++)
+	{
+		VectorXd theta;
+		theta.setLinSpaced(npts[midx]+1, 0, 2*pi);
+		for (int nidx = 0; nidx<theta.size(); nidx++)
+		{
+			Vector3d tmp_pos;
+			tmp_pos<<elli(0, midx)*cos(theta(nidx)), elli(1, midx)*sin(theta(nidx)), 0;
+			tmp_pos += origin.col(midx);
+			vp.push_back(tmp_pos);
+		}
+	}
+	for (int idx = 0; idx<vp.size(); idx++)
+	{
+		via_pos.col(idx) = vp[idx];
+	}
+	//MatrixXd via_pos;
+	//via_pos.setZero(3, 5);
+	//via_pos<<1, 2, 3, 4, 5, 2, 3, -3, 4, 5, 0, 0, 0, 0, 0;
+	CubicBSplinePlanner bspline(via_pos, "approximation", 60);
+	Vector2d via_u(bspline._uknot_vec(0), bspline._uknot_vec(bspline._uknot_vec.size()-1));
+	LspbTrajPlanner uplanner(via_u, 2, 1, bspline._uknot_vec(bspline._uknot_vec.size()-1));
+	//cout<<bspline.CalcBSplineCoeff(3,5,0.8)<<endl;
+	//CLineAVP avp = bspline.GenerateMotion(0.1, 0.5, 0.1);
+	//cout<<avp.pos<<endl;
+	//cout<<avp.vel<<endl;
+	//cout<<avp.acc<<endl;
+	const char* file_name = "C:/00Work/01projects/XProject/src/data/test_bspline.csv";
 	ofstream ofile;
 	ofile.open(file_name, ios::out|ios::trunc);
 	if (!ofile.is_open())
@@ -202,20 +228,35 @@ void Testmirrortask()
 	}
 	else
 	{
-		cout<<"start to save data"<<endl;
-		while (!task_data[running_state]->_task_completed)
+		for (int idx = 0; idx<np; idx++)
 		{
-			 VectorXd q_cmd = task_data[running_state]->RunTask(q_fdb);
-			 q_fdb = q_cmd;
-			 ofile<<q_cmd<<endl;
+			double t = idx*dt;
+			JAVP uavp = uplanner.GenerateMotion(t);
+			CLineAVP avp = bspline.GenerateMotion(uavp.pos, uavp.vel, uavp.acc);
+
+			ofile<<avp.acc<<endl;
 		}
 	}
 	cout<<"succeed to save the data"<<endl;
-	ofile.close();
+
 }
+
 
 void Testother()
 {
+	VectorXd qmin;
+	qmin.setZero(3);
+	qmin.setConstant(1);
+	VectorXd qmax;
+	qmax.setZero(3);
+	qmax.setConstant(5);
+	VectorXd q;
+	q.setZero(3);
+	q<<0, 7, 3;
+	cout<<q<<endl;
+	MathTools::LimitVector(qmin, &q, qmax);
+	cout<<q<<endl;
+
 
 	int a[2][3] = { 1,2,3,4,5,6 };
 	ofstream ofile;
@@ -238,7 +279,7 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 	while (!_kbhit())
 	{
 		cin>>operation;
-		Sleep(10);
+		Sleep(0.01);
 	}
 
 	return 0;
@@ -247,21 +288,23 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 
 void Simulation()
 {
+	//initialize all the task data
 	CleanRobot rbt = CreatRobot();
-	MirrorTask mirror_task(&rbt, 60, 0.04);
 	InitialTask initial_task(&rbt);
 	HoldTask hold_task(&rbt);
+	MirrorTask mirror_task(&rbt, 60, 0.04);
+	SurfaceTask surface_task(&rbt);
 	vector<BaseTask*> task_data;
 	task_data.push_back(&initial_task);
 	task_data.push_back(&hold_task);
 	task_data.push_back(&mirror_task);
+	task_data.push_back(&surface_task);
+	int num_section[] = { 1,1,1,4 };
 
-	Vector3d pos1, pos2, pos3, pos4;
-	pos1<<0.7, 0.8, 1; pos2<<-0.7, 0.8, 1; pos3<<-0.7, 0.8, 2.4; pos4<<0.7, 0.8, 2.4;	
-	Matrix<double, 3, 4> corner_pos;
-	corner_pos<<pos1, pos2, pos3, pos4;
+	//initialize robot joint position and running state
+	MatrixXd via_pos;
 	Matrix<double, 5, 1> q_fdb;
-	q_fdb<<0.4, 0.2, 0, 0.1, 0;//initial joint position
+	q_fdb<<0.4, 0.8, 0, 0.1, 0;//initial joint position
 	int running_state=0,pre_state = 0;
 
 	const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos1.csv";
@@ -281,13 +324,49 @@ void Simulation()
 			running_state = task_data[running_state]->RunLogicOperation(running_state, pre_state, operation);
 			if (running_state!=pre_state)
 			{
-				task_data[running_state]->SetTrajPos(corner_pos, q_fdb);
-				cout<<"running state: "<<running_state<<endl;
-				if (running_state==2)
+				if(running_state==2)
 				{
+					//preparation for clean mirror task
+					Vector3d pos1, pos2, pos3, pos4;
+					pos1<<0.7, 0.8, 1; pos2<<-0.7, 0.8, 1; pos3<<-0.7, 0.8, 2.4; pos4<<0.7, 0.8, 2.4;	
+					via_pos.setZero(3, 4);
+					via_pos<<pos1, pos2, pos3, pos4;
+
 					*operation = {};
 					cout<<"start to clean the mirror"<<endl;
 				}
+				else if(running_state==3)
+				{
+					//preparation for clean washbasin task
+					double npts[] = { 15,10,8,6 };
+					double center[] = {0, 0, 0, 0, 0.7, 0.7, 0.7, 0.7, 0.6-0, 0.6-0.1, 0.6-0.2, 0.6-0.3};
+					double radius[] = {0.4, 0.3, 0.2, 0.1};
+					Matrix<double, 3, 4, RowMajor> origin(center);
+					via_pos.setZero(3, 43);
+					vector<Vector3d> vp;
+					for (int midx = 0; midx<sizeof(npts)/sizeof(npts[0]); midx++)
+					{
+						VectorXd theta;
+						theta.setLinSpaced(npts[midx]+1, 0, 2*pi);
+						for (int nidx = 0; nidx<theta.size(); nidx++)
+						{
+							Vector3d tmp_pos;
+							tmp_pos<<radius[midx]*cos(theta(nidx)), radius[midx]*sin(theta(nidx)), 0;
+							tmp_pos += origin.col(midx);
+							vp.push_back(tmp_pos);
+						}
+					}
+					for (int idx = 0; idx<vp.size(); idx++)
+					{
+						via_pos.col(idx) = vp[idx];
+					}
+
+					*operation = {};
+					cout<<"start to clean the surface"<<endl;
+				}
+				
+				task_data[running_state]->SetTrajPos(via_pos, num_section[running_state], q_fdb);
+				cout<<"running state: "<<running_state<<endl;
 			}
 			VectorXd q_cmd = task_data[running_state]->RunTask(q_fdb);
 			q_fdb = q_cmd;
@@ -340,8 +419,8 @@ int main()
 		Testjacobian();
 		break;
 
-	case mirrortask:
-		Testmirrortask();
+	case bspline:
+		TestBSpline();
 		break;
 
 	case simulation:
