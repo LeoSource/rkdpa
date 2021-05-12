@@ -448,6 +448,7 @@ xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)'); legend('cmd\_pos', 'sim\_pos');
 q0 = [0.2,0.8,0,0,0]';
 dt = 0.01;
 mirror_style = 'circle';
+comparison = 0;
 if strcmp(mirror_style, 'rectangle')
     pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
     via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
@@ -457,20 +458,22 @@ elseif strcmp(mirror_style, 'circle')
     radius = 0.6;
     interval = 0.1;
     [~, sim_q] = CleanCircleMirror(rbt, center, radius, interval, q0, dt);
-end
+end 
 
 t = 0:dt:dt*(size(sim_q,2)-1);
 plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');
 grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
-q_cpp = load('./data/mirrortask_jpos1.csv');
-q_cpp = reshape(q_cpp, rbt.nlinks, length(q_cpp)/5);
-tt = g_cycle_time*[0:size(q_cpp,2)-1];
-for idx=1:rbt.nlinks
-    figure
-    plot(t, sim_q(idx,:), 'b--'); xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
-    plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
-    xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
-    legend('matlab\_data', 'cpp\_data');
+if comparison
+    q_cpp = load('./data/mirrortask_jpos1.csv');
+    q_cpp = reshape(q_cpp, rbt.nlinks, length(q_cpp)/5);
+    tt = g_cycle_time*[0:size(q_cpp,2)-1];
+    for idx=1:rbt.nlinks
+        figure
+        plot(t, sim_q(idx,:), 'b--'); xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+        plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
+        xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+        legend('matlab\_data', 'cpp\_data');
+    end
 end
 
     case 'washbasin'
