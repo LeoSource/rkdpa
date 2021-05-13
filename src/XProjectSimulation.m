@@ -14,16 +14,24 @@ g_stowed_pos = [0;0;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
-task = 'sphere';
+task = 'mirror';
 show_power = 0;
 q0 = [0.4,0.8,0,0.1,0]';
 switch task
     case clean_task(1)
         %% wipe the mirror
+        mirror_type = 'circle';
         dt = 0.01;
-        pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
-        via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
-        [sim_pos, sim_q] = CleanRectMirror(rbt,via_pos,q0,dt);
+        if strcmp(mirror_type, 'rectangle')
+            pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+            via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
+            [sim_pos, sim_q] = CleanRectMirror(rbt,via_pos,q0,dt);
+        elseif strcmp(mirror_type, 'circle')
+            center = [0,0.7,1]';
+            radius = 0.6;
+            interval = 0.1;
+            [sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, interval, q0, dt);
+        end
         
     case clean_task(2)
         %% wipe the table
@@ -76,7 +84,15 @@ t = [0:dt:dt*(size(sim_q,2)-1)]';
 figure
 plot2(sim_pos', 'r-');
 if strcmp(task, 'mirror')
-    hold on; plot2([pos1', pos2', pos3', pos4', pos1']', '--'); hold off;
+    if strcmp(mirror_type, 'rectangle')
+        hold on; plot2([pos1', pos2', pos3', pos4', pos1']', '--'); hold off;
+    elseif strcmp(mirror_type, 'circle')
+        hold on; theta = 0:0.01*pi:2*pi;
+        x = center(1)+radius.*cos(theta);
+        y = center(2)*ones(1,length(x));
+        z = center(3)+radius.*sin(theta);
+        plot2([x', y', z'], '--'); hold off;
+    end
 elseif strcmp(task, 'sphere') || strcmp(task, 'ellipsoid')
     hold on; plot2(pos', '--'); plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'o'); hold off;
 end
