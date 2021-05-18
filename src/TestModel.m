@@ -445,11 +445,12 @@ plot2(pos', 'r--'); hold on; plot2(sim_pos', 'k-'); grid on; axis([-inf, inf, 0.
 xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)'); legend('cmd\_pos', 'sim\_pos');
     case 'mirrortask'
 %%  comparison with cpp
-q0 = [0.2,0.8,0,0,0]';
+q0 = [0.2,0.8,0.7,0.2,0.5]';
 dt = 0.01;
-mirror_style = 'circle';
-comparison = 0;
+mirror_style = 'rectangle';
+comparison = 1;
 if strcmp(mirror_style, 'rectangle')
+%     pos1 = [0.4, 0.7, 1]; pos2 = [-0.4, 0.7, 1]; pos3 = [-0.4, 0.7, 1.4]; pos4 = [0.4, 0.7, 1.4];
     pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
     via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
     [~, sim_q] = CleanRectMirror(rbt, via_pos, q0, dt);

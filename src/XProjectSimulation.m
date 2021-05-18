@@ -9,21 +9,21 @@ rbt = CleanRobot;
 global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos
 g_jvmax = [pi, 0.15, 0.8*pi, 0.5, 0.8*pi];
 g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi];
-g_cvmax = 0.4; g_camax = 0.8;
+g_cvmax = 0.1; g_camax = 0.1;
 g_stowed_pos = [0;0;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
 task = 'mirror';
 show_power = 0;
-q0 = [0.4,0.8,0,0.1,0]';
+q0 = [0.2,0.8,0.7,0.2,0.5]';
 switch task
     case clean_task(1)
         %% wipe the mirror
-        mirror_type = 'circle';
+        mirror_type = 'rectangle';
         dt = 0.01;
         if strcmp(mirror_type, 'rectangle')
-            pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+            pos1 = [0.4, 0.7, 1]; pos2 = [-0.4, 0.7, 1]; pos3 = [-0.4, 0.7, 1.4]; pos4 = [0.4, 0.7, 1.4];
             via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
             [sim_pos, sim_q] = CleanRectMirror(rbt,via_pos,q0,dt);
         elseif strcmp(mirror_type, 'circle')

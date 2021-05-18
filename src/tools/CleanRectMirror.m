@@ -3,7 +3,15 @@ function [sim_pos,sim_q] = CleanRectMirror(rbt,via_pos,q0,dt)
     global g_cvmax g_stowed_pos g_camax g_jvmax g_jamax
     sim_pos = []; sim_q = []; pos = []; alph = [];
     % pre-clean action
-    pos0 = rbt.FKSolve(q0).t;
+    jplanner = LspbTrajPlanner([q0(3), 0], g_jvmax(3), g_jamax(3));
+    [jpos,~,~] = jplanner.GenerateTraj(dt);
+    tmp_q = [ones(1,length(jpos))*q0(1); ones(1,length(jpos))*q0(2); jpos;...
+             ones(1,length(jpos))*q0(4); ones(1,length(jpos))*q0(5)];
+    for idx=1:length(jpos)
+        sim_pos = [sim_pos, rbt.FKSolve(tmp_q(:,idx)).t];
+    end
+    sim_q = [sim_q, tmp_q];
+    pos0 = rbt.FKSolve(tmp_q(:,end)).t;
     line_length = norm(via_pos(:,1)-pos0);
     alph0 = q0(1)+q0(end);
     alphplanner = LspbTrajPlanner([alph0,0], g_jvmax(1), g_jamax(end));
