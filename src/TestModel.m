@@ -6,11 +6,11 @@ addpath('classes');
 addpath('tools');
 
 rbt = CleanRobot;
-global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos
+global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos g_cycle_time
 g_jvmax = [pi, 0.15, 0.8*pi, 0.5, 0.8*pi];
 g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi];
-g_cvmax = 0.3; g_camax = 0.7;
-g_stowed_pos = [0;0;0;0;0];
+g_cvmax = 0.15; g_camax = 0.3;
+g_stowed_pos = [0;0.3;0;0;0];
 g_cycle_time = 0.001;
 test_mode = 'mirrortask';
 switch test_mode
@@ -448,9 +448,9 @@ xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)'); legend('cmd\_pos', 'sim\_pos');
 q0 = [0.2,0.8,0.7,0.3,0.5]';
 dt = 0.01;
 mirror_style = 'rectangle';
-comparison = 0;
+comparison = 1;
 if strcmp(mirror_style, 'rectangle')
-    pos1 = [0.4, 0.7, 1]; pos2 = [-0.4, 0.7, 1]; pos3 = [-0.4, 0.7, 1.4]; pos4 = [0.4, 0.7, 1.4];
+    pos1 = [0.4, 0.7, 0.7]; pos2 = [-0.4, 0.7, 0.7]; pos3 = [-0.4, 0.7, 1]; pos4 = [0.4, 0.7, 1];
 %     pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
     via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
     [~, sim_q] = CleanRectMirror(rbt, via_pos, q0, dt);

@@ -7,8 +7,8 @@ addpath('tools');
 
 rbt = CleanRobot;
 global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos g_cycle_time
-g_jvmax = [pi, 0.15, 0.8*pi, 0.5, 0.8*pi];
-g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi];
+g_jvmax = [pi, 0.15, 0.8*pi, 0.5, 0.8*pi]*0.5;
+g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi]*0.5;
 g_cvmax = 0.15; g_camax = 0.3;
 g_stowed_pos = [0;0.3;0;0;0];
 g_cycle_time = 0.001;
@@ -25,7 +25,7 @@ switch task
         if strcmp(mirror_type, 'rectangle')
             pos1 = [0.4, 0.7, 0.84]; pos2 = [-0.4, 0.7, 0.84]; pos3 = [-0.4, 0.7, 1.12]; pos4 = [0.4, 0.7, 1.12];
             via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
-            [sim_pos, sim_q] = CleanRectMirror(rbt,via_pos,q0,dt);
+            [sim_pos, sim_q, sim_qd] = CleanRectMirror(rbt,via_pos,q0,dt);
         elseif strcmp(mirror_type, 'circle')
             center = [0,0.7,1]';
             radius = 0.6;
@@ -102,6 +102,10 @@ figure
 yyaxis left; plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':');
 yyaxis right; plot(t, sim_q(5,:), '-');
 grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
+
+figure
+plot(t,sim_qd(1,:),'-', t, sim_qd(2,:), '--', t, sim_qd(3,:), '-.', t, sim_qd(4,:), ':', t, sim_qd(5,:), '-');
+grid on; title('joint velocity'); legend('dq1', 'dq2', 'dq3', 'dq4', 'dq5');
 
 if show_power
     sim('simulink/x_project_g3.slx');

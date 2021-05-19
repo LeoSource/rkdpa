@@ -1,16 +1,19 @@
-function [sim_pos,sim_q] = CleanRectMirror(rbt,via_pos,q0,dt)
+function [sim_pos, sim_q, sim_qd] = CleanRectMirror(rbt,via_pos,q0,dt)
 
     global g_cvmax g_stowed_pos g_camax g_jvmax g_jamax
-    sim_pos = []; sim_q = []; pos = []; alph = [];
-    % pre-clean action
+    sim_pos = []; pos = []; vel = [];
+    sim_q = []; sim_qd = [];
+    alph = []; 
+    %%  pre-clean action
     jplanner = LspbTrajPlanner([q0(3), 0], g_jvmax(3), g_jamax(3));
-    [jpos,~,~] = jplanner.GenerateTraj(dt);
+    [jpos, jvel,~] = jplanner.GenerateTraj(dt);
     tmp_q = [ones(1,length(jpos))*q0(1); ones(1,length(jpos))*q0(2); jpos;...
              ones(1,length(jpos))*q0(4); ones(1,length(jpos))*q0(5)];
+    tmp_qd = [zeros(2, length(jvel)); jvel; zeros(2, length(jvel))];
     for idx=1:length(jpos)
         sim_pos = [sim_pos, rbt.FKSolve(tmp_q(:,idx)).t];
     end
-    sim_q = [sim_q, tmp_q];
+    sim_q = [sim_q, tmp_q]; sim_qd = [sim_qd, tmp_qd];
     pos0 = rbt.FKSolve(tmp_q(:,end)).t;
     line_length = norm(via_pos(:,1)-pos0);
     alph0 = q0(1)+q0(end);
@@ -19,11 +22,13 @@ function [sim_pos,sim_q] = CleanRectMirror(rbt,via_pos,q0,dt)
     tf_pre = max(alphplanner.tf,uplanner.tf);
     alphplanner = LspbTrajPlanner([alph0,0], g_jvmax(1), g_jamax(end), tf_pre);
     uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax, tf_pre);
-    [up,~,~] = uplanner.GenerateTraj(dt);
+    [up,uv,~] = uplanner.GenerateTraj(dt);
     pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
-    pos = [pos, pos_tmp];
+    vel_tmp = (via_pos(:,1)-pos0)/line_length.*uv;
+    pos = [pos, pos_tmp]; vel = [vel, vel_tmp];
     alph = [alph, alphplanner.GenerateTraj(dt)];
-    % clean mirror action
+    
+    %%  clean mirror action
     s = []; sv = []; sa = [];
     cpath = ArcTransPathPlanner(via_pos, 0);
     varc = sqrt(g_camax*cpath.radius);
@@ -47,23 +52,29 @@ function [sim_pos,sim_q] = CleanRectMirror(rbt,via_pos,q0,dt)
         end
         s =[s, s_tmp]; sv = [sv, sv_tmp]; sa = [sa, sa_tmp];
     end
-    [pos_tmp, vel, acc] = cpath.GenerateTraj(s, sv, sa);
-    pos = [pos, pos_tmp];
+    [pos_tmp, vel_tmp, ~] = cpath.GenerateTraj(s, sv, sa);
+    pos = [pos, pos_tmp]; vel = [vel, vel_tmp(1:3,:)];
     alph = [alph, zeros(1,size(pos_tmp,2))];
-    % post-clean action
+    
+    %%  post-clean action
     posn = rbt.FKSolve(g_stowed_pos).t;
     line_length = norm(posn-via_pos(:,end));
     uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
-    [up,~,~] = uplanner.GenerateTraj(dt);
+    [up,uv,~] = uplanner.GenerateTraj(dt);
     pos_tmp = via_pos(:,end)+up.*(posn-via_pos(:,end))/line_length;
-    pos = [pos, pos_tmp];
+    vel_tmp = uv.*(posn-via_pos(:,end))/line_length;
+    pos = [pos, pos_tmp]; vel = [vel, vel_tmp];
     alph = [alph, zeros(1,size(pos_tmp,2))];
-    % robot inverse kinematics
+    
+    %% robot inverse kinematics
     ik_option = 'q2first';
     pre_q = q0;
     for idx=1:size(pos,2)
         tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alph(idx), pre_q);
-        sim_q = [sim_q, tmp_q]; pre_q = tmp_q;
+        jaco_tool = rbt.CalcJacoTool(pre_q);
+        tmp_qd = pinv(jaco_tool(1:3,:))*vel(:,idx);
+        sim_q = [sim_q, tmp_q]; sim_qd = [sim_qd, tmp_qd];
+        pre_q = tmp_q;
         pose_tmp = rbt.FKSolve(tmp_q);
         sim_pos = [sim_pos, pose_tmp.t];
     end
