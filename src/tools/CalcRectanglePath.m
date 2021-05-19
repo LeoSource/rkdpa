@@ -19,7 +19,7 @@ else
     start_pos1 = corner_pos(:,1);
     start_pos2 = corner_pos(:,4);
 end
-cycle_num = floor(norm(step_vec1)/interval);
+cycle_num = round(norm(step_vec1)/interval)+1;
 numvp = 2*cycle_num;
 step = norm(step_vec1)/(cycle_num-1);
 step_vec1 = step_vec1/norm(step_vec1);
