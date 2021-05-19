@@ -9,7 +9,7 @@ rbt = CleanRobot;
 global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos
 g_jvmax = [pi, 0.15, 0.8*pi, 0.5, 0.8*pi];
 g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi];
-g_cvmax = 0.4; g_camax = 0.8;
+g_cvmax = 0.3; g_camax = 0.7;
 g_stowed_pos = [0;0;0;0;0];
 g_cycle_time = 0.001;
 test_mode = 'mirrortask';
@@ -445,13 +445,13 @@ plot2(pos', 'r--'); hold on; plot2(sim_pos', 'k-'); grid on; axis([-inf, inf, 0.
 xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)'); legend('cmd\_pos', 'sim\_pos');
     case 'mirrortask'
 %%  comparison with cpp
-q0 = [0.2,0.8,0.7,0.2,0.5]';
+q0 = [0.2,0.8,0.7,0.3,0.5]';
 dt = 0.01;
 mirror_style = 'rectangle';
-comparison = 1;
+comparison = 0;
 if strcmp(mirror_style, 'rectangle')
-%     pos1 = [0.4, 0.7, 1]; pos2 = [-0.4, 0.7, 1]; pos3 = [-0.4, 0.7, 1.4]; pos4 = [0.4, 0.7, 1.4];
-    pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
+    pos1 = [0.4, 0.7, 1]; pos2 = [-0.4, 0.7, 1]; pos3 = [-0.4, 0.7, 1.4]; pos4 = [0.4, 0.7, 1.4];
+%     pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.7, 0.8, 2.4];
     via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
     [~, sim_q] = CleanRectMirror(rbt, via_pos, q0, dt);
 elseif strcmp(mirror_style, 'circle')
@@ -459,7 +459,7 @@ elseif strcmp(mirror_style, 'circle')
     radius = 0.6;
     interval = 0.1;
     [~, sim_q] = CleanCircleMirror(rbt, center, radius, interval, q0, dt);
-end 
+end
 
 t = 0:dt:dt*(size(sim_q,2)-1);
 plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');

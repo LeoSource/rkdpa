@@ -30,8 +30,8 @@ classdef CleanRobot < handle
         %% Class Constructor
         function obj = CleanRobot()
             % mdh parameters: theta d a alpha type offset
-            l1 = 0.106; l2 = 0.09; l3 = 0;% model refinement
-            h = 0.5; w = 0.423;
+            l1 = 0.111; l2 = 0.0935; l3 = 0.066;% model refinement
+            h = 0.3; w = 0.518;
             mdh_table = [      0,   0,   0,       0,    0,   0
                                     pi/2,   0,   0,       0,    1,   h 
                                         0,    l2,   -l1,   pi/2,    0,   pi/2

@@ -73,20 +73,24 @@ classdef LspbTrajPlanner < handle
                 obj.t0 = duration(1); obj.tf = duration(end);
             end
             time_length = obj.tf-obj.t0;
-            if time_length>=h/obj.vmax+obj.vmax/obj.amax
-                if obj.maxvel_reached
+            if obj.maxvel_reached
+                if time_length >= h/obj.vmax+obj.vmax/obj.amax
                     a = 1; b = -time_length*obj.amax; c = h*obj.amax;
                     obj.vmax = (-b-sqrt(b^2-4*a*c))/2/a;
                     obj.ta = obj.vmax/obj.amax;
                 else
+                    error('input a larger time');
+                end
+            else
+                if time_length >= 2*sqrt(h/obj.amax)
                     obj.vmax = 2*h/time_length;
                     obj.ta = 0.5*time_length;
                     obj.amax = obj.vmax/obj.ta;
+                else
+                    error('input a larger time');
                 end
-                obj.td=obj.ta;
-            else
-                error('input a larger time')
             end
+            obj.td=obj.ta;
         end
 
         function SetVelConstraint(obj, h)
