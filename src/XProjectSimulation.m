@@ -20,7 +20,7 @@ q0 = [0.2,0.8,0.7,0.2,0.5]';
 switch task
     case clean_task(1)
         %% wipe the mirror
-        mirror_type = 'rectangle';
+        mirror_type = 'circle';
         dt = 0.01;
         if strcmp(mirror_type, 'rectangle')
             pos1 = [0.4, 0.7, 0.84]; pos2 = [-0.4, 0.7, 0.84]; pos3 = [-0.4, 0.7, 1.12]; pos4 = [0.4, 0.7, 1.12];
@@ -29,8 +29,9 @@ switch task
         elseif strcmp(mirror_type, 'circle')
             center = [0,0.7,1]';
             radius = 0.6;
+            norm_vec = [0.03;2;0.0];
             interval = 0.1;
-            [sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, interval, q0, dt);
+            [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, norm_vec, interval, q0, dt);
         end
         
     case clean_task(2)
@@ -87,11 +88,7 @@ if strcmp(task, 'mirror')
     if strcmp(mirror_type, 'rectangle')
         hold on; plot2([pos1', pos2', pos3', pos4', pos1']', '--'); hold off;
     elseif strcmp(mirror_type, 'circle')
-        hold on; theta = 0:0.01*pi:2*pi;
-        x = center(1)+radius.*cos(theta);
-        y = center(2)*ones(1,length(x));
-        z = center(3)+radius.*sin(theta);
-        plot2([x', y', z'], '--'); hold off;
+        hold on; plot2(circle_pos', '--'); hold off;
     end
 elseif strcmp(task, 'sphere') || strcmp(task, 'ellipsoid')
     hold on; plot2(pos', '--'); plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'o'); hold off;
@@ -103,9 +100,9 @@ yyaxis left; plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t,
 yyaxis right; plot(t, sim_q(5,:), '-');
 grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
 
-figure
-plot(t,sim_qd(1,:),'-', t, sim_qd(2,:), '--', t, sim_qd(3,:), '-.', t, sim_qd(4,:), ':', t, sim_qd(5,:), '-');
-grid on; title('joint velocity'); legend('dq1', 'dq2', 'dq3', 'dq4', 'dq5');
+% figure
+% plot(t,sim_qd(1,:),'-', t, sim_qd(2,:), '--', t, sim_qd(3,:), '-.', t, sim_qd(4,:), ':', t, sim_qd(5,:), '-');
+% grid on; title('joint velocity'); legend('dq1', 'dq2', 'dq3', 'dq4', 'dq5');
 
 if show_power
     sim('simulink/x_project_g3.slx');
