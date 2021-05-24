@@ -52,8 +52,9 @@ classdef CleanRobot < handle
             obj.qmax = qlimit(:,2);
             obj.qmin = qlimit(:,1);
             obj.tool_pose = eye(4);
-            obj.tool_pose(1:3, 1:3) = rotx(-30);
-            obj.tool_pose(1:3,end) = [0, 0.2*cosd(-30), 0.2*sind(-30)]';
+            tool_alpha = -30*pi/180;
+            obj.tool_pose(1:3, 1:3) = rotx(tool_alpha);
+            obj.tool_pose(1:3,end) = [0, 0.2*cosd(tool_alpha), 0.2*sind(tool_alpha)]';
             obj.gain_pos = diag([500, 500, 500]);
             obj.gain_rpy = diag([500, 500, 500, 100, 100]);
             obj.gain_opt = diag([5, 5, 5, 5, 5]);

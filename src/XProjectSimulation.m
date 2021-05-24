@@ -14,7 +14,7 @@ g_stowed_pos = [0;0.3;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
-task = 'mirror';
+task = 'table';
 show_power = 0;
 q0 = [0.2,0.8,0.7,0.2,0.5]';
 switch task
@@ -36,16 +36,10 @@ switch task
         
     case clean_task(2)
         %% wipe the table
-        pos1 = [0.8, 0.4, 0.7]; pos2 = [-0.8, 0.4, 0.7]; pos3 = [-0.8, 1.0, 0.7]; pos4 = [0.8, 1.0, 0.7];
-        radius = 0.04;
-        tf = 60; dt = 0.01;
-        via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 16, 'm');
-        cpath = ArcTransPathPlanner(via_pos, radius);
-        planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
-        [s, sv, sa] = planner.GenerateTraj(dt);
-        [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
-        ik_option = 'q3first0';
-        alpha = zeros(1, length(s));
+        pos1 = [0.2, 0.8, 0.8]; pos2 = [-0.2, 0.8, 0.8]; pos3 = [-0.2, 1.2, 0.8]; pos4 = [0.2, 1.2, 0.8];
+        dt = 0.01;
+        via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 'm');
+        [sim_pos, sim_q, sim_qd] = CleanRectMirror(rbt,via_pos,q0,dt);
 
     case clean_task(3)
         %% wipe the washbasin
