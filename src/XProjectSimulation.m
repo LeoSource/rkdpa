@@ -14,13 +14,13 @@ g_stowed_pos = [0;0.3;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
-task = 'table';
+task = 'ellipsoid';
 show_power = 0;
 q0 = [0.2,0.8,0.7,0.2,0.5]';
 switch task
     case clean_task(1)
         %% wipe the mirror
-        mirror_type = 'circle';
+        mirror_type = 'rectangle';
         dt = 0.01;
         if strcmp(mirror_type, 'rectangle')
             pos1 = [0.4, 0.7, 0.84]; pos2 = [-0.4, 0.7, 0.84]; pos3 = [-0.4, 0.7, 1.12]; pos4 = [0.4, 0.7, 1.12];

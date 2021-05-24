@@ -30,19 +30,20 @@ classdef CleanRobot < handle
         %% Class Constructor
         function obj = CleanRobot()
             % mdh parameters: theta d a alpha type offset
-            l1 = 0.111; l2 = 0.0935; l3 = 0.066;% model refinement
-            h = 0.3; w = 0.518;
+            l1 = 0.111; l2 = 0.0935; l3 = 0.066; l4 = 0.068;% model universal mdh model
+            h = 0.403; w = 0.518;
             mdh_table = [      0,   0,   0,       0,    0,   0
                                     pi/2,   0,   0,       0,    1,   h 
                                         0,    l2,   -l1,   pi/2,    0,   pi/2
                                     pi/2,    0,   0,   pi/2,   1,   w
-                                        0,    0,   -l3,    pi/2,   0,   0];
+                                        0,    -l4,   -l3,    pi/2,   0,   0];%theta d a alpha type offset
             qlimit = [-pi/2, pi/2; 0, 1; -pi/2 ,pi/2; 0, 0.506; -2*pi, 2*pi];            
             obj.arm = SerialLink(mdh_table,'modified','name','CleanRobot');
             for idx=1:size(mdh_table,1)
                 obj.arm.links(idx).qlim = qlimit(idx,:);
-            end            
-            obj.tool = [0, 0.2*cos(-pi/6), 0.2*sin(-pi/6)]';
+            end
+            tool_alpha = -30*pi/180;
+            obj.tool = [0, 0.2*cos(tool_alpha), 0.2*sin(tool_alpha)]';
             % without robotics toolbox
             obj.mdh = mdh_table;
             obj.nlinks = size(mdh_table, 1);
@@ -52,9 +53,8 @@ classdef CleanRobot < handle
             obj.qmax = qlimit(:,2);
             obj.qmin = qlimit(:,1);
             obj.tool_pose = eye(4);
-            tool_alpha = -30*pi/180;
-            obj.tool_pose(1:3, 1:3) = rotx(tool_alpha);
-            obj.tool_pose(1:3,end) = [0, 0.2*cosd(tool_alpha), 0.2*sind(tool_alpha)]';
+            obj.tool_pose(1:3, 1:3) = rotx(tool_alpha*180/pi);
+            obj.tool_pose(1:3,end) = [0, 0.2*cos(tool_alpha), 0.2*sin(tool_alpha)]';
             obj.gain_pos = diag([500, 500, 500]);
             obj.gain_rpy = diag([500, 500, 500, 100, 100]);
             obj.gain_opt = diag([5, 5, 5, 5, 5]);
@@ -63,12 +63,12 @@ classdef CleanRobot < handle
         %% Forward Kinematics Using Robotics Toolbox
         function pose = FKSolve(obj, q)
             pose = obj.arm.fkine(q);
-            pose.t = pose.t+tr2rt(pose)*obj.tool;
+            pose.t = pose.t+tr2rt(pose)*obj.tool;%not consider tool rotation
         end
 
         function  tool_pose = FKSolveTool(obj, q)
             pose = obj.transform(q, 1, obj.nlinks);
-            tool_pose = pose*obj.tool_pose;
+            tool_pose = pose*obj.tool_pose;%consider tool position and rotation
         end
 
         function pose = transform(obj, q, s_idx, e_idx)
@@ -88,46 +88,52 @@ classdef CleanRobot < handle
         function q = IKSolve(obj, pos, option, alpha, q_in)
             %%to simplify the problem of end-effector's pose: theta5 = alpha-theta1
             q = zeros(5,1);
-            ty = obj.tool(2); tz = obj.tool(3);
-            h = obj.links{2}.offset; w = obj.links{4}.offset;
-            height_limit = obj.arm.qlim(2,:)+tz+obj.links{2}.offset;
             switch option
                 case 'q3first0'
                     q = obj.IKJnt3(pos, alpha, 0, q_in);
                 case 'q3firstn'
                     q = obj.IKJnt3(pos, alpha, -pi/6, q_in);
                 case 'q2first'
-                    if pos(3)>height_limit(2)
-                        q(2) = obj.arm.qlim(2,2);
-                    elseif pos(3)<height_limit(1)
-                        q(2) = obj.arm.qlim(2,1);
-                    else
-                        q(2) = pos(3)-tz - h;
-                    end        
-                    a = pos(1)+sin(alpha)*ty;
-                    b = pos(2)-cos(alpha)*ty;
-                    c = obj.arm.d(3)+obj.arm.a(5);
-                    q(1) = CalcTransEqua(a, b, c, q_in(1));
-                    q(5) = alpha-q(1);
-
-                    s1 = sin(q(1)); c1 = cos(q(1));
-                    s5 = sin(q(5)); c5 = cos(q(5));
-                    lx = obj.arm.d(3)+obj.arm.a(5); ly = obj.arm.a(3);
-                    a = c1*(pos(3)-q(2)-h);
-                    b = -pos(2)-s1*s5*ty+c1*ly+s1*lx;
-                    c = c1*tz;
-                    q(3) = CalcTransEqua(a, b, c, q_in(3));
-                    s3 = sin(q(3)); c3 = cos(q(3));
-                    tmp_value = pos(2)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1;
-                    q(4) = tmp_value/(c1*c3)-w;                    
+                    q = obj.IKJnt2(pos, alpha, q_in);
                 otherwise
                     error('put the right option to inverse kinematics solver');
             end
         end
         
+        function q = IKJnt2(obj, pos, alpha, q_in)
+            q = zeros(5,1);
+            ty = obj.tool(2); tz = obj.tool(3);
+            h = obj.links{2}.offset; w = obj.links{4}.offset; l4 = -obj.links{5}.d;
+            height_limit = obj.arm.qlim(2,:)+tz+h-l4;
+            if pos(3)>height_limit(2)
+                q(2) = obj.arm.qlim(2,2);
+            elseif pos(3)<height_limit(1)
+                q(2) = obj.arm.qlim(2,1);
+            else
+                q(2) = pos(3)+l4-tz-h;
+            end
+            a = pos(1)+sin(alpha)*ty;
+            b = pos(2)-cos(alpha)*ty;
+            c = obj.arm.d(3)+obj.arm.a(5);
+            q(1) = CalcTransEqua(a, b, c, q_in(1));
+            q(5) = alpha-q(1);
+
+            s1 = sin(q(1)); c1 = cos(q(1));
+            s5 = sin(q(5)); c5 = cos(q(5));
+            lx = obj.arm.d(3)+obj.arm.a(5); ly = obj.arm.a(3);
+            a = c1*(pos(3)-q(2)-h);
+            b = -pos(2)-s1*s5*ty+c1*ly+s1*lx;
+            c = c1*tz-c1*l4;
+            q(3) = CalcTransEqua(a, b, c, q_in(3));
+            s3 = sin(q(3)); c3 = cos(q(3));
+            tmp_value = pos(2)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1-c1*s3*l4;
+            q(4) = tmp_value/(c1*c3)-w;
+        end
+        
         function q = IKJnt3(obj, pos, alpha, q3, q_in)
             q = zeros(5,1);
             ty = obj.tool(2); tz = obj.tool(3);
+            l4 = -obj.links{5}.d;
             q(3) = q3;
             a = pos(1)+sin(alpha)*ty;
             b = pos(2)-cos(alpha)*ty;
@@ -140,9 +146,9 @@ classdef CleanRobot < handle
             s5 = sin(q(5)); c5 = cos(q(5));
             h = obj.links{2}.offset; w = obj.links{4}.offset;
             lx = obj.arm.d(3)+obj.arm.a(5); ly = obj.arm.a(3);
-            tmp_value = pos(2)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1;
+            tmp_value = pos(2)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1-c1*s3*l4;
             q(4) = tmp_value/(c1*c3) - w;
-            q(2) = pos(3)-s3*c5*ty-c3*tz-s3*(q(4)+w) - h;
+            q(2) = pos(3)-s3*c5*ty-c3*tz-s3*(q(4)+w)-h+c3*l4;
         end
         
         %% Inverse Kinematics with Numerical Solution(optimization toolbox)

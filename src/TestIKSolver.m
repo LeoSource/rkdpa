@@ -15,12 +15,12 @@ tr2rt(pose1)*rotx(-30)-pose2(1:3,1:3)
 
 % cmd_pos = [rand, rand, rand+1]';
 cmd_pos = [0.7, 0.8, 1]';
-q = rbt.IKSolve(cmd_pos, 'q2first', 0);
+q = rbt.IKSolve(cmd_pos, 'q2first', 0, zeros(5,1));
 pos = rbt.FKSolve(q).t;
 disp(['pos_err = ', num2str(norm(cmd_pos-pos))]);
 
 cmd_pos = [0, 0.8, rand]';
-q2 = rbt.IKSolve(cmd_pos, 'q3firstn', 0);
+q2 = rbt.IKSolve(cmd_pos, 'q3firstn', 0, zeros(5,1));
 pos2 = rbt.FKSolve(q2).t;
 disp(['pos_err = ', num2str(norm(cmd_pos-pos2))]);
 
