@@ -16,6 +16,7 @@ classdef CleanRobot < handle
         nlinks
         links
         tool_pose
+        tool_pitch
         qmin
         qmax
 
@@ -37,13 +38,14 @@ classdef CleanRobot < handle
                                         0,    l2,   -l1,   pi/2,    0,   pi/2
                                     pi/2,    0,   0,   pi/2,   1,   w
                                         0,    -l4,   -l3,    pi/2,   0,   0];%theta d a alpha type offset
-            qlimit = [-pi/2, pi/2; 0, 1; -pi/2 ,pi/2; 0, 0.506; -2*pi, 2*pi];            
+            qlimit = [-pi/2, pi/2; 0, 1; -pi/2 ,pi/2; 0, 0.506; -2*pi, 2*pi];
             obj.arm = SerialLink(mdh_table,'modified','name','CleanRobot');
             for idx=1:size(mdh_table,1)
                 obj.arm.links(idx).qlim = qlimit(idx,:);
             end
-            tool_alpha = -30*pi/180;
-            obj.tool = [0, 0.2*cos(tool_alpha), 0.2*sin(tool_alpha)]';
+            tool_pitch = -30*pi/180;
+%             obj.tool = [0, 0.2*cos(tool_alpha), 0.2*sin(tool_alpha)]';
+            obj.tool = [0, 0.2196, -0.05578]';
             % without robotics toolbox
             obj.mdh = mdh_table;
             obj.nlinks = size(mdh_table, 1);
@@ -53,8 +55,8 @@ classdef CleanRobot < handle
             obj.qmax = qlimit(:,2);
             obj.qmin = qlimit(:,1);
             obj.tool_pose = eye(4);
-            obj.tool_pose(1:3, 1:3) = rotx(tool_alpha*180/pi);
-            obj.tool_pose(1:3,end) = [0, 0.2*cos(tool_alpha), 0.2*sin(tool_alpha)]';
+            obj.tool_pose(1:3, 1:3) = rotx(tool_pitch*180/pi);
+            obj.tool_pose(1:3,end) = [0, 0.2196, -0.05578]';
             obj.gain_pos = diag([500, 500, 500]);
             obj.gain_rpy = diag([500, 500, 500, 100, 100]);
             obj.gain_opt = diag([5, 5, 5, 5, 5]);
@@ -63,12 +65,11 @@ classdef CleanRobot < handle
         %% Forward Kinematics Using Robotics Toolbox
         function pose = FKSolve(obj, q)
             pose = obj.arm.fkine(q);
-            pose.t = pose.t+tr2rt(pose)*obj.tool;%not consider tool rotation
         end
 
         function  tool_pose = FKSolveTool(obj, q)
-            pose = obj.transform(q, 1, obj.nlinks);
-            tool_pose = pose*obj.tool_pose;%consider tool position and rotation
+            pose = obj.arm.fkine(q);
+            tool_pose = pose*SE3(obj.tool_pose);
         end
 
         function pose = transform(obj, q, s_idx, e_idx)
@@ -78,8 +79,12 @@ classdef CleanRobot < handle
                 pose = pose*obj.links{idx}.pose;
             end
         end
-
+        
         function pose = fksolve(obj, q)
+            pose = obj.transform(q, 1, obj.nlinks);
+        end
+
+        function pose = fksolvetool(obj, q)
             pose = obj.transform(q, 1, obj.nlinks);
             pose = pose*obj.tool_pose;
         end

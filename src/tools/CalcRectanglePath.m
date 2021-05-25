@@ -7,7 +7,7 @@ function via_pos = CalcRectanglePath(corner_pos, option)
 % 2--------1
 % option: path of 'm' or 's'
 
-interval = 0.1;
+interval = 0.05;
 if strcmp(option, 's')
     step_vec1 = corner_pos(:,4)-corner_pos(:,1);
     step_vec2 = corner_pos(:,3)-corner_pos(:,2);
