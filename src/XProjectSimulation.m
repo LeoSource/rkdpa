@@ -14,7 +14,7 @@ g_stowed_pos = [0;0.7;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
-task = 'table';
+task = 'mirror';
 show_power = 0;
 q0 = [0.2,0.8,0.7,0.2,0.5]';
 switch task
@@ -23,9 +23,11 @@ switch task
         mirror_type = 'rectangle';
         dt = 0.01;
         if strcmp(mirror_type, 'rectangle')
-            pos1 = [0.4, 0.7, 0.84]; pos2 = [-0.4, 0.7, 0.84]; pos3 = [-0.4, 0.7, 1.12]; pos4 = [0.4, 0.7, 1.12];
-            via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
-            [sim_pos, sim_q, sim_qd] = CleanRectMirror(rbt,via_pos,q0,dt);
+            pos1 = [0.4, 0.7, 0.84]; pos2 = [-0.4, 0.7, 0.84]; pos3 = [-0.4, 0.7, 1.72]; pos4 = [0.4, 0.7, 1.72];
+            via_pos = [pos3', pos1'];
+            [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pi/2,q0,dt);
+%             via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
+%             [sim_pos, sim_q, sim_qd] = CleanRectMirror(rbt,via_pos,q0,dt);
         elseif strcmp(mirror_type, 'circle')
             center = [0,0.7,1]';
             radius = 0.6;
@@ -85,9 +87,9 @@ figure
 plot2(sim_pos', 'r-');
 if strcmp(task, 'mirror')
     if strcmp(mirror_type, 'rectangle')
-        hold on; plot2([pos1', pos2', pos3', pos4', pos1']', '--'); hold off;
+        hold on; plot2([pos1', pos2', pos3', pos4', pos1']', '--'); axis equal; hold off;
     elseif strcmp(mirror_type, 'circle')
-        hold on; plot2(circle_pos', '--'); hold off;
+        hold on; plot2(circle_pos', '--'); axis equal; hold off;
     end
 elseif strcmp(task, 'sphere') || strcmp(task, 'ellipsoid')
     hold on; plot2(pos', '--'); plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'o'); hold off;
