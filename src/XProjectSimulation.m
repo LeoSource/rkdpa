@@ -10,11 +10,11 @@ global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos g_cycle_time
 g_jvmax = [pi, 0.15, 0.8*pi, 0.5, 0.8*pi]*0.5;
 g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi]*0.5;
 g_cvmax = 0.15; g_camax = 0.3;
-g_stowed_pos = [0;0.3;0;0;0];
+g_stowed_pos = [0;0.7;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
-task = 'ellipsoid';
+task = 'table';
 show_power = 0;
 q0 = [0.2,0.8,0.7,0.2,0.5]';
 switch task
@@ -36,10 +36,11 @@ switch task
         
     case clean_task(2)
         %% wipe the table
-        pos1 = [0.2, 0.8, 0.8]; pos2 = [-0.2, 0.8, 0.8]; pos3 = [-0.2, 1.2, 0.8]; pos4 = [0.2, 1.2, 0.8];
+        pos1 = [0.2, 0.8, 0.8]; pos2 = [-0.2, 0.8, 0.8]; pos3 = [-0.2, 1.1, 0.8]; pos4 = [0.2, 1.1, 0.8];
         dt = 0.01;
         via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 'm');
-        [sim_pos, sim_q, sim_qd] = CleanRectMirror(rbt,via_pos,q0,dt);
+%         [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt);
+        [sim_pos, sim_q] = CleanHorizontalPlane(rbt,via_pos,q0,dt);
 
     case clean_task(3)
         %% wipe the washbasin
