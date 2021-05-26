@@ -43,7 +43,7 @@ classdef CleanRobot < handle
             for idx=1:size(mdh_table,1)
                 obj.arm.links(idx).qlim = qlimit(idx,:);
             end
-            obj.tool_pitch = 15*pi/180;
+            obj.tool_pitch = -15*pi/180;
             obj.tool = [0, 0.2196, -0.05578]';
             % without robotics toolbox
             obj.mdh = mdh_table;
@@ -170,9 +170,9 @@ classdef CleanRobot < handle
             q(2) = pos(3)-s3*c5*ty-c3*tz-s3*(q(4)+w)-h+c3*l4;
         end
 
-        function q = IKSolveYaw(obj, pos, yaw, q_in)
+        function q = IKSolveYaw(obj, pos, pitch, yaw, q_in)
             q = zeros(5,1);
-            q(3) = -obj.tool_pitch;
+            q(3) = pitch-obj.tool_pitch;
             ty = obj.tool(2); tz = obj.tool(3);
             l4 = -obj.links{5}.d;
             a = pos(1)+sin(yaw)*ty;
