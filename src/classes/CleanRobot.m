@@ -43,8 +43,7 @@ classdef CleanRobot < handle
             for idx=1:size(mdh_table,1)
                 obj.arm.links(idx).qlim = qlimit(idx,:);
             end
-            tool_pitch = -30*pi/180;
-%             obj.tool = [0, 0.2*cos(tool_alpha), 0.2*sin(tool_alpha)]';
+            obj.tool_pitch = 15*pi/180;
             obj.tool = [0, 0.2196, -0.05578]';
             % without robotics toolbox
             obj.mdh = mdh_table;
@@ -55,7 +54,7 @@ classdef CleanRobot < handle
             obj.qmax = qlimit(:,2);
             obj.qmin = qlimit(:,1);
             obj.tool_pose = eye(4);
-            obj.tool_pose(1:3, 1:3) = rotx(tool_pitch*180/pi);
+            obj.tool_pose(1:3, 1:3) = rotx(obj.tool_pitch*180/pi);
             obj.tool_pose(1:3,end) = [0, 0.2196, -0.05578]';
             obj.gain_pos = diag([500, 500, 500]);
             obj.gain_rpy = diag([500, 500, 500, 100, 100]);
@@ -153,6 +152,42 @@ classdef CleanRobot < handle
             lx = obj.arm.d(3)+obj.arm.a(5); ly = obj.arm.a(3);
             tmp_value = pos(2)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1-c1*s3*l4;
             q(4) = tmp_value/(c1*c3) - w;
+            q(2) = pos(3)-s3*c5*ty-c3*tz-s3*(q(4)+w)-h+c3*l4;
+        end
+        
+        function q = IKSolvePitch(obj, pos, pitch)
+            q = zeros(5,1);
+            q(3) = pitch-obj.tool_pitch;
+            ty = obj.tool(2); tz = obj.tool(3);
+            l4 = -obj.links{5}.d;
+            s1 = sin(q(1)); c1 = cos(q(1));
+            s3 = sin(q(3)); c3 = cos(q(3));
+            s5 = sin(q(5)); c5 = cos(q(5));
+            h = obj.links{2}.offset; w = obj.links{4}.offset;
+            lx = obj.arm.d(3)+obj.arm.a(5); ly = obj.arm.a(3);
+            tmp_value = pos(2)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1-c1*s3*l4;
+            q(4) = tmp_value/(c1*c3) - w;
+            q(2) = pos(3)-s3*c5*ty-c3*tz-s3*(q(4)+w)-h+c3*l4;
+        end
+
+        function q = IKSolveYaw(obj, pos, yaw, q_in)
+            q = zeros(5,1);
+            q(3) = -obj.tool_pitch;
+            ty = obj.tool(2); tz = obj.tool(3);
+            l4 = -obj.links{5}.d;
+            a = pos(1)+sin(yaw)*ty;
+            b = pos(2)-cos(yaw)*ty;
+            c = obj.arm.d(3)+obj.arm.a(5);
+            q(1) = CalcTransEqua(a, b, c, q_in(1));
+            q(5) = yaw-q(1);
+
+            s1 = sin(q(1)); c1 = cos(q(1));
+            s3 = sin(q(3)); c3 = cos(q(3));
+            s5 = sin(q(5)); c5 = cos(q(5));
+            h = obj.links{2}.offset; w = obj.links{4}.offset;
+            lx = obj.arm.d(3)+obj.arm.a(5); ly = obj.arm.a(3);
+            tmp_value = pos(2)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1-c1*s3*l4;
+            q(4) = tmp_value/(c1*c3)-w;
             q(2) = pos(3)-s3*c5*ty-c3*tz-s3*(q(4)+w)-h+c3*l4;
         end
         
