@@ -36,11 +36,15 @@ switch task
         
     case clean_task(2)
         %% wipe the table
-        pos1 = [0.2, 0.8, 0.8]; pos2 = [-0.2, 0.8, 0.8]; pos3 = [-0.2, 1.1, 0.8]; pos4 = [0.2, 1.1, 0.8];
+        pitch_x = 10;
+        pos1 = rotx(pitch_x)*[0.2; 0.8; 0.8];
+        pos2 = rotx(pitch_x)*[-0.2; 0.8; 0.8];
+        pos3 = rotx(pitch_x)*[-0.2; 1.1; 0.8];
+        pos4 = rotx(pitch_x)*[0.2; 1.1; 0.8];
         dt = 0.01;
-        via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 'm');
+        via_pos = CalcRectanglePath([pos1, pos2, pos3, pos4], 'm');
 %         [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt);
-        [sim_pos, sim_q] = CleanHorizontalPlane(rbt,via_pos,q0,dt);
+        [sim_pos, sim_q] = CleanHorizontalPlane(rbt,via_pos,pitch_x*pi/180,q0,dt);
 
     case clean_task(3)
         %% wipe the washbasin

@@ -1,12 +1,12 @@
-function [sim_pos, sim_q] = CleanHorizontalPlane(rbt,via_pos,q0,dt)
+function [sim_pos, sim_q] = BrushRotXPlane(rbt,via_pos,pitch_x,q0,dt)
 
     global g_cvmax g_stowed_pos g_camax g_jvmax g_jamax
     sim_pos = []; pos = []; vel = [];
-    sim_q = []; sim_qd = [];
+    sim_q = [];
     yaw = [];
 
     %% pre-clean action
-    pre_jplanner = LspbTrajPlanner([q0(3), -rbt.tool_pitch], g_jvmax(3), g_jamax(3));
+    pre_jplanner = LspbTrajPlanner([q0(3), pitch_x-rbt.tool_pitch], g_jvmax(3), g_jamax(3));
     [jpos,~,~] = pre_jplanner.GenerateTraj(dt);
     tmp_q = [ones(1,length(jpos))*q0(1); ones(1,length(jpos))*q0(2); jpos;...
              ones(1,length(jpos))*q0(4); ones(1,length(jpos))*q0(5)];
@@ -67,7 +67,7 @@ function [sim_pos, sim_q] = CleanHorizontalPlane(rbt,via_pos,q0,dt)
     %% robot inverse kinematics
     pre_q = q0;
     for idx=1:size(pos,2)
-        tmp_q = rbt.IKSolveYaw(pos(:,idx), yaw(idx), pre_q);
+        tmp_q = rbt.IKSolveYaw(pos(:,idx), pitch_x, yaw(idx), pre_q);
         sim_q = [sim_q, tmp_q];
         pre_q = tmp_q;
         pose_tmp = rbt.FKSolveTool(tmp_q);
