@@ -1,7 +1,7 @@
 function [sim_pos, sim_q] = BrushRotXPlane(rbt,via_pos,pitch_x,q0,dt)
 
     global g_cvmax g_stowed_pos g_camax g_jvmax g_jamax
-    sim_pos = []; pos = []; vel = [];
+    sim_pos = []; pos = [];
     sim_q = [];
     yaw = [];
 

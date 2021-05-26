@@ -17,6 +17,8 @@ classdef CleanRobot < handle
         links
         tool_pose
         tool_pitch
+        pitch_high
+        pitch_low
         qmin
         qmax
 
@@ -44,6 +46,8 @@ classdef CleanRobot < handle
                 obj.arm.links(idx).qlim = qlimit(idx,:);
             end
             obj.tool_pitch = -15*pi/180;
+            obj.pitch_high = 70*pi/180;
+            obj.pitch_low = 40*pi/180;
             obj.tool = [0, 0.2196, -0.05578]';
             % without robotics toolbox
             obj.mdh = mdh_table;
@@ -59,6 +63,11 @@ classdef CleanRobot < handle
             obj.gain_pos = diag([500, 500, 500]);
             obj.gain_rpy = diag([500, 500, 500, 100, 100]);
             obj.gain_opt = diag([5, 5, 5, 5, 5]);
+        end
+        
+        function SetPitchRange(obj, pitch_high, pitch_low)
+            obj.pitch_high = pitch_high;
+            obj.pitch_low = pitch_low;
         end
         
         %% Forward Kinematics Using Robotics Toolbox

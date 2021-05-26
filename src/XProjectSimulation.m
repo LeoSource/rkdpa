@@ -44,7 +44,7 @@ switch task
         dt = 0.01;
         via_pos = CalcRectanglePath([pos1, pos2, pos3, pos4], 'm');
 %         [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt);
-        [sim_pos, sim_q] = CleanHorizontalPlane(rbt,via_pos,pitch_x*pi/180,q0,dt);
+        [sim_pos, sim_q] = BrushRotXPlane(rbt,via_pos,pitch_x*pi/180,q0,dt);
 
     case clean_task(3)
         %% wipe the washbasin
