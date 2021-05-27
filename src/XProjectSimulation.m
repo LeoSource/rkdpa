@@ -16,24 +16,28 @@ g_cycle_time = 0.001;
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
 task = 'mirror';
 show_power = 0;
-q0 = [0.2,0.8,0.7,0.2,0.5]';
+q0 = [0.2,0.5,0.7,0.2,0.5]';
 switch task
     case clean_task(1)
         %% wipe the mirror
-        mirror_type = 'rectangle';
+        mirror_type = 'scrape';
         dt = 0.01;
         if strcmp(mirror_type, 'rectangle')
-            pos1 = [0.4, 0.7, 0.84]; pos2 = [-0.4, 0.7, 0.84]; pos3 = [-0.4, 0.7, 1.72]; pos4 = [0.4, 0.7, 1.72];
+            pos1 = [0.4, 0.8, 0.84]; pos2 = [-0.4, 0.8, 0.84]; pos3 = [-0.4, 0.8, 1.62]; pos4 = [0.4, 0.8, 1.62];
             via_pos = [pos3', pos1'];
-            [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pi/2,q0,dt);
-%             via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
-%             [sim_pos, sim_q, sim_qd] = CleanRectMirror(rbt,via_pos,q0,dt);
+            via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
+            [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt);
         elseif strcmp(mirror_type, 'circle')
             center = [0,0.7,1]';
             radius = 0.6;
             norm_vec = [0.03;2;0.0];
             interval = 0.1;
             [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, norm_vec, interval, q0, dt);
+        elseif strcmp(mirror_type, 'scrape')
+            x0 = rbt.mdh(3,2)+rbt.mdh(5,3);
+            pos1 = [x0, 0.8, 1.62]; pos2 = [x0, 0.8, 0.84];
+            via_pos = [pos1', pos2'];
+            [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pi/2,q0,dt);
         end
         
     case clean_task(2)

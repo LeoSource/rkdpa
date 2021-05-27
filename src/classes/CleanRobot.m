@@ -179,7 +179,7 @@ classdef CleanRobot < handle
             q(2) = pos(3)-s3*c5*ty-c3*tz-s3*(q(4)+w)-h+c3*l4;
         end
 
-        function q = IKSolveYaw(obj, pos, pitch, yaw, q_in)
+        function q = IKSolvePitchYaw(obj, pos, pitch, yaw, q_in)
             q = zeros(5,1);
             q(3) = pitch-obj.tool_pitch;
             ty = obj.tool(2); tz = obj.tool(3);

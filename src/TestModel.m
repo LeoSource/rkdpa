@@ -257,12 +257,11 @@ via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
 % [s, sv, sa] = splanner.GenerateMotion(10);
 % [pos, vel, acc] = cpath.GenerateMotion(s, sv, sa)
 continuity = 1;
-max_vel = 0.4; max_acc = 0.8;
 if continuity
     dt = 0.01;
     via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
     cpath = ArcTransPathPlanner(via_pos, 0);    
-    varc = sqrt(max_acc*cpath.radius);
+    varc = sqrt(g_camax*cpath.radius);
     s= []; sv = []; sa = [];
     for idx=1:length(cpath.dis_interval)-1
         if mod(idx,2)==1
@@ -273,7 +272,7 @@ if continuity
             else
                 vel_cons = [varc, varc];
             end
-            jplanner = LspbTrajPlanner([cpath.dis_interval(idx), cpath.dis_interval(idx+1)],max_vel,max_acc,[],vel_cons);
+            jplanner = LspbTrajPlanner([cpath.dis_interval(idx), cpath.dis_interval(idx+1)],g_cvmax,g_camax,[],vel_cons);
             [s_tmp, sv_tmp, sa_tmp] = jplanner.GenerateTraj(dt);
         else
             t_len = (cpath.dis_interval(idx+1)-cpath.dis_interval(idx))/varc;
@@ -445,9 +444,9 @@ plot2(pos', 'r--'); hold on; plot2(sim_pos', 'k-'); grid on; axis([-inf, inf, 0.
 xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)'); legend('cmd\_pos', 'sim\_pos');
     case 'mirrortask'
 %%  comparison with cpp
-q0 = [0.2,0.8,0.7,0.3,0.5]';
+q0 = [0.2,0.5,0.7,0.2,0.5]';
 dt = 0.01;
-mirror_style = 'rectangle';
+mirror_style = 'scrape';
 comparison = 1;
 if strcmp(mirror_style, 'rectangle')
     pos1 = [0.4, 0.7, 0.7]; pos2 = [-0.4, 0.7, 0.7]; pos3 = [-0.4, 0.7, 1]; pos4 = [0.4, 0.7, 1];
@@ -460,6 +459,10 @@ elseif strcmp(mirror_style, 'circle')
     norm_vec = [0.03;2;0.0];
     interval = 0.1;
     [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, norm_vec, interval, q0, dt);
+else
+    pos1 = [0.4, 0.8, 0.84]; pos3 = [-0.4, 0.8, 1.62];
+    via_pos = [pos3', pos1'];
+    [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pi/2,q0,dt);
 end
 
 t = 0:dt:dt*(size(sim_q,2)-1);

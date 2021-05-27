@@ -9,10 +9,10 @@ function [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, n
     tmp_q = [ones(1,length(jpos))*q0(1); ones(1,length(jpos))*q0(2); jpos;...
              ones(1,length(jpos))*q0(4); ones(1,length(jpos))*q0(5)];
     for idx=1:length(jpos)
-        sim_pos = [sim_pos, rbt.FKSolve(tmp_q(:,idx)).t];
+        sim_pos = [sim_pos, rbt.FKSolveTool(tmp_q(:,idx)).t];
     end
     sim_q = [sim_q, tmp_q];
-    pos0 = rbt.FKSolve(tmp_q(:,end)).t;
+    pos0 = rbt.FKSolveTool(tmp_q(:,end)).t;
     line_length = norm(center-pos0);
     uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
     alph0 = q0(1)+q0(end);
@@ -45,7 +45,7 @@ function [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, n
     alph = [alph, zeros(1,length(thp))];
     
     %% post-clean action
-    posn = rbt.FKSolve(g_stowed_pos).t;
+    posn = rbt.FKSolveTool(g_stowed_pos).t;
     line_length = norm(posn-pos(:,end));
     uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
     [up,~,~] = uplanner.GenerateTraj(dt);
@@ -59,7 +59,7 @@ function [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, n
     for idx=1:size(pos,2)
         tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alph(idx), pre_q);
         sim_q = [sim_q, tmp_q]; pre_q = tmp_q;
-        pose_tmp = rbt.FKSolve(tmp_q);
+        pose_tmp = rbt.FKSolveTool(tmp_q);
         sim_pos = [sim_pos, pose_tmp.t];
     end
     
