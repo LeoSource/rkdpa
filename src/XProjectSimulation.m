@@ -14,7 +14,7 @@ g_stowed_pos = [0;0.7;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
-task = 'mirror';
+task = 'table';
 show_power = 0;
 q0 = [0.2,0.5,0.7,0.2,0.5]';
 switch task
@@ -24,7 +24,6 @@ switch task
         dt = 0.01;
         if strcmp(mirror_type, 'rectangle')
             pos1 = [0.4, 0.8, 0.84]; pos2 = [-0.4, 0.8, 0.84]; pos3 = [-0.4, 0.8, 1.62]; pos4 = [0.4, 0.8, 1.62];
-            via_pos = [pos3', pos1'];
             via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
             [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt);
         elseif strcmp(mirror_type, 'circle')
@@ -42,12 +41,13 @@ switch task
         
     case clean_task(2)
         %% wipe the table
-        pitch_x = 10;
-        pos1 = rotx(pitch_x)*[0.2; 0.8; 0.8];
-        pos2 = rotx(pitch_x)*[-0.2; 0.8; 0.8];
-        pos3 = rotx(pitch_x)*[-0.2; 1.1; 0.8];
-        pos4 = rotx(pitch_x)*[0.2; 1.1; 0.8];
+        pitch_x = 0;
+%         pos1 = rotx(pitch_x)*[0.2; 0.8; 0.8];
+%         pos2 = rotx(pitch_x)*[-0.2; 0.8; 0.8];
+%         pos3 = rotx(pitch_x)*[-0.2; 1.1; 0.8];
+%         pos4 = rotx(pitch_x)*[0.2; 1.1; 0.8];
         dt = 0.01;
+        pos1 = [0.2, 0.8, 0.8]'; pos2 = [-0.2, 0.8, 0.8]'; pos3 = [-0.2, 1.1, 0.8]'; pos4 = [0.2, 1.1, 0.8]';
         via_pos = CalcRectanglePath([pos1, pos2, pos3, pos4], 'm');
 %         [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt);
         [sim_pos, sim_q] = BrushRotXPlane(rbt,via_pos,pitch_x*pi/180,q0,dt);

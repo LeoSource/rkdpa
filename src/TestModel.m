@@ -459,9 +459,10 @@ elseif strcmp(mirror_style, 'circle')
     norm_vec = [0.03;2;0.0];
     interval = 0.1;
     [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, norm_vec, interval, q0, dt);
-else
-    pos1 = [0.4, 0.8, 0.84]; pos3 = [-0.4, 0.8, 1.62];
-    via_pos = [pos3', pos1'];
+elseif strcmp(mirror_style, 'scrape')
+    x0 = rbt.mdh(3,2)+rbt.mdh(5,3);
+    pos1 = [x0, 0.8, 1.62]; pos2 = [x0, 0.8, 0.84];
+    via_pos = [pos1', pos2'];
     [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pi/2,q0,dt);
 end
 
