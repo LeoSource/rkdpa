@@ -2,7 +2,7 @@ classdef CTrajPlanner < handle
 
     properties
         line_planner
-        arc_planner
+        spline_planner
         ntraj
 
         pos_initial

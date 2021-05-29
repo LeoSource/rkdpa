@@ -28,27 +28,43 @@ classdef CubicBSplinePlanner < handle
     methods
         %% Constructor of Class and Other Settings
         function obj = CubicBSplinePlanner(via_pos, option, uk)
-            obj.nump = size(via_pos, 2);
             obj.pdegree = 3;
-            if nargin>2
-                if isscalar(uk)
-                    obj.uknot_vec = uk*obj.CalcUKnot(via_pos);
+            if strcmp(option, 'ctrlpos')
+                obj.ctrl_pos = via_pos;
+                obj.num_ctrlp = size(via_pos,2);
+                obj.nump = obj.num_ctrlp-2;
+                if nargin>2
+                    if isscalar(uk)
+                        obj.uknot_vec = uk*obj.CalcUKnot(via_pos);
+                    else
+                        obj.uknot_vec = uk;
+                    end
                 else
-                    obj.uknot_vec = uk;
+                    obj.uknot_vec = obj.CalcUKnot(via_pos);
                 end
-            else
-                obj.uknot_vec = obj.CalcUKnot(via_pos);
-            end
-            if strcmp(option, 'interpolation')
-                obj.num_ctrlp = obj.nump+2;
                 obj.knot_vec = obj.CalcKnotVec();
-                obj.ctrl_pos = obj.CalcCtrlPos(via_pos);
-            elseif strcmp(option, 'approximation')
-                obj.num_ctrlp = 20;
-                obj.knot_vec = obj.CalcApproKnotVec();
-                obj.ctrl_pos = obj.CalcApproCtrlPos(via_pos);
-            else
-                error('error option')
+            else                
+                obj.nump = size(via_pos, 2);
+                if nargin>2
+                    if isscalar(uk)
+                        obj.uknot_vec = uk*obj.CalcUKnot(via_pos);
+                    else
+                        obj.uknot_vec = uk;
+                    end
+                else
+                    obj.uknot_vec = obj.CalcUKnot(via_pos);
+                end
+                if strcmp(option, 'interpolation')
+                    obj.num_ctrlp = obj.nump+2;
+                    obj.knot_vec = obj.CalcKnotVec();
+                    obj.ctrl_pos = obj.CalcCtrlPos(via_pos);
+                elseif strcmp(option, 'approximation')
+                    obj.num_ctrlp = 20;
+                    obj.knot_vec = obj.CalcApproKnotVec();
+                    obj.ctrl_pos = obj.CalcApproCtrlPos(via_pos);
+                else
+                    error('error option')
+                end
             end
         end
 
