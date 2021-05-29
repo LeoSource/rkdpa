@@ -34,6 +34,21 @@ classdef ArcPathPlanner < handle
                 a = [a1; b1; c1]/norm([a1; b1; c1]);
                 o = cross(a,n);
                 obj.rot = [n, o, a];
+            elseif strcmp(option, 'arctrans')
+                p2p1 = pos1-pos2; p2p3 = pos3-pos2;
+                inc_angle = acos(dot(p2p1,p2p3)/norm(p2p1)/norm(p2p3));
+                obj.theta = pi-inc_angle;
+                obj.radius = norm(p2p1)*tan(0.5*inc_angle);
+                pc = 0.5*(pos1+pos3); p2pc = pc-pos2;
+                scale = obj.radius/sin(0.5*inc_angle)/norm(p2pc);
+                p2center = scale*p2pc;
+                obj.center = pos2+p2center;
+
+                n = (pos1-obj.center)/norm(pos1-obj.center);
+                [a1, b1, c1, ~] = obj.PointsCoplane(pos1, pos2, pos3);
+                a = [a1; b1; c1]/norm([a1; b1; c1]);
+                o = cross(a,n);
+                obj.rot = [n, o, a];
             elseif strcmp(option, 'circle')
                 % ref:http://blog.sina.com.cn/s/blog_6496e38e0102vi7e.html
                 obj.center = pos1;
