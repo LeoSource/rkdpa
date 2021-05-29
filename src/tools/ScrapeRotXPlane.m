@@ -17,16 +17,28 @@ function [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pitch_x,q0,dt)
     yaw0 = q0(1)+q0(end);
     rpy0 = [0;pitch0;yaw0];
     ctraj = CTrajPlanner(pos0,rpy0);
-    line_traj = LineTrajPlanner(pos0,via_pos(:,1),g_cvmax,g_camax,rpy0,[0;rbt.pitch_high;0],ang_vmax,ang_amax,'both');
-    ctraj.AddSegment(line_traj,'line');
     
-    rpyn = [0;rbt.pitch_low;0];
-    line_traj = LineTrajPlanner(via_pos(:,1),via_pos(:,2),g_cvmax,g_camax,[0;rbt.pitch_high;0],rpyn,ang_vmax,ang_amax,'both');
-    ctraj.AddSegment(line_traj,'line');
+    segpos = CalcSplineTransPos([pos0,via_pos],0.05,'arc');
+    arc_traj = ArcPathPlanner(segpos(:,1),via_pos(:,1),segpos(:,2),'arctrans');
+    varc = sqrt(g_camax*arc_traj.radius);
+    line_traj = LineTrajPlanner(pos0,segpos(:,1),g_cvmax,g_camax,[],[0,varc],...
+                                            rpy0,[0;rbt.pitch_high;0],g_jvmax(3),g_jamax(3),[],[0,0],'both');
+    arc_traj = ArcTrajPlanner(segpos(:,1),via_pos(:,1),segpos(:,2),g_cvmax,g_camax,[],[varc,varc],...
+                                            [0;rbt.pitch_high;0],[],[],[],[],[],'pos');
+    ctraj.AddSegment(line_traj);
+    ctraj.AddSegment(arc_traj);
     
-    posn = via_pos(:,2)+[0;-0.1;0];
-    line_traj = LineTrajPlanner(via_pos(:,2),posn,g_cvmax,g_camax,rpyn,[],[],[],'pos');
-    ctraj.AddSegment(line_traj,'line');
+    
+%     line_traj = LineTrajPlanner(pos0,via_pos(:,1),g_cvmax,g_camax,rpy0,[0;rbt.pitch_high;0],ang_vmax,ang_amax,'both');
+%     ctraj.AddSegment(line_traj,'line');
+%     
+%     rpyn = [0;rbt.pitch_low;0];
+%     line_traj = LineTrajPlanner(via_pos(:,1),via_pos(:,2),g_cvmax,g_camax,[0;rbt.pitch_high;0],rpyn,ang_vmax,ang_amax,'both');
+%     ctraj.AddSegment(line_traj,'line');
+%     
+%     posn = via_pos(:,2)+[0;-0.1;0];
+%     line_traj = LineTrajPlanner(via_pos(:,2),posn,g_cvmax,g_camax,rpyn,[],[],[],'pos');
+%     ctraj.AddSegment(line_traj,'line');
     [pos, rpy] = ctraj.GeneratePath(dt);
 
     %% robot inverse kinematics

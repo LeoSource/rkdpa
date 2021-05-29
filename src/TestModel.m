@@ -12,7 +12,7 @@ g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi]*0.5;
 g_cvmax = 0.15; g_camax = 0.3;
 g_stowed_pos = [0;0.6;0;0;0];
 g_cycle_time = 0.005;
-test_mode = 'mirrortask';
+test_mode = 'ctrajarc';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -174,10 +174,12 @@ pos1 = [0, -2, 0];
 pos2 = [1, 0, 1];
 pos3 = [0, 3, 3];
 arcpath = ArcPathPlanner(pos1, pos2, pos3, 'arc');
-planner = LspbTrajPlanner([0, arcpath.theta], 2, 2, 2, 'limitvel');
+planner = LspbTrajPlanner([0, arcpath.theta], 2, 2, 2);
 [alp, alpv, alpa] = planner.GenerateTraj(0.01);
 [pos, vel, acc] = arcpath.GenerateTraj(alp, alpv, alpa);
+arcpath.PlotTraj(alp,alpv,alpa,2,0.01);
 
+figure
 f1 = plot3([pos1(1); pos2(1); pos3(1)], [pos1(2); pos2(2); pos3(2)], [pos1(3); pos2(3); pos3(3)], 'ro');
 grid on
 xlabel('x'); ylabel('y'); zlabel('z');
@@ -375,16 +377,19 @@ for idx=1:length(npts)
     via_pos = [via_pos, tmp_pos];
 end
 %}
-npts = [15, 12, 10, 8, 6, 4];
-center = [0,0,0,0,0,0; 0,0,0,0,0,0; 0,-0.06,-0.12,-0.18,-0.24,-0.3];
-elli_params = [0.7, 0.6, 0.5, 0.4, 0.3, 0.2; 0.5, 0.4, 0.3, 0.2, 0.1, 0.05];
-via_pos = [];
-for idx=1:length(npts)
-    theta = linspace(0,2*pi,npts(idx)+1);
-    tmp_pos = center(:,idx)+[elli_params(1,idx)*cos(theta); elli_params(2,idx)*sin(theta); zeros(1,npts(idx)+1)];
-    via_pos = [via_pos, tmp_pos];
-end
-planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
+% npts = [15, 12, 10, 8, 6, 4];
+% center = [0,0,0,0,0,0; 0,0,0,0,0,0; 0,-0.06,-0.12,-0.18,-0.24,-0.3];
+% elli_params = [0.7, 0.6, 0.5, 0.4, 0.3, 0.2; 0.5, 0.4, 0.3, 0.2, 0.1, 0.05];
+% via_pos = [];
+% for idx=1:length(npts)
+%     theta = linspace(0,2*pi,npts(idx)+1);
+%     tmp_pos = center(:,idx)+[elli_params(1,idx)*cos(theta); elli_params(2,idx)*sin(theta); zeros(1,npts(idx)+1)];
+%     via_pos = [via_pos, tmp_pos];
+% end
+pos1 = [0.2, 0.8, 0.8]'; pos2 = [0, 0.8, 0.8]'; pos3 = [-0.2, 0.8, 0.8]'; pos4 = [-0.2, 0.95, 0.8]'; pos5 = [-0.2, 1.1, 0.8]';
+via_pos = [pos1,pos2,pos3,pos4,pos5];
+% planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
+planner = CubicBSplinePlanner(via_pos, 'ctrlpos',5);
 planner.PlotAVP(0.01);
 planner.PlotBSpline(0.01); hold on;
 if size(via_pos,1)==3

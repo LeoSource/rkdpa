@@ -1,15 +1,13 @@
-%   use rpy to represent rotation
-
-%   TO DO: add quaternion and aixs-angle methods
-%   Author:
-%   liao zhixiang, zhixiangleo@163.com
-
-classdef LineTrajPlanner < handle
+classdef ArcTrajPlanner < handle
 
     properties
+        center
+        radius
+        theta
+        rot
+
         pos_initial
         rpy_initial
-        pos_dir
         rot_dir
         pos_len
         rot_len
@@ -17,23 +15,24 @@ classdef LineTrajPlanner < handle
         tf_rot
         pos_uplanner
         rot_uplanner
-        
+
         option
     end
 
+
     methods
-        function obj = LineTrajPlanner(pos0, posn,line_vmax,line_amax,pduration,pvel_cons,...
+        function obj = ArcTrajPlanner(pos1,pos2,pos3,line_vmax,line_amax,pduration,pvel_cons,...
                                         rpy0,rpyn,ang_vmax,ang_amax,rduration,rvel_cons,opt)
             obj.option = opt;
-            obj.pos_initial = pos0;
+            obj.pos_initial = pos1;
             obj.rpy_initial = rpy0;
-            if strcmp(opt,'both')
-                obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,pduration,pvel_cons);
+            if strcmp(opt, 'both')
+                obj.InitPosPlanner(pos1,pos2,pos3,line_vmax,line_amax,pduration,pvel_cons);
                 obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,rduration,rvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
                 obj.tf_rot = obj.rot_uplanner.tf;
             elseif strcmp(opt, 'pos')
-                obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,pduration,pvel_cons);
+                obj.InitPosPlanner(pos1,pos2,pos3,line_vmax,line_amax,pduration,pvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
             elseif strcmp(opt, 'rot')
                 obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,rduration,rvel_cons);
@@ -43,16 +42,39 @@ classdef LineTrajPlanner < handle
             end
         end
 
-        function InitPosPlanner(obj, pos0, posn, line_vmax, line_amax, tf, vel_cons)
-            line_len = norm(posn-pos0);
-            obj.pos_len = line_len;
-            obj.pos_dir = (posn-pos0)/line_len;
+        function InitPosPlanner(obj,pos1,pos2,pos3,line_vmax,line_amax,tf,vel_cons)
+            p2p1 = pos1-pos2; p2p3 = pos3-pos2;
+            inc_angle = acos(dot(p2p1,p2p3)/norm(p2p1)/norm(p2p3));
+            obj.theta = pi-inc_angle;
+            obj.radius = norm(p2p1)*tan(0.5*inc_angle);
+            pc = 0.5*(pos1+pos3); p2pc = pc-pos2;
+            scale = obj.radius/sin(0.5*inc_angle)/norm(p2pc);
+            p2center = scale*p2pc;
+            obj.center = pos2+p2center;
+            obj.pos_len = obj.radius*obj.theta;
             if isempty(tf)
-                obj.pos_uplanner = LspbTrajPlanner([0,line_len], line_vmax, line_amax,[],vel_cons);
+                obj.pos_uplanner = LspbTrajPlanner([0,obj.pos_len],line_vmax,line_amax,[],vel_cons);
             else
-                obj.pos_uplanner = LspbTrajPlanner([0,line_len], line_vmax, line_amax,tf);
+                obj.pos_uplanner = LspbTrajPlanner([0,obj.pos_len],line_vmax,line_amax,tf);
             end
+
+            n = (pos1-obj.center)/norm(pos1-obj.center);
+            [a1, b1, c1, ~] = obj.PointsCoplane(pos1, pos2, pos3);
+            a = [a1; b1; c1]/norm([a1; b1; c1]);
+            o = cross(a,n);
+            obj.rot = [n, o, a];
+
         end
+        
+        function [a, b, c, d] = PointsCoplane(obj, pos1, pos2, pos3)
+            x1 = pos1(1); y1 = pos1(2); z1 = pos1(3);
+            x2 = pos2(1); y2 = pos2(2); z2 = pos2(3);
+            x3 = pos3(1); y3 = pos3(2); z3 = pos3(3);
+            a = y1*z2-y2*z1-y1*z3+y3*z1+y2*z3-y3*z2;
+            b = -(x1*z2-x2*z1-x1*z3+x3*z1+x2*z3-x3*z2);
+            c = x1*y2-x2*y1-x1*y3+x3*y1+x2*y3-x3*y2;
+            d = -(x1*y2*z3-x1*y3*z2-x2*y1*z3+x2*y3*z1+x3*y1*z2-x3*y2*z1);
+        end    
 
         function InitRotPlanner(obj, rpy0, rpyn, ang_vmax, ang_amax, tf,vel_cons)
             rpy_len = norm(rpyn-rpy0);
@@ -84,7 +106,11 @@ classdef LineTrajPlanner < handle
             else
                 [up,~,~] = obj.pos_uplanner.GenerateMotion(t);
             end
-            pos = obj.pos_initial+up*obj.pos_dir;
+            th = up/obj.radius;
+            parc = zeros(3,1);
+            parc(1) = obj.radius*cos(th);
+            parc(2) = obj.radius*sin(th);
+            pos = obj.center+obj.rot*parc;
         end
 
         function rpy = GenerateRot(obj,t)
@@ -104,7 +130,9 @@ classdef LineTrajPlanner < handle
                 pos = [pos, p]; rpy = [rpy, r];
             end
         end
+
     end
 
 
+    
 end
