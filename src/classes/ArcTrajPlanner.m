@@ -124,7 +124,7 @@ classdef ArcTrajPlanner < handle
 
         function [pos,rpy] = GeneratePath(obj, dt)
             pos = []; rpy = [];
-            tf = max(obj.tf_pos,obj.tf_rot);
+            tf = max([obj.tf_pos,obj.tf_rot]);
             for t=0:dt:tf
                 [p,r] = obj.GeneratePoint(t);
                 pos = [pos, p]; rpy = [rpy, r];
