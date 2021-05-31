@@ -106,7 +106,11 @@ figure
 yyaxis left; plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':');
 yyaxis right; plot(t, sim_q(5,:), '-');
 grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
-
+figure
+sim_qd = diff(sim_q,1,2)/dt;
+sim_qd = [zeros(5,1), sim_qd];
+plot(t,sim_qd(1,:),'-', t, sim_qd(2,:), '--', t, sim_qd(3,:), '-.', t, sim_qd(4,:), ':', t, sim_qd(5,:), '-');
+grid on; title('joint velocity'); legend('dq1', 'dq2', 'dq3', 'dq4', 'dq5');
 % figure
 % plot(t,sim_qd(1,:),'-', t, sim_qd(2,:), '--', t, sim_qd(3,:), '-.', t, sim_qd(4,:), ':', t, sim_qd(5,:), '-');
 % grid on; title('joint velocity'); legend('dq1', 'dq2', 'dq3', 'dq4', 'dq5');

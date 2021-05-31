@@ -23,7 +23,7 @@ function [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pitch_x,q0,dt)
 %     varc = sqrt(g_camax*arc_traj.radius);
 %     line_traj = LineTrajPlanner(pos0,segpos{1}(:,1),g_cvmax,g_camax,[],[0,varc],...
 %                                             rpy0,[0;rbt.pitch_high;0],g_jvmax(3),g_jamax(3),[],[0,0],'both');
-%     arc_traj = ArcTrajPlanner(segpos{1}(:,1),via_pos(:,1),segpos{1}(:,2),g_cvmax,g_camax,[],[varc,varc],...
+%     arc_traj = ArcTrajPlanner(segpos{1}(:,1),via_pos(:,1),segpos{1}(:,2),varc,g_camax,[],[varc,varc],...
 %                                             [0;rbt.pitch_high;0],[],[],[],[],[],'pos');                                    
 %     ctraj.AddSegment(line_traj);
 %     ctraj.AddSegment(arc_traj);
@@ -34,7 +34,7 @@ function [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pitch_x,q0,dt)
 %     varc = sqrt(g_camax*arc_traj.radius);
 %     line_traj = LineTrajPlanner(segpos{1}(:,2),segpos{2}(:,1),g_cvmax,g_camax,[],[varc,varc],...
 %                                             [0;rbt.pitch_high;0],[0;rbt.pitch_low;0],g_jvmax(3),g_jamax(3),[],[0,0],'both');
-%     arc_traj = ArcTrajPlanner(segpos{2}(:,1),via_pos(:,2),segpos{2}(:,2),g_cvmax,g_camax,[],[varc,varc],...
+%     arc_traj = ArcTrajPlanner(segpos{2}(:,1),via_pos(:,2),segpos{2}(:,2),varc,g_camax,[],[varc,varc],...
 %                                             [0;rbt.pitch_low;0],[],[],[],[],[],'pos');
 %     ctraj.AddSegment(line_traj);
 %     ctraj.AddSegment(arc_traj);
@@ -45,24 +45,76 @@ function [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pitch_x,q0,dt)
                                         
                                         
     line_traj = LineTrajPlanner(pos0,via_pos(:,1),g_cvmax,g_camax,[],[0,0],...
-                                            rpy0,[0;rbt.pitch_high;0],g_jvmax(3),g_jamax(3),[],[0,0],'both');
+                                            rpy0,[0;rbt.pitch_high;0],0.15,0.3,[],[0,0],'both');
     ctraj.AddSegment(line_traj);
     
     rpyn = [0;rbt.pitch_low;0];
     line_traj = LineTrajPlanner(via_pos(:,1),via_pos(:,2),g_cvmax,g_camax,[],[0,0],...
-                                            [0;rbt.pitch_high;0],rpyn,g_jvmax(3),g_jamax(3),[],[0,0],'both');
+                                            [0;rbt.pitch_high;0],rpyn,0.15,0.3,[],[0,0],'both');
     ctraj.AddSegment(line_traj);
     
     posn = via_pos(:,2)+[0;-0.1;0];
     line_traj = LineTrajPlanner(via_pos(:,2),posn,g_cvmax,g_camax,[],[0,0],...
                                             rpyn,[],[],[],[],[],'pos');
     ctraj.AddSegment(line_traj);
+
     [pos, rpy] = ctraj.GeneratePath(dt);
+
+
+    %% pre-clean action
+    % initialize planner
+    %{
+    yaw0 = q0(1)+q0(end);
+    pitch0 = q0(3)+rbt.tool_pitch;
+    pre_yawplanner = LspbTrajPlanner([yaw0,0],g_jvmax(1),g_jamax(1));
+    pre_pitchPLanner = LspbTrajPlanner([pitch0, rbt.pitch_high], g_jvmax(3), g_jamax(3));
+    pos0 = rbt.FKSolveTool(q0).t;
+    line_length = norm(via_pos(:,1)-pos0);
+    pre_uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
+    tf_pre = max([pre_yawplanner.tf, pre_pitchPLanner.tf, pre_uplanner.tf]);
+    pre_yawplanner = LspbTrajPlanner([yaw0,0],g_jvmax(1),g_jamax(1), tf_pre);
+    pre_pitchPLanner = LspbTrajPlanner([pitch0, rbt.pitch_high], g_jvmax(3), g_jamax(3), tf_pre);
+    pre_uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax, tf_pre);
+    % generate trajectory
+    [up,~,~] = pre_uplanner.GenerateTraj(dt);
+    pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
+    pos = [pos, pos_tmp];
+    pitch = [pitch, pre_pitchPLanner.GenerateTraj(dt)];
+    yaw = [yaw, pre_yawplanner.GenerateTraj(dt)];
+
+    %% clean plane action
+    % initialize planner
+    pitchplanner = LspbTrajPlanner([rbt.pitch_high, rbt.pitch_low], g_jvmax(3), g_jamax(3));
+    line_length = norm(via_pos(:,2)-via_pos(:,1));
+    uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
+    tf_clean = max(pitchplanner.tf,uplanner.tf);
+    pitchplanner = LspbTrajPlanner([rbt.pitch_high, rbt.pitch_low], g_jvmax(3), g_jamax(3),tf_clean);
+    uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax,tf_clean);
+    % generate trajectory
+    [up,~,~] = uplanner.GenerateTraj(dt);
+    pos_tmp = via_pos(:,1)+up.*(via_pos(:,2)-via_pos(:,1))/line_length;
+    pos = [pos, pos_tmp];
+    pitch = [pitch, pitchplanner.GenerateTraj(dt)];
+    yaw = [yaw, zeros(size(up))];
+
+    %% post-clean action
+    % initialize planner
+    posn = via_pos(:,2)+[0;-0.1;0];
+    line_length = norm(posn-via_pos(:,2));
+    post_uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
+    % generate trajectory
+    [up,~,~] = post_uplanner.GenerateTraj(dt);
+    pos_tmp = via_pos(:,2)+up.*(posn-via_pos(:,2))/line_length;
+    pos = [pos, pos_tmp];
+    pitch = [pitch, ones(size(up))*rbt.pitch_low];
+    yaw = [yaw, zeros(size(up))];
+    %}
 
     %% robot inverse kinematics
     pre_q = q0;
     for idx=1:size(pos,2)
         tmp_q = rbt.IKSolvePitchYaw(pos(:,idx), rpy(2,idx), rpy(3,idx), pre_q);
+%         tmp_q = rbt.IKSolvePitchYaw(pos(:,idx), pitch(idx), yaw(idx), pre_q);
         sim_q = [sim_q, tmp_q];
         pre_q = tmp_q;
         pose_tmp = rbt.FKSolveTool(tmp_q);
