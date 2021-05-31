@@ -94,6 +94,8 @@ if strcmp(task, 'mirror')
         hold on; plot2([pos1', pos2', pos3', pos4', pos1']', '--'); axis equal; hold off;
     elseif strcmp(mirror_type, 'circle')
         hold on; plot2(circle_pos', '--'); axis equal; hold off;
+    elseif strcmp(mirror_type, 'scrape')
+        hold on; plot2(via_pos', 'bo'); axis equal; hold off;
     end
 elseif strcmp(task, 'sphere') || strcmp(task, 'ellipsoid')
     hold on; plot2(pos', '--'); plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'o'); hold off;
