@@ -40,7 +40,7 @@ classdef LspbTrajPlanner < handle
                 obj.SetTimeLimit(h, duration);
             elseif nargin==5
                 obj.TransformPVA(pos, vel_cons, max_vel, max_acc);
-                obj.SetVelConstraint(h);
+                obj.SetVelConstraint(h, duration);
             end
         end
 
@@ -93,23 +93,44 @@ classdef LspbTrajPlanner < handle
             obj.td=obj.ta;
         end
 
-        function SetVelConstraint(obj, h)
+        function SetVelConstraint(obj, h, duration)
             obj.t0 = 0;
             if obj.amax*h<0.5*abs(obj.v0^2-obj.vf^2)
                 error('the trajectory does not exit');
             else
-                if h*obj.amax>(obj.vmax^2-0.5*(obj.v0^2+obj.vf^2))
-                    obj.maxvel_reached = 1;
-                    obj.ta = (obj.vmax-obj.v0)/obj.amax;
-                    obj.td = (obj.vmax-obj.vf)/obj.amax;
-                    obj.tf = h/obj.vmax+0.5*obj.vmax/obj.amax*(1-obj.v0/obj.vmax)^2 ...
-                            +0.5*obj.vmax/obj.amax*(1-obj.vf/obj.vmax)^2;
+                if isempty(duration)
+                    if h*obj.amax>(obj.vmax^2-0.5*(obj.v0^2+obj.vf^2))
+                        obj.maxvel_reached = 1;
+                        obj.ta = (obj.vmax-obj.v0)/obj.amax;
+                        obj.td = (obj.vmax-obj.vf)/obj.amax;
+                        obj.tf = h/obj.vmax+0.5*obj.vmax/obj.amax*(1-obj.v0/obj.vmax)^2 ...
+                                +0.5*obj.vmax/obj.amax*(1-obj.vf/obj.vmax)^2;
+                    else
+                        obj.maxvel_reached = 0;
+                        obj.vmax = sqrt(h*obj.amax+0.5*(obj.v0^2+obj.vf^2));
+                        obj.ta = (obj.vmax-obj.v0)/obj.amax;
+                        obj.td = (obj.vmax-obj.vf)/obj.amax;
+                        obj.tf = obj.ta+obj.td;
+                    end
                 else
-                    obj.maxvel_reached = 0;
-                    obj.vmax = sqrt(h*obj.amax+0.5*(obj.v0^2+obj.vf^2));
-                    obj.ta = (obj.vmax-obj.v0)/obj.amax;
-                    obj.td = (obj.vmax-obj.vf)/obj.amax;
-                    obj.tf = obj.ta+obj.td;
+                    obj.tf = duration;
+                    tmp_v = obj.amax^2*obj.tf^2-4*obj.amax*h+2*obj.amax*(obj.v0+obj.vf)*obj.tf-(obj.v0-obj.vf)^2;
+                    if tmp_v>0
+                        vv = 0.5*(obj.v0+obj.vf+obj.amax*obj.tf-sqrt(tmp_v));
+                        obj.ta = (vv-obj.v0)/obj.amax;
+                        obj.td = (vv-obj.vf)/obj.amax;
+                        tmp_a = 4*h^2-4*h*(obj.v0+obj.vf)*obj.tf+2*(obj.v0^2+obj.vf^2)*obj.tf^2;
+                        alim = (2*h-obj.tf*(obj.v0+obj.vf)+sqrt(tmp_a))/obj.tf^2;
+                        if (obj.amax-alim)<1e-5
+                            obj.maxvel_reached = 0;
+                        else
+                            obj.maxvel_reached = 1;
+                        end
+%                         obj.amax = alim;
+                        obj.vmax = vv;
+                    else
+                        error('the trajectory does not exit');
+                    end
                 end
             end
         end

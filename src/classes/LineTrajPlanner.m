@@ -15,6 +15,7 @@ classdef LineTrajPlanner < handle
         rot_len
         tf_pos
         tf_rot
+        tf
         pos_uplanner
         rot_uplanner
         
@@ -22,21 +23,27 @@ classdef LineTrajPlanner < handle
     end
 
     methods
-        function obj = LineTrajPlanner(pos0, posn,line_vmax,line_amax,pduration,pvel_cons,...
-                                        rpy0,rpyn,ang_vmax,ang_amax,rduration,rvel_cons,opt)
+        function obj = LineTrajPlanner(pos0, posn,line_vmax,line_amax,pvel_cons,...
+                                        rpy0,rpyn,ang_vmax,ang_amax,rvel_cons,opt)
             obj.option = opt;
             obj.pos_initial = pos0;
             obj.rpy_initial = rpy0;
             if strcmp(opt,'both')
-                obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,pduration,pvel_cons);
-                obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,rduration,rvel_cons);
+                obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,[],pvel_cons);
+                obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,[],rvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
                 obj.tf_rot = obj.rot_uplanner.tf;
+                obj.tf = max([obj.tf_pos,obj.tf_rot]);
+                if obj.tf_pos>obj.tf_rot
+                    obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,obj.tf,rvel_cons);
+                else
+                    obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,obj.tf,pvel_cons);
+                end
             elseif strcmp(opt, 'pos')
-                obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,pduration,pvel_cons);
+                obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,[],pvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
             elseif strcmp(opt, 'rot')
-                obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,rduration,rvel_cons);
+                obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,[],rvel_cons);
                 obj.tf_rot = obj.rot_uplanner.tf;
             else
                 error('error line option');
@@ -50,7 +57,7 @@ classdef LineTrajPlanner < handle
             if isempty(tf)
                 obj.pos_uplanner = LspbTrajPlanner([0,line_len], line_vmax, line_amax,[],vel_cons);
             else
-                obj.pos_uplanner = LspbTrajPlanner([0,line_len], line_vmax, line_amax,tf);
+                obj.pos_uplanner = LspbTrajPlanner([0,line_len], line_vmax, line_amax,tf,vel_cons);
             end
         end
 
@@ -61,7 +68,7 @@ classdef LineTrajPlanner < handle
             if isempty(tf)
                 obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
             else
-                obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, tf);
+                obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, tf,vel_cons);
             end
         end
 
@@ -79,7 +86,7 @@ classdef LineTrajPlanner < handle
         end
 
         function pos = GeneratePos(obj,t)
-            if t>obj.tf_pos
+            if t>obj.tf
                 up = obj.pos_len;
             else
                 [up,~,~] = obj.pos_uplanner.GenerateMotion(t);
@@ -88,7 +95,7 @@ classdef LineTrajPlanner < handle
         end
 
         function rpy = GenerateRot(obj,t)
-            if t>obj.tf_rot
+            if t>obj.tf
                 up = obj.rot_len;
             else
                 [up,~,~] = obj.rot_uplanner.GenerateMotion(t);
@@ -98,8 +105,7 @@ classdef LineTrajPlanner < handle
 
         function [pos,rpy] = GeneratePath(obj, dt)
             pos = []; rpy = [];
-            tf = max([obj.tf_pos,obj.tf_rot]);
-            for t=0:dt:tf
+            for t=0:dt:obj.tf
                 [p,r] = obj.GeneratePoint(t);
                 pos = [pos, p]; rpy = [rpy, r];
             end

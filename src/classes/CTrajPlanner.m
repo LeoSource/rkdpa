@@ -32,8 +32,8 @@ classdef CTrajPlanner < handle
             posn = obj.pos_corner(:,pos_idx);
             rpy0 = obj.rpy_corner(:,pos_idx-1);
             rpyn = obj.rpy_corner(:,pos_idx);
-            obj.segpath_planner{obj.ntraj} = LineTrajPlanner(pos0,posn,g_cvmax,g_camax,[],[0,0],...
-                                                            rpy0,rpyn,0.15,0.3,[],[0,0],opt);
+            obj.segpath_planner{obj.ntraj} = LineTrajPlanner(pos0,posn,g_cvmax,g_camax,[0,0],...
+                                                            rpy0,rpyn,0.15,0.3,[0,0],opt);
         end
 
         function [pos,rpy] = GeneratePath(obj,dt)
