@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "RobotMath.h"
 
 namespace MathTools
@@ -46,26 +45,31 @@ namespace MathTools
 		return idx;
 	}
 
-	double CalcTransEqua(double a, double b, double c)
+	double CalcTransEqua(double a, double b, double c, double pre_value)
 	{
 		//calculate the equation like a*cos(theta)+b*sin(theta) = c
 		double theta = 0, u = 0;
 		double deg_thre[] = { -pi / 2, pi / 2 };
-		if (fabs(a + c) < EPS)
-		{
-			u = (c - a) / (2 * b);
-			theta = 2 * atan(u);
-		}
+		if (pow(a, 2)+pow(b, 2)<pow(c, 2))
+			theta = pre_value;
 		else
 		{
-			double tmp_value1 = (b + sqrt(pow(b,2) + pow(a,2) - pow(c,2))) / (a + c);
-			double tmp_value2 = (b - sqrt(pow(b, 2) + pow(a, 2) - pow(c, 2))) / (a + c);
-			tmp_value1 = 2 * atan(tmp_value1);
-			tmp_value2 = 2 * atan(tmp_value2);
-			if ((tmp_value1 > deg_thre[1]) || (tmp_value1 < deg_thre[0]))
-				theta = tmp_value2;
+			if (fabs(a+c) < EPS)
+			{
+				u = (c-a)/(2*b);
+				theta = 2*atan(u);
+			}
 			else
-				theta = tmp_value1;
+			{
+				double tmp_value1 = (b+sqrt(pow(b, 2)+pow(a, 2)-pow(c, 2)))/(a+c);
+				double tmp_value2 = (b-sqrt(pow(b, 2)+pow(a, 2)-pow(c, 2)))/(a+c);
+				tmp_value1 = 2*atan(tmp_value1);
+				tmp_value2 = 2*atan(tmp_value2);
+				if ((tmp_value1 > deg_thre[1])||(tmp_value1 < deg_thre[0]))
+					theta = tmp_value2;
+				else
+					theta = tmp_value1;
+			}
 		}
 
 		return theta;
@@ -152,25 +156,24 @@ namespace MathTools
 
 namespace RobotTools
 {
-	MatrixXd CalcRectanglePath(MatrixXd corner_pos, char* option)
+	MatrixXd CalcRectanglePath(MatrixXd* corner_pos, char* option, double interval)
 	{
-		double interval = 0.1;
 		Vector3d step_vec1, step_vec2, start_pos1, start_pos2;
 		if (strcmp(option, "s") == 0)
 		{
-			step_vec1 = corner_pos.col(3) - corner_pos.col(0);
-			step_vec2 = corner_pos.col(2) - corner_pos.col(1);
-			start_pos1 = corner_pos.col(0);
-			start_pos2 = corner_pos.col(1);
+			step_vec1 = corner_pos->col(3) - corner_pos->col(0);
+			step_vec2 = corner_pos->col(2) - corner_pos->col(1);
+			start_pos1 = corner_pos->col(0);
+			start_pos2 = corner_pos->col(1);
 		}
 		else if (strcmp(option, "m") == 0)
 		{
-			step_vec1 = corner_pos.col(1) - corner_pos.col(0);
-			step_vec2 = corner_pos.col(2) - corner_pos.col(3);
-			start_pos1 = corner_pos.col(0);
-			start_pos2 = corner_pos.col(3);
+			step_vec1 = corner_pos->col(1) - corner_pos->col(0);
+			step_vec2 = corner_pos->col(2) - corner_pos->col(3);
+			start_pos1 = corner_pos->col(0);
+			start_pos2 = corner_pos->col(3);
 		}
-		int cycle_num = step_vec1.norm()/interval;
+		int cycle_num = round(step_vec1.norm()/interval)+1;
 		int numvp = 2*cycle_num;
 		double step = step_vec1.norm() / (cycle_num-1);
 		step_vec1.normalize();
@@ -194,6 +197,25 @@ namespace RobotTools
 		return via_pos;
 	}
 
+	Matrix3d CalcPlaneRot(Vector3d center, Vector3d norm_vec, double px, double pz)
+	{
+		//plane function:Ax+By+Cz+D=0
+		double D = -norm_vec.dot(center);
+		Vector3d p1;
+		p1(2) = center(2);
+		p1(0) = center(0)+1;
+		p1(1) = (-norm_vec(0)*p1(0)-norm_vec(2)*p1(2)-D)/norm_vec(1);
+		Vector3d n, o, a;
+		a = norm_vec.normalized();
+		n = p1-center;
+		n.normalize();
+		o = a.cross(n);
+		Matrix3d rot;
+		rot<<n, o, a;
+
+		return rot;
+	}
+
 	Pose PoseProduct(Pose p1, Pose p2)
 	{
 		Pose res;
@@ -203,11 +225,41 @@ namespace RobotTools
 		return res;
 	}
 
+	Matrix3d RotX(double angle)
+	{
+		Matrix3d res;
+		res.setIdentity();
+		res(1, 1) = cos(angle);
+		res(2, 2) = cos(angle);
+		res(1, 2) = -sin(angle);
+		res(2, 1) = sin(angle);
+		
+		return res;
+	}
 
+	Matrix3d RotY(double angle)
+	{
+		Matrix3d res;
+		res.setIdentity();
+		res(0, 0) = cos(angle);
+		res(2, 2) = cos(angle);
+		res(0, 2) = sin(angle);
+		res(2, 0) = -sin(angle);
 
+		return res;
+	}
 
+	Matrix3d RotZ(double angle)
+	{
+		Matrix3d res;
+		res.setIdentity();
+		res(0, 0) = cos(angle);
+		res(1, 1) = cos(angle);
+		res(0, 1) = -sin(angle);
+		res(1, 0) = sin(angle);
 
-
+		return res;
+	}
 
 
 

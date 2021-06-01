@@ -41,7 +41,7 @@ public:
 
 	virtual int RunLogicOperation(int state, int pre_state, char* operation) = 0;
 
-	virtual void SetTrajPos(MatrixXd traj_pos,int num_section, VectorXd q_fdb) = 0;
+	virtual void SetTrajPos(MatrixXd* traj_pos,int num_section, VectorXd q_fdb) = 0;
 
 	virtual VectorXd RunTask(VectorXd q_fdb) = 0;
 

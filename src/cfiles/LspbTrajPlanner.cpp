@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "LspbTrajPlanner.h"
 
 
@@ -46,7 +45,8 @@ void LspbTrajPlanner::InitPlanner(Vector2d pos, double max_vel, double max_acc, 
 		_maxvel_reached = false;
 	Vector2d vel_con(0, 0);
 	TransformPVA(pos, vel_con, max_vel, max_acc);
-	SetTimeLimit(h, tf);
+	Vector2d duration(0, tf);
+	SetTimeLimit(h, duration);
 }
 
 void LspbTrajPlanner::InitPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration)
@@ -104,39 +104,15 @@ void LspbTrajPlanner::SetNoTimeLimit(double h)
 	_td = _ta;
 }
 
-void LspbTrajPlanner::SetTimeLimit(double h, double tf)
-{
-	_t0 = 0;
-	_tf = tf;
-	double tlen = _tf-_t0;
-	assert(tlen>=h/_vmax+_vmax/_amax);
-
-	if (_maxvel_reached)
-	{
-		double a = 1;
-		double b = -tlen*_amax;
-		double c = h*_amax;
-		_vmax = (-b-sqrt(pow(b, 2)-4*a*c))/2/a;
-		_ta = _vmax/_amax;
-	}
-	else
-	{
-		_vmax = 2*h/tlen;
-		_ta = 0.5*tlen;
-		_amax = _vmax/_ta;
-	}
-	_td = _ta;
-}
-
 void LspbTrajPlanner::SetTimeLimit(double h, Vector2d duration)
 {
 	_t0 = duration(0);
 	_tf = duration(1);
 	double tlen = _tf-_t0;
-	assert(tlen>=h/_vmax+_vmax/_amax);
-
 	if (_maxvel_reached)
 	{
+		//assert(tlen>=h/_vmax+_vmax/_amax);
+
 		double a = 1;
 		double b = -tlen*_amax;
 		double c = h*_amax;
@@ -145,6 +121,8 @@ void LspbTrajPlanner::SetTimeLimit(double h, Vector2d duration)
 	}
 	else
 	{
+		//assert(tlen>2*sqrt(h/_amax));
+
 		_vmax = 2*h/tlen;
 		_ta = 0.5*tlen;
 		_amax = _vmax/_ta;

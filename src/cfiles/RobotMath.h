@@ -16,7 +16,7 @@ namespace MathTools
 
 	int Discretize(VectorXd vec, int len, double value);
 
-	double CalcTransEqua(double a, double b, double c);
+	double CalcTransEqua(double a, double b, double c, double pre_value);
 
 	int Sign(double x);
 
@@ -38,6 +38,7 @@ namespace MathTools
 }
 
 using Vector5d = Matrix<double, 5, 1>;
+using Vector6d = Matrix<double, 6, 1>;
 
 namespace RobotTools
 {
@@ -68,9 +69,17 @@ namespace RobotTools
 		Matrix3d rot;
 	};
 
-	MatrixXd CalcRectanglePath(MatrixXd corner_pos, char* option);
+	MatrixXd CalcRectanglePath(MatrixXd* corner_pos, char* option, double interval);
+
+	Matrix3d CalcPlaneRot(Vector3d center, Vector3d norm_vec, double px, double pz);
 
 	Pose PoseProduct(Pose p1, Pose p2);
+
+	Matrix3d RotX(double angle);
+
+	Matrix3d RotY(double angle);
+
+	Matrix3d RotZ(double angle);
 
 
 }

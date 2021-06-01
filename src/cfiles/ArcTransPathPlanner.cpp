@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "ArcTransPathPlanner.h"
 
 ArcTransPathPlanner::ArcTransPathPlanner(MatrixXd pos, double radius)

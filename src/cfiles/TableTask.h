@@ -9,35 +9,30 @@ using namespace std;
 using namespace Eigen;
 
 
-class MirrorTask :public BaseTask
+class TableTask :public BaseTask
 {
-public:
-	char* _mirror_style;
 protected:
-	LspbTrajPlanner _splanner, _pre_uplanner, _post_uplanner, _alphplanner;
+	LspbTrajPlanner _jplanner,_splanner, _pre_uplanner, _post_uplanner, _alphplanner, _alphplanner_post;
 	ArcTransPathPlanner _cpath;
 	double _tf_clean, _tf_pre, _tf_post;
 	double _radius;
 	double _t;
 	int _task_state;
-	Vector5d _q_preclean, _q_postclean;
+	Vector5d _q_preclean, _q_postclean, _jpos_initial;
 	Vector3d _pos_initial, _pos_postclean, _pos_stow, _dir_initial, _dir_stow;
-	double _alph_initial;
-	int _interval_idx;
+	double _alph_initial,_alpha_stow;
+	int _interval_idx, _line_idx;
 	double _varc;
 	double _interval;
-	Vector3d _center;
-	bool _j3_return;
-	Vector5d _jpos_initial;
-	LspbTrajPlanner _jplanner;
-	Matrix3d _circel_rot;
+	bool _j3_return, _obstacle;
+	VectorXd _alpha;
 
 public:
-	MirrorTask() {}
+	TableTask() {}
 
-	MirrorTask(CleanRobot* rbt):BaseTask(rbt) {}
+	TableTask(CleanRobot* rbt):BaseTask(rbt){}
 
-	MirrorTask(CleanRobot* rbt, char* mirror_style);
+	TableTask(CleanRobot* rbt, bool obstacle);
 
 	int RunLogicOperation(int state, int pre_state, char* operation) override;
 
@@ -45,20 +40,22 @@ public:
 
 	VectorXd RunTask(VectorXd q_fdb) override;
 
-	~MirrorTask() {}
+	~TableTask() {}
 
 private:
-	void SetRectMirror(MatrixXd* corner_pos, VectorXd q_fdb);
+	void SetRectTable(MatrixXd* corner_pos, VectorXd q_fdb);
 
-	void SetCircleMirror(Vector3d center,Vector3d norm_vec, double radius, double interval, VectorXd q_fdb);
+	void SetRectTableWithObstacle(MatrixXd* corner_pos, VectorXd q_fdb, Vector2d alpha);
 
 	VectorXd RunPreCleanAction(VectorXd q_fdb);
 
 	VectorXd RunRectCleanAction(VectorXd q_fdb);
 
-	VectorXd RunCircleCleanAction(VectorXd q_fdb);
-
 	VectorXd RunPostCleanAction(VectorXd q_fdb);
+
+	VectorXd RunRectCleanActionWithObstacle(VectorXd q_fdb);
+
+	VectorXd RunPostCleanActionWithObstacle(VectorXd q_fdb);
 
 	void CompletePreCleanAction(VectorXd q_fdb);
 

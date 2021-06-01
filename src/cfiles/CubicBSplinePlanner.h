@@ -19,11 +19,11 @@ public:
 public:
 	CubicBSplinePlanner() {}
 
-	CubicBSplinePlanner(MatrixXd via_pos, char* option);
+	CubicBSplinePlanner(MatrixXd* via_pos, char* option);
 
-	CubicBSplinePlanner(MatrixXd via_pos, char* option, double uk);
+	CubicBSplinePlanner(MatrixXd* via_pos, char* option, double uk);
 
-	CubicBSplinePlanner(MatrixXd via_pos, char* option, VectorXd uk);
+	CubicBSplinePlanner(MatrixXd* via_pos, char* option, VectorXd uk);
 
 	RobotTools::CLineAVP GenerateMotion(double u, double du, double ddu);
 
@@ -36,15 +36,15 @@ public:
 	~CubicBSplinePlanner() {}
 
 private:
-	void CalcBSplineParams(MatrixXd via_pos, char* option);
+	void CalcBSplineParams(MatrixXd* via_pos, char* option);
 
-	MatrixXd CalcCtrlPos(MatrixXd q);
+	MatrixXd CalcCtrlPos(MatrixXd* q);
 
-	MatrixXd CalcApproCtrlPos(MatrixXd q);
+	MatrixXd CalcApproCtrlPos(MatrixXd* q);
 
 	VectorXd CalcKnotVec();
 
-	VectorXd CalcUKnot(MatrixXd q);
+	VectorXd CalcUKnot(MatrixXd* q);
 
 	VectorXd CalcApproKnotVec();
 

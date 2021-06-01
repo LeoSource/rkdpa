@@ -55,8 +55,6 @@ private:
 
 	void SetNoTimeLimit(double h);
 
-	void SetTimeLimit(double h, double tf);
-
 	void SetTimeLimit(double h, Vector2d duration);
 
 	void SetVelConstraint(double h);

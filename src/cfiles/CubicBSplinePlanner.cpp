@@ -1,32 +1,31 @@
-#include "stdafx.h"
 #include "CubicBSplinePlanner.h"
 
 
-CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd via_pos, char* option)
+CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd* via_pos, char* option)
 {
-	_nump = via_pos.cols();
+	_nump = via_pos->cols();
 	_pdegree = 3;
 	_uknot_vec = CalcUKnot(via_pos);
 	CalcBSplineParams(via_pos, option);
 }
 
-CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd via_pos, char* option, double uk)
+CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd* via_pos, char* option, double uk)
 {
-	_nump = via_pos.cols();
+	_nump = via_pos->cols();
 	_pdegree = 3;
 	_uknot_vec = uk*CalcUKnot(via_pos);
 	CalcBSplineParams(via_pos, option);
 }
 
-CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd via_pos, char* option, VectorXd uk)
+CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd* via_pos, char* option, VectorXd uk)
 {
-	_nump = via_pos.cols();
+	_nump = via_pos->cols();
 	_pdegree = 3;
 	_uknot_vec = uk;
 	CalcBSplineParams(via_pos, option);
 }
 
-void CubicBSplinePlanner::CalcBSplineParams(MatrixXd via_pos, char* option)
+void CubicBSplinePlanner::CalcBSplineParams(MatrixXd* via_pos, char* option)
 {
 	if (strcmp(option, "interpolation")==0)
 	{
@@ -42,20 +41,20 @@ void CubicBSplinePlanner::CalcBSplineParams(MatrixXd via_pos, char* option)
 	}
 }
 
-MatrixXd CubicBSplinePlanner::CalcCtrlPos(MatrixXd q)
+MatrixXd CubicBSplinePlanner::CalcCtrlPos(MatrixXd* q)
 {
 	int n = _nump;
 	int m = _num_ctrlp;
 	VectorXd u_hat = _uknot_vec;
-	int dim = q.rows();
+	int dim = q->rows();
 	MatrixXd p;
 	p.setZero(dim, m);
-	VectorXd t1 = (q.col(1)-q.col(0))/(u_hat(1)-u_hat(0));
-	VectorXd tn = (q.col(n-1)-q.col(n-2))/(u_hat(n-1)-u_hat(n-2));
-	p.col(0) = q.col(0);
-	p.col(1) = q.col(0)+(u_hat(1)-u_hat(0))/3*t1;
-	p.col(n) = q.col(n-1)-(u_hat(n-1)-u_hat(n-2))/3*tn;
-	p.col(n+1) = q.col(n-1);
+	VectorXd t1 = (q->col(1)-q->col(0))/(u_hat(1)-u_hat(0));
+	VectorXd tn = (q->col(n-1)-q->col(n-2))/(u_hat(n-1)-u_hat(n-2));
+	p.col(0) = q->col(0);
+	p.col(1) = q->col(0)+(u_hat(1)-u_hat(0))/3*t1;
+	p.col(n) = q->col(n-1)-(u_hat(n-1)-u_hat(n-2))/3*tn;
+	p.col(n+1) = q->col(n-1);
 	MatrixXd B, R;
 	B.setZero(n-2, n-2);
 	R.setZero(n-2, dim);
@@ -63,19 +62,19 @@ MatrixXd CubicBSplinePlanner::CalcCtrlPos(MatrixXd q)
 	{
 		if (idx==0)
 		{
-			R.row(idx) = q.col(1).transpose()-CalcBSplineCoeff(3, 1, u_hat(1))*p.col(1).transpose();
+			R.row(idx) = q->col(1).transpose()-CalcBSplineCoeff(3, 1, u_hat(1))*p.col(1).transpose();
 			B(0, 0) = CalcBSplineCoeff(3, 2, u_hat(1));
 			B(0, 1) = CalcBSplineCoeff(3, 3, u_hat(1));
 		}
 		else if (idx==n-3)
 		{
-			R.row(idx) = q.col(n-2).transpose()-CalcBSplineCoeff(3, n, u_hat(n-2))*p.col(n).transpose();
+			R.row(idx) = q->col(n-2).transpose()-CalcBSplineCoeff(3, n, u_hat(n-2))*p.col(n).transpose();
 			B(n-3, n-4) = CalcBSplineCoeff(3, n-2, u_hat(n-2));
 			B(n-3, n-3) = CalcBSplineCoeff(3, n-1, u_hat(n-2));
 		}
 		else
 		{
-			R.row(idx) = q.col(idx+1).transpose();
+			R.row(idx) = q->col(idx+1).transpose();
 			B(idx, idx-1) = CalcBSplineCoeff(3, idx+1, u_hat(idx+1));
 			B(idx, idx) = CalcBSplineCoeff(3, idx+2, u_hat(idx+1));
 			B(idx, idx+1) = CalcBSplineCoeff(3, idx+3, u_hat(idx+1));
@@ -87,23 +86,23 @@ MatrixXd CubicBSplinePlanner::CalcCtrlPos(MatrixXd q)
 	return p;
 }
 
-MatrixXd CubicBSplinePlanner::CalcApproCtrlPos(MatrixXd q)
+MatrixXd CubicBSplinePlanner::CalcApproCtrlPos(MatrixXd* q)
 {
 	int n = _nump;
 	int m = _num_ctrlp;
 	VectorXd u_hat = _uknot_vec;
-	int dim = q.rows();
+	int dim = q->rows();
 	MatrixXd p;
 	p.setZero(dim, m);
-	p.col(0) = q.col(0);
-	p.col(m-1) = q.col(n-1);
+	p.col(0) = q->col(0);
+	p.col(m-1) = q->col(n-1);
 	MatrixXd R, B;
 	R.setZero(n-2, dim);
 	B.setZero(n-2, m-2);
 	for (int idx = 1; idx<n-1; idx++)
 	{
-		R.row(idx-1) = q.col(idx).transpose()-CalcBSplineCoeff(3, 0, u_hat(idx))*q.col(0).transpose()
-						-CalcBSplineCoeff(3, m-1, u_hat(idx))*q.col(n-1).transpose();
+		R.row(idx-1) = q->col(idx).transpose()-CalcBSplineCoeff(3, 0, u_hat(idx))*q->col(0).transpose()
+						-CalcBSplineCoeff(3, m-1, u_hat(idx))*q->col(n-1).transpose();
 	}
 	for (int nidx = 1; nidx<n-1; nidx++)
 	{
@@ -137,7 +136,7 @@ VectorXd CubicBSplinePlanner::CalcKnotVec()
 	return knot_vec;
 }
 
-VectorXd CubicBSplinePlanner::CalcUKnot(MatrixXd q)
+VectorXd CubicBSplinePlanner::CalcUKnot(MatrixXd* q)
 {
 	VectorXd uk;
 	uk.setZero(_nump);
@@ -145,11 +144,11 @@ VectorXd CubicBSplinePlanner::CalcUKnot(MatrixXd q)
 	double d = 0;
 	for (int idx = 1; idx<_nump; idx++)
 	{
-		d += MathTools::Norm(q.col(idx)-q.col(idx-1));
+		d += MathTools::Norm(q->col(idx)-q->col(idx-1));
 	}
 	for (int idx = 1; idx<_nump-1; idx++)
 	{
-		uk(idx) = uk(idx-1)+MathTools::Norm(q.col(idx)-q.col(idx-1))/d;
+		uk(idx) = uk(idx-1)+MathTools::Norm(q->col(idx)-q->col(idx-1))/d;
 	}
 
 	return uk;

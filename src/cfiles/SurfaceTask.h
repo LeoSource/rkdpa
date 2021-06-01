@@ -31,18 +31,18 @@ public:
 
 	int RunLogicOperation(int state, int pre_state, char* operation) override;
 
-	void SetTrajPos(MatrixXd traj_pos, int num_section, VectorXd q_fdb) override;
+	void SetTrajPos(MatrixXd* traj_pos, int num_section, VectorXd q_fdb) override;
 
 	VectorXd RunTask(VectorXd q_fdb) override;
 
 	~SurfaceTask() {}
 
 private:
-	VectorXd RunPreCleanAction();
+	VectorXd RunPreCleanAction(VectorXd q_fdb);
 
-	VectorXd RunCleanAction();
+	VectorXd RunCleanAction(VectorXd q_fdb);
 
-	VectorXd RunPostCleanAction();
+	VectorXd RunPostCleanAction(VectorXd q_fdb);
 
 	void CompletePreCleanAction(VectorXd q_fdb);
 

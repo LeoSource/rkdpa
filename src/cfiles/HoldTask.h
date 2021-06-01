@@ -20,11 +20,21 @@ public:
 			_task_completed = true;
 			return 3;
 		}
+		else if (strcmp(operation, "table") == 0)
+		{
+			_task_completed = true;
+			return 4;
+		}
+		else if (strcmp(operation, "showerroom") == 0)
+		{
+			_task_completed = true;
+			return 5;
+		}
 		else
 			return 1;
 	}
 
-	void SetTrajPos(MatrixXd traj_pos, int num_section, VectorXd q_fdb) override {}
+	void SetTrajPos(MatrixXd* traj_pos, int num_section, VectorXd q_fdb) override {}
 
 	VectorXd RunTask(VectorXd q_fdb) override
 	{

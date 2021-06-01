@@ -1,8 +1,7 @@
-#include "stdafx.h"
 #include "SurfaceTask.h"
 #include <iostream>
 
-void SurfaceTask::SetTrajPos(MatrixXd traj_pos, int num_section, VectorXd q_fdb)
+void SurfaceTask::SetTrajPos(MatrixXd* traj_pos, int num_section, VectorXd q_fdb)
 {
 	if (_task_completed)
 	{
@@ -16,12 +15,12 @@ void SurfaceTask::SetTrajPos(MatrixXd traj_pos, int num_section, VectorXd q_fdb)
 		_jpos_initial = q_fdb;
 		Vector2d vjpos(q_fdb(2), -pi/6);
 		_jplanner.InitPlanner(vjpos, g_jvmax[2], g_jamax[2]);
-		_q_preclean = _rbt->IKSolve(traj_pos.col(0), "q3firstn", 0);
+		_q_preclean = _rbt->IKSolve(traj_pos->col(0), "q3firstn", 0, q_fdb);
 		Vector5d q0 = q_fdb;
 		q0(2) = -pi/6;
 		_pos_initial = _rbt->FKSolve(q0).pos;
-		double line_len = MathTools::Norm(traj_pos.col(0)-_pos_initial);
-		_dir_initial = (traj_pos.col(0)-_pos_initial)/line_len;
+		double line_len = MathTools::Norm(traj_pos->col(0)-_pos_initial);
+		_dir_initial = (traj_pos->col(0)-_pos_initial)/line_len;
 		Vector2d vp(0, line_len);
 		_pre_uplanner.InitPlanner(vp, g_cvmax, g_camax);
 		_alph_initial = q_fdb(0)+q_fdb(q_fdb.size()-1);
@@ -33,9 +32,9 @@ void SurfaceTask::SetTrajPos(MatrixXd traj_pos, int num_section, VectorXd q_fdb)
 		_pre_uplanner.InitPlanner(vp, g_cvmax, g_camax, _tf_pre);
 		_pre_alphplanner.InitPlanner(alph, g_jvmax[0], g_jamax[0], _tf_pre);
 
-		_pos_postclean = traj_pos.col(traj_pos.cols()-1);
+		_pos_postclean = traj_pos->col(traj_pos->cols()-1);
 		_pos_stow = Vector3d(g_stowed_cpos);
-		_q_postclean = _rbt->IKSolve(_pos_postclean, "q3firstn", _alph_end);
+		_q_postclean = _rbt->IKSolve(_pos_postclean, "q3firstn", _alph_end, q_fdb);
 		line_len = MathTools::Norm(_pos_stow-_pos_postclean);
 		_dir_stow = (_pos_stow-_pos_postclean)/line_len;
 		vp<<0, line_len;
@@ -60,15 +59,15 @@ VectorXd SurfaceTask::RunTask(VectorXd q_fdb)
 	switch (_task_state)
 	{
 	case 0:
-		q_traj = RunPreCleanAction();
+		q_traj = RunPreCleanAction(q_fdb);
 		CompletePreCleanAction(q_fdb);
 		break;
 	case 1:
-		q_traj = RunCleanAction();
+		q_traj = RunCleanAction(q_fdb);
 		CompleteCleanAction(q_fdb);
 		break;
 	case 2:
-		q_traj = RunPostCleanAction();
+		q_traj = RunPostCleanAction(q_fdb);
 		CompletePostCleanAction(q_fdb);
 		break;
 	case 3:
@@ -81,7 +80,7 @@ VectorXd SurfaceTask::RunTask(VectorXd q_fdb)
 	return q_traj;
 }
 
-VectorXd SurfaceTask::RunPreCleanAction()
+VectorXd SurfaceTask::RunPreCleanAction(VectorXd q_fdb)
 {
 	Vector5d q_traj;
 	if (!_j3_return)
@@ -91,7 +90,7 @@ VectorXd SurfaceTask::RunPreCleanAction()
 		q_traj(2) = j3avp.pos;
 		_t += g_cycle_time;
 		MathTools::LimitMax(_jplanner.GetFinalTime(), _t);
-		if (fabs(_t-_jplanner.GetFinalTime())<EPS)
+		if (fabs(_t-_jplanner.GetFinalTime())<g_cycle_time)
 		{
 			_t = 0;
 			_j3_return = true;
@@ -102,7 +101,7 @@ VectorXd SurfaceTask::RunPreCleanAction()
 		JAVP uavp = _pre_uplanner.GenerateMotion(_t);
 		Vector3d cpos = _pos_initial+uavp.pos*_dir_initial;
 		JAVP alphavp = _pre_alphplanner.GenerateMotion(_t);
-		q_traj = _rbt->IKSolve(cpos, "q3firstn", alphavp.pos);
+		q_traj = _rbt->IKSolve(cpos, "q3firstn", alphavp.pos, q_fdb);
 		CheckWorkspace(cpos, q_traj);
 		_t += g_cycle_time;
 		MathTools::LimitMax(_tf_pre, _t);
@@ -111,13 +110,13 @@ VectorXd SurfaceTask::RunPreCleanAction()
 	return q_traj;
 }
 
-VectorXd SurfaceTask::RunCleanAction()
+VectorXd SurfaceTask::RunCleanAction(VectorXd q_fdb)
 {
 	Vector5d q_traj;
 	JAVP uavp = _uplanner.GenerateMotion(_t);
 	CLineAVP cavp = _cpath.GenerateMotion(uavp.pos, uavp.vel, uavp.acc);
 	JAVP alphavp = _alphplanner.GenerateMotion(_t);
-	q_traj = _rbt->IKSolve(cavp.pos, "q3firstn", alphavp.pos);
+	q_traj = _rbt->IKSolve(cavp.pos, "q3firstn", alphavp.pos, q_fdb);
 	CheckWorkspace(cavp.pos, q_traj);
 	_t += g_cycle_time;
 	MathTools::LimitMax(_tf_clean, _t);
@@ -125,12 +124,12 @@ VectorXd SurfaceTask::RunCleanAction()
 	return q_traj;
 }
 
-VectorXd SurfaceTask::RunPostCleanAction()
+VectorXd SurfaceTask::RunPostCleanAction(VectorXd q_fdb)
 {
 	Vector5d q_traj;
 	JAVP uavp = _post_uplanner.GenerateMotion(_t);
 	Vector3d cpos = _pos_postclean+uavp.pos*_dir_stow;
-	q_traj = _rbt->IKSolve(cpos, "q3firstn", _alph_end);
+	q_traj = _rbt->IKSolve(cpos, "q3firstn", _alph_end, q_fdb);
 	CheckWorkspace(cpos, q_traj);
 	_t += g_cycle_time;
 	MathTools::LimitMax(_tf_post, _t);
@@ -171,7 +170,7 @@ void SurfaceTask::CompleteCleanAction(VectorXd q_fdb)
 void SurfaceTask::CompletePostCleanAction(VectorXd q_fdb)
 {
 	bool res = true;
-	Vector5d jpos_stow = _rbt->IKSolve(_pos_stow, "q3firstn", _alph_end);
+	Vector5d jpos_stow = _rbt->IKSolve(_pos_stow, "q3firstn", _alph_end, q_fdb);
 	for (int idx = 0; idx<5; idx++)
 	{
 		res = res & (fabs(jpos_stow(idx)-q_fdb(idx))<g_return_err[idx]);
