@@ -44,19 +44,22 @@ function [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pitch_x,q0,dt)
 %     ctraj.AddSegment(line_traj);
                                         
                                         
-    line_traj = LineTrajPlanner(pos0,via_pos(:,1),g_cvmax,g_camax,[],[0,0],...
-                                            rpy0,[0;rbt.pitch_high;0],0.15,0.3,[],[0,0],'both');
-    ctraj.AddSegment(line_traj);
+%     line_traj = LineTrajPlanner(pos0,via_pos(:,1),g_cvmax,g_camax,[],[0,0],...
+%                                             rpy0,[0;rbt.pitch_high;0],0.15,0.3,[],[0,0],'both');
+%     ctraj.AddSegment(line_traj);
+    ctraj.AddPosRPY([via_pos(:,1);0;rbt.pitch_high;0],'both');
     
     rpyn = [0;rbt.pitch_low;0];
-    line_traj = LineTrajPlanner(via_pos(:,1),via_pos(:,2),g_cvmax,g_camax,[],[0,0],...
-                                            [0;rbt.pitch_high;0],rpyn,0.15,0.3,[],[0,0],'both');
-    ctraj.AddSegment(line_traj);
+%     line_traj = LineTrajPlanner(via_pos(:,1),via_pos(:,2),g_cvmax,g_camax,[],[0,0],...
+%                                             [0;rbt.pitch_high;0],rpyn,0.15,0.3,[],[0,0],'both');
+%     ctraj.AddSegment(line_traj);
+    ctraj.AddPosRPY([via_pos(:,2);rpyn],'both');
     
     posn = via_pos(:,2)+[0;-0.1;0];
-    line_traj = LineTrajPlanner(via_pos(:,2),posn,g_cvmax,g_camax,[],[0,0],...
-                                            rpyn,[],[],[],[],[],'pos');
-    ctraj.AddSegment(line_traj);
+%     line_traj = LineTrajPlanner(via_pos(:,2),posn,g_cvmax,g_camax,[],[0,0],...
+%                                             rpyn,[],[],[],[],[],'pos');
+%     ctraj.AddSegment(line_traj);
+    ctraj.AddPosRPY([posn;rpyn],'pos');
 
     [pos, rpy] = ctraj.GeneratePath(dt);
 
