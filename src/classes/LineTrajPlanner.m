@@ -23,6 +23,7 @@ classdef LineTrajPlanner < handle
     end
 
     methods
+        %% initialize planner
         function obj = LineTrajPlanner(pos0, posn,line_vmax,line_amax,pvel_cons,...
                                         rpy0,rpyn,ang_vmax,ang_amax,rvel_cons,opt)
             obj.option = opt;
@@ -42,9 +43,11 @@ classdef LineTrajPlanner < handle
             elseif strcmp(opt, 'pos')
                 obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,[],pvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
+                obj.tf = obj.tf_pos;
             elseif strcmp(opt, 'rot')
                 obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,[],rvel_cons);
                 obj.tf_rot = obj.rot_uplanner.tf;
+                obj.tf = obj.tf_rot;
             else
                 error('error line option');
             end
@@ -71,7 +74,70 @@ classdef LineTrajPlanner < handle
                 obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, tf,vel_cons);
             end
         end
+        
+        %% generate trajectory
+        function [pos,pvel,pacc,rpy,rvel,racc] = GenerateTraj(obj,dt)
+            pos = []; pvel = []; pacc = [];
+            rpy = []; rvel = []; racc = [];
+            for t=0:dt:obj.tf
+                [p,vp,ap,r,vr,ar] = obj.GenerateMotion(t);
+                pos = [pos,p]; pvel = [pvel,vp]; pacc = [pacc,ap];
+                rpy = [rpy,r]; rvel = [rvel,vr]; racc = [racc,ar];
+            end
+        end
+        
+        function [p,vp,ap,r,vr,ar] = GenerateMotion(obj,t)
+            if strcmp(obj.option,'pos')
+                [p,vp,ap] = obj.GeneratePosMotion(t);
+                r = obj.rpy_initial;
+                vr = zeros(3,1);
+                ar = zeros(3,1);
+            elseif strcmp(obj.option,'rot')
+                [r,vr,ar] = obj.GenerateRotMotion(t);
+                p = obj.pos_initial;
+                vp = zeros(3,1);
+                ap = zeros(3,1);
+            elseif strcmp(obj.option,'both')
+                [p,vp,ap] = obj.GeneratePosMotion(t);
+                [r,vr,ar] = obj.GenerateRotMotion(t);
+            end
+        end
+               
+        function [p,v,a] = GeneratePosMotion(obj,t)
+            if t>obj.tf
+                up = obj.pos_len;
+                uv = 0;
+                ua = 0;
+            else
+                [up,uv,ua] = obj.pos_uplanner.GenerateMotion(t);
+            end
+            p = obj.pos_initial+up*obj.pos_dir;
+            v = uv*obj.pos_dir;
+            a = ua*obj.pos_dir;
+        end
+        
+        function [p,v,a] = GenerateRotMotion(obj,t)
+            if t>obj.tf
+                up = obj.rot_len;
+                uv = 0;
+                ua = 0;
+            else
+                [up,uv,ua] = obj.rot_uplanner.GenerateMotion(t);
+            end
+            p = obj.rpy_initial+up*obj.rot_dir;
+            v = uv*obj.rot_dir;
+            a = ua*obj.rot_dir;
+        end
 
+        %% generate path        
+        function [pos,rpy] = GeneratePath(obj, dt)
+            pos = []; rpy = [];
+            for t=0:dt:obj.tf
+                [p,r] = obj.GeneratePoint(t);
+                pos = [pos, p]; rpy = [rpy, r];
+            end
+        end
+        
         function [pos,rpy] = GeneratePoint(obj, t)
             if strcmp(obj.option,'pos')
                 pos = obj.GeneratePos(t);
@@ -84,7 +150,7 @@ classdef LineTrajPlanner < handle
                 rpy = obj.GenerateRot(t);
             end
         end
-
+        
         function pos = GeneratePos(obj,t)
             if t>obj.tf
                 up = obj.pos_len;
@@ -103,13 +169,6 @@ classdef LineTrajPlanner < handle
             rpy = obj.rpy_initial+up*obj.rot_dir;
         end
 
-        function [pos,rpy] = GeneratePath(obj, dt)
-            pos = []; rpy = [];
-            for t=0:dt:obj.tf
-                [p,r] = obj.GeneratePoint(t);
-                pos = [pos, p]; rpy = [rpy, r];
-            end
-        end
     end
 
 

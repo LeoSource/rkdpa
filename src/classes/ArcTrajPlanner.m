@@ -22,6 +22,7 @@ classdef ArcTrajPlanner < handle
 
 
     methods
+        %% initialize planner
         function obj = ArcTrajPlanner(pos1,pos2,pos3,line_vmax,line_amax,pvel_cons,...
                                         rpy0,rpyn,ang_vmax,ang_amax,rvel_cons,opt)
             obj.option = opt;
@@ -41,9 +42,11 @@ classdef ArcTrajPlanner < handle
             elseif strcmp(opt, 'pos')
                 obj.InitPosPlanner(pos1,pos2,pos3,line_vmax,line_amax,[],pvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
+                obj.tf = obj.tf_pos;
             elseif strcmp(opt, 'rot')
                 obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,[],rvel_cons);
                 obj.tf_rot = obj.rot_uplanner.tf;
+                obj.tf = obj.tf_rot;
             else
                 error('error line option');
             end
@@ -94,6 +97,80 @@ classdef ArcTrajPlanner < handle
             end
         end
 
+        %% generate trajectory
+        function [pos,pvel,pacc,rpy,rvel,racc] = GenerateTraj(obj,dt)
+            pos = []; pvel = []; pacc = [];
+            rpy = []; rvel = []; racc = [];
+            for t=0:dt:obj.tf
+                [p,vp,ap,r,vr,ar] = obj.GenerateMotion(t);
+                pos = [pos,p]; pvel = [pvel,vp]; pacc = [pacc,ap];
+                rpy = [rpy,r]; rvel = [rvel,vr]; racc = [racc,ar];
+            end
+        end
+
+        function [p,vp,ap,r,vr,ar] = GenerateMotion(obj,t)
+            if strcmp(obj.option,'pos')
+                [p,vp,ap] = obj.GeneratePosMotion(t);
+                r = obj.rpy_initial;
+                vr = zeros(3,1);
+                ar = zeros(3,1);
+            elseif strcmp(obj.option,'rot')
+                [r,vr,ar] = obj.GenerateRotMotion(t);
+                p = obj.pos_initial;
+                vp = zeros(3,1);
+                ap = zeros(3,1);
+            elseif strcmp(obj.option,'both')
+                [p,vp,ap] = obj.GeneratePosMotion(t);
+                [r,vr,ar] = obj.GenerateRotMotion(t);
+            end
+        end
+
+        function [p,vp,ap] = GeneratePosMotion(obj,t)
+            if t>obj.tf
+                up = obj.pos_len;
+                uv = 0;
+                ua = 0;
+            else
+                [up,uv,ua] = obj.pos_uplanner.GenerateMotion(t);
+            end
+            r = obj.radius;
+            th = up/r;
+            parc = zeros(3,1);
+            parc(1) = r*cos(th);
+            parc(2) = r*sin(th);
+            p = obj.center+obj.rot*parc;
+            vc = zeros(3,1); ac = zeros(3,1);
+            vc(1) = -uv*sin(up/r);
+            vc(2) = uv*cos(up/r);
+            vp = obj.rot*vc;
+            ac(1) = -uv^2*cos(up/r)/r-ua*sin(up/r);
+            ac(2) = -uv^2*sin(up/r)/r+ua*cos(up/r);
+            ap = obj.rot*ac;
+        end
+
+        function [r,vr,ar] = GenerateRotMotion(obj,t)
+            if t>obj.tf
+                up = obj.rot_len;
+                uv = 0;
+                ua = 0;
+            else
+                [up,uv,ua] = obj.rot_uplanner.GenerateMotion(t);
+            end
+            r = obj.rpy_initial+up*obj.rot_dir;
+            vr = uv*obj.rot_dir;
+            ar = ua*obj.rot_dir;
+        end
+
+        %% generate path
+        function [pos,rpy] = GeneratePath(obj, dt)
+            pos = []; rpy = [];
+            tf = max([obj.tf_pos,obj.tf_rot]);
+            for t=0:dt:tf
+                [p,r] = obj.GeneratePoint(t);
+                pos = [pos, p]; rpy = [rpy, r];
+            end
+        end
+
         function [pos,rpy] = GeneratePoint(obj, t)
             if strcmp(obj.option,'pos')
                 pos = obj.GeneratePos(t);
@@ -127,15 +204,6 @@ classdef ArcTrajPlanner < handle
                 [up,~,~] = obj.rot_uplanner.GenerateMotion(t);
             end
             rpy = obj.rpy_initial+up*obj.rot_dir;
-        end
-
-        function [pos,rpy] = GeneratePath(obj, dt)
-            pos = []; rpy = [];
-            tf = max([obj.tf_pos,obj.tf_rot]);
-            for t=0:dt:tf
-                [p,r] = obj.GeneratePoint(t);
-                pos = [pos, p]; rpy = [rpy, r];
-            end
         end
 
     end
