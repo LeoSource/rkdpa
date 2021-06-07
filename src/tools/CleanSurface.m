@@ -1,27 +1,17 @@
 function [sim_pos, sim_q, pos] = CleanSurface(rbt,npts,posn,via_pos,q0,dt)
 
-    global g_cvmax g_camax g_jvmax g_jamax
-    sim_pos = []; sim_q = []; pos = []; alph = [];
+    global g_cvmax g_camax
+    sim_pos = []; sim_q = []; pos = []; rpy = []; alph = [];
     %% pre-clean action
-    jplanner = LspbTrajPlanner([q0(3),-pi/6], g_jvmax(3), g_jamax(3));
-    [jpos,~,~] = jplanner.GenerateTraj(dt);
-    tmp_q = [ones(1,length(jpos))*q0(1); ones(1,length(jpos))*q0(2); jpos;...
-             ones(1,length(jpos))*q0(4); ones(1,length(jpos))*q0(5)];
-    for idx=1:length(jpos)
-        sim_pos = [sim_pos, rbt.FKSolve(tmp_q(:,idx)).t];
-    end
-    sim_q = [sim_q, tmp_q];
-    pos0 = rbt.FKSolve(tmp_q(:,end)).t;
-    line_length = norm(via_pos(:,1)-pos0);
-    uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
-    alphplanner = LspbTrajPlanner([q0(1)+q0(5),0], g_jvmax(1), g_jamax(1));
-    tf_preclean = max(uplanner.tf, alphplanner.tf);
-    uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax, tf_preclean);
-    alphplanner = LspbTrajPlanner([q0(1)+q0(5),0], g_jvmax(1), g_jamax(1), tf_preclean);
-    [up, ~, ~] = uplanner.GenerateTraj(dt);
-    pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
-    pos = [pos, pos_tmp];
-    alph = [alph; alphplanner.GenerateTraj(dt)'];
+    yaw0 = q0(1)+q0(end);
+    pitch0 = q0(3)+rbt.tool_pitch;
+    rpy0 = [0;pitch0;yaw0];
+    pos0 = rbt.FKSolveTool(q0).t;
+    line_traj = LineTrajPlanner(pos0,via_pos(:,1),g_cvmax,g_camax,[0,0],...
+                                rpy0,[0;-pi/6;0],0.15,0.3,[0,0],'both');
+    [pos_tmp,~,~,rpy_tmp,~,~] = line_traj.GenerateTraj(dt);
+    pos = [pos,pos_tmp];
+    rpy = [rpy,rpy_tmp];
     
     %% clean washbasin action
     planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
@@ -33,24 +23,22 @@ function [sim_pos, sim_q, pos] = CleanSurface(rbt,npts,posn,via_pos,q0,dt)
         pos = [pos, p];
     end
     alph = [alph; aplanner.GenerateTraj(dt)'];
+    rpy_tmp = [zeros(1,length(alph)); ones(1,length(alph))*rpy(2,end);alph'];
+    rpy = [rpy,rpy_tmp];
     
     %% post-clean action
-    %         posn = rbt.FKSolve(g_stowed_pos).t;
-    line_length = norm(posn-via_pos(:,end));
-    uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
-    [up, ~, ~] = uplanner.GenerateTraj(dt);
-    pos_tmp = via_pos(:,end)+up.*(posn-via_pos(:,end))/line_length;
+    line_traj = LineTrajPlanner(via_pos(:,end),posn,g_cvmax,g_camax,[0,0],...
+                                rpy(:,end),[],[],[],[],'pos');
+    [pos_tmp,~,~,rpy_tmp,~,~] = line_traj.GenerateTraj(dt);
     pos = [pos, pos_tmp];
-    max_alph = alph(end);
-    alph = [alph; ones(size(pos_tmp,2) ,1)*max_alph];
+    rpy = [rpy, rpy_tmp];
     
     %% robot inverse kinematics
-    ik_option = 'q3firstn';
     pre_q = q0;
     for idx=1:size(pos,2)
-        tmp_q = rbt.IKSolve(pos(:,idx), ik_option, alph(idx), pre_q);
+        tmp_q = rbt.IKSolvePitchYaw(pos(:,idx),rpy(2,idx),rpy(3,idx),pre_q);
         sim_q = [sim_q, tmp_q]; pre_q = tmp_q;
-        sim_pos = [sim_pos, rbt.FKSolve(tmp_q).t];
+        sim_pos = [sim_pos, rbt.FKSolveTool(tmp_q).t];
     end
     
 end

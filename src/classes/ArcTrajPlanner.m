@@ -29,15 +29,15 @@ classdef ArcTrajPlanner < handle
             obj.pos_initial = pos1;
             obj.rpy_initial = rpy0;
             if strcmp(opt, 'both')
-                obj.InitPosPlanner(pos1,pos2,pos3,line_vmax,line_amax,pduration,pvel_cons);
-                obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,rduration,rvel_cons);
+                obj.InitPosPlanner(pos1,pos2,pos3,line_vmax,line_amax,[],pvel_cons);
+                obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,[],rvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
                 obj.tf_rot = obj.rot_uplanner.tf;
                 obj.tf = max([obj.tf_pos,obj.tf_rot]);
                 if obj.tf_pos>obj.tf_rot
                     obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,obj.tf,rvel_cons);
                 else
-                    obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,obj.tf,pvel_cons);
+                    obj.InitPosPlanner(pos1,pos2,pos3,line_vmax,line_amax,obj.tf,pvel_cons);
                 end
             elseif strcmp(opt, 'pos')
                 obj.InitPosPlanner(pos1,pos2,pos3,line_vmax,line_amax,[],pvel_cons);

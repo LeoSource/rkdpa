@@ -45,7 +45,7 @@ classdef CleanRobot < handle
             for idx=1:size(mdh_table,1)
                 obj.arm.links(idx).qlim = qlimit(idx,:);
             end
-            obj.tool_pitch = 30*pi/180;
+            obj.tool_pitch = -30*pi/180;
             obj.pitch_high = 70*pi/180;
             obj.pitch_low = 40*pi/180;
             obj.tool = [0, 0.2196, -0.05578]';

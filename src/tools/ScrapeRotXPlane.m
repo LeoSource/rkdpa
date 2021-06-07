@@ -30,7 +30,7 @@ function [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pitch_x,q0,dt)
     ctraj.AddPosRPY([via_pos(:,1);0;rbt.pitch_high;0],'both');
     ctraj.AddPosRPY([via_pos(:,2);0;rbt.pitch_low;0],'both');
     posn = via_pos(:,2)+[0;-0.1;0];
-    ctraj.AddPosRPY([posn;0;rbt.pitch_low;0],'pos');
+    ctraj.AddPosRPY([posn;0;rbt.pitch_low;0],'pos')
     
     
 %     posn = via_pos(:,2)+[0;-0.1;0];
