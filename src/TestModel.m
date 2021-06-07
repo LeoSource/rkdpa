@@ -12,7 +12,7 @@ g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi]*0.5;
 g_cvmax = 0.15; g_camax = 0.3;
 g_stowed_pos = [0;0.6;0;0;0];
 g_cycle_time = 0.005;
-test_mode = 'ctrajarc';
+test_mode = 'mirrortask';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape

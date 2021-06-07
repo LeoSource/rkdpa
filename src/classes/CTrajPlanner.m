@@ -10,21 +10,26 @@ classdef CTrajPlanner < handle
         rpy_seg
         
         varc
+        continuity
     end
 
     methods
-        function obj = CTrajPlanner(pos0, rpy0)
+        function obj = CTrajPlanner(pos0, rpy0, type)
             obj.pos_corner = pos0;
             obj.rpy_corner = rpy0;
             obj.ntraj = 0;
-        end
-
-        function AddSegment(obj,traj_planner)
-            obj.ntraj = obj.ntraj+1;
-            obj.segpath_planner{obj.ntraj} = traj_planner;
+            obj.continuity = type;
         end
         
         function AddPosRPY(obj,pos_rpy,opt)
+            if obj.continuity
+                obj.AddContiPosRPY(pos_rpy,opt);
+            else
+                obj.AddDiscontiPosRPY(pos_rpy,opt)
+            end
+        end
+        
+        function AddContiPosRPY(obj,pos_rpy,opt)
             global g_cvmax g_camax
             obj.pos_corner = [obj.pos_corner,pos_rpy(1:3)];
             obj.rpy_corner = [obj.rpy_corner,pos_rpy(4:6)];
@@ -57,8 +62,30 @@ classdef CTrajPlanner < handle
                 obj.ntraj = obj.ntraj+2;
             end
         end
+        
+        function AddDiscontiPosRPY(obj,pos_rpy,opt)
+            global g_cvmax g_camax
+            obj.pos_corner = [obj.pos_corner, pos_rpy(1:3)];
+            obj.rpy_corner = [obj.rpy_corner, pos_rpy(4:6)];
+            np = size(obj.pos_corner,2);
+            obj.ntraj = obj.ntraj+1;
+            pos0 = obj.pos_corner(:,np-1);
+            posn = obj.pos_corner(:,np);
+            rpy0 = obj.rpy_corner(:,np-1);
+            rpyn = obj.rpy_corner(:,np);
+            obj.segpath_planner{obj.ntraj} = LineTrajPlanner(pos0,posn,g_cvmax,g_camax,[0,0],...
+                                                                                        rpy0,rpyn,0.15,0.3,[0,0],opt);
+        end
 
         function [pos,rpy] = GenerateTraj(obj,dt)
+            if obj.continuity
+                [pos, rpy] = obj.GenerateContiTraj(dt);
+            else
+                [pos, rpy] = obj.GenerateDiscontiTraj(dt);
+            end
+        end
+        
+        function [pos,rpy] = GenerateContiTraj(obj,dt)
             global g_cvmax g_camax
             pos = []; rpy = [];
             for idx=1:obj.ntraj
@@ -93,6 +120,14 @@ classdef CTrajPlanner < handle
                 else
                     pos = [pos,p]; rpy = [rpy,r];
                 end
+            end
+        end
+        
+        function [pos,rpy] = GenerateDiscontiTraj(obj,dt)
+            pos = []; rpy = [];
+            for idx=1:obj.ntraj
+                [p,r] = obj.segpath_planner{idx}.GeneratePath(dt);
+                pos = [pos,p]; rpy = [rpy,r];
             end
         end
         
