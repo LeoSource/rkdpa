@@ -8,7 +8,6 @@
 #include <fstream>
 #include <algorithm>
 #include "PolyTrajPlanner.h"
-#include "ArcPathPlanner.h"
 #include "MirrorTask.h"
 #include "InitialTask.h"
 #include "HoldTask.h"
@@ -33,16 +32,14 @@ enum ID_test
 	jtrajpoly = 1,
 	jtrajlspb = 2,
 	ctrajline = 3,
-	ctrajarc = 4,
-	ctrajcircle = 5,
-	ctrajarctrans = 6,
-	ctrajpoly = 7,
-	ctrajbspline = 8,
-	jacobian = 9,
-	iksolver = 10,
-	bspline = 11,
-	other = 12,
-	simulation = 13
+	ctrajarctrans = 4,
+	ctrajpoly = 5,
+	ctrajbspline = 6,
+	jacobian = 7,
+	iksolver = 8,
+	bspline = 9,
+	other = 10,
+	simulation = 11
 };
 
 CleanRobot CreatRobot()
@@ -99,53 +96,6 @@ void Testjtrajlspb()
 	cout << avp.acc << endl;
 }
 
-void Testctrajarc()
-{
-	Vector3d pos1, pos2, pos3;
-	pos1<<0, -2, 0; pos2<<1, 0, 1; pos3<<0, 3, 3;
-	ArcPathPlanner arcpath(pos1, pos2, pos3);
-	Vector2d via_pos(0, arcpath._theta);
-	double tf = 2;
-	LspbTrajPlanner planner(via_pos, 2, 2);
-	int ntime = tf/g_cycle_time+1;
-
-	//const char* file_name = "../data/traj_pos.csv";
-	const char* file_name = "C:/00Work/01projects/XProject/src/data/ctrajarc_pos.csv";
-	ofstream ofile;
-	ofile.open(file_name, ios::out|ios::trunc);
-	if (!ofile.is_open())
-	{
-		cout<<"failed to open the file"<<endl;
-	}
-	else
-	{
-		cout<<"start saving data"<<endl;
-		for (int idx = 0; idx<ntime; idx++)
-		{
-			double t = idx*g_cycle_time;
-			RobotTools::JAVP javp = planner.GenerateMotion(t);
-			RobotTools::CLineAVP avp = arcpath.GenerateMotion(javp.pos, javp.vel, javp.acc);
-			ofile<<avp.pos<<endl;
-		}
-		cout<<"succeed to save the data"<<endl;
-	}
-	ofile.close();
-
-}
-
-void Testctrajcircle()
-{
-	Vector3d center(1, 2, 3), n_vec(1, 0, 0);
-	double radius = 0.5;
-	ArcPathPlanner circlepath(center, n_vec, radius);
-	Vector2d via_pos(0, circlepath._theta);
-	LspbTrajPlanner planner(via_pos, 4, 2);
-	RobotTools::JAVP javp = planner.GenerateMotion(2);
-	RobotTools::CLineAVP avp = circlepath.GenerateMotion(javp.pos, javp.vel, javp.acc);
-	cout<<avp.pos<<endl;
-	cout<<avp.vel<<endl;
-	cout<<avp.acc<<endl;
-}
 
 void Testctrajarctrans()
 {
@@ -602,30 +552,295 @@ void SimulationLZX1()
 	double pitch0 = q_fdb(2)+rbt._tool_pitch;
 	double yaw0 = q_fdb(0)+q_fdb(4);
 	Vector3d rpy0(0, pitch0, yaw0);
-	TaskTrajPlanner tasktraj_planner(pos0, rpy0);
-
-	Vector3d pos1, pos2, pos3;
-	pos1<<g_yaw0_x0, 0.8, 1.62;
-	pos2<<g_yaw0_x0, 0.8, 0.84;
-	pos3<<g_yaw0_x0, 0.8-0.1, 0.84;
-	tasktraj_planner.AddPosRPY(pos1, Vector3d(0, rbt._pitch_high, 0), "both");
-	tasktraj_planner.AddPosRPY(pos2, Vector3d(0, rbt._pitch_low, 0), "both");
-	tasktraj_planner.AddPosRPY(pos3, Vector3d(0, rbt._pitch_low, 0), "pos");
+	TaskTrajPlanner tasktraj_planner;
+	rbt.UpdateJntHoldPos(q_fdb);
 
 	const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos1.csv";
 	ofstream ofile;
 	ofile.open(file_name, ios::out|ios::trunc);
+	HANDLE thread = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
 
-	while (true)
+	if (!ofile.is_open())
 	{
-		Vector6d pos_rpy = tasktraj_planner.GeneratePoint();
-		Vector5d q_cmd = rbt.IKSolveYaw(pos_rpy.head(3), pos_rpy(4), pos_rpy(5), q_fdb);
-
-		q_fdb = q_cmd;
-		ofile<<q_cmd<<endl;
+		cout<<"failed to open the file"<<endl;
+	}
+	else
+	{
+		cout<<"start to simulation"<<endl;
+		while (true)
+		{
+			Vector5d q_cmd;
+			if (!tasktraj_planner._task_completed)
+			{
+				//Vector6d pos_rpy = tasktraj_planner.GeneratePoint();
+				if (strcmp(operation, "mirror")==0)
+				{
+					pos0 = rbt.FKSolveTool(q_fdb).pos;
+					pitch0 = q_fdb(2)+rbt._tool_pitch;
+					yaw0 = q_fdb(0)+q_fdb(4);
+					rpy0<<0, pitch0, yaw0;
+					tasktraj_planner.Reset(&pos0, &rpy0, false);
+					Vector3d pos1, pos2, pos3;
+					pos1<<g_yaw0_x0, 0.8, 1.62;
+					pos2<<g_yaw0_x0, 0.8, 0.84;
+					pos3<<g_yaw0_x0, 0.8-0.1, 0.84;
+					tasktraj_planner.AddPosRPY(&pos1, &Vector3d(0, rbt._pitch_high, 0), "both");
+					tasktraj_planner.AddPosRPY(&pos2, &Vector3d(0, rbt._pitch_low, 0), "both");
+					tasktraj_planner.AddPosRPY(&pos3, &Vector3d(0, rbt._pitch_low, 0), "pos");
+					*operation = {};
+				}
+				else if (strcmp(operation, "table")==0)
+				{
+					pos0 = rbt.FKSolveTool(q_fdb).pos;
+					pitch0 = q_fdb(2)+rbt._tool_pitch;
+					yaw0 = q_fdb(0)+q_fdb(4);
+					rpy0<<0, pitch0, yaw0;
+					tasktraj_planner.Reset(&pos0, &rpy0, false);
+					Vector3d pos1(0.5, 0.6, 0.5);
+					Vector3d pos2(-0.5, 0.6, 0.5);
+					Vector3d pos3(-0.5, 0.9, 0.5);
+					Vector3d pos4(0.5, 0.9, 0.5);
+					tasktraj_planner.AddPosRPY(&pos1, &Vector3d(0, 0, 0), "both");
+					tasktraj_planner.AddPosRPY(&pos2, &Vector3d(0, 0, 0), "pos");
+					tasktraj_planner.AddPosRPY(&pos3, &Vector3d(0, 0, 0), "pos");
+					tasktraj_planner.AddPosRPY(&pos4, &Vector3d(0, 0, 0), "pos");
+					*operation = {};
+				}
+				CAVP cavp = tasktraj_planner.GenerateMotion();
+				q_cmd = rbt.IKSolvePitchYaw(cavp.pos.head(3), cavp.pos(4), cavp.pos(5), q_fdb);
+				rbt.UpdateJntHoldPos(q_cmd);
+			}
+			else
+			{
+				if ((strcmp(operation, "mirror")==0)||(strcmp(operation, "table")==0))
+					tasktraj_planner._task_completed = false;
+				q_cmd = rbt.HoldJntPos();
+				Sleep(1);
+			}
+			q_fdb = q_cmd;
+			ofile<<q_cmd<<endl;
+		}
 	}
 
 
+}
+
+#include "InterruptStop/InterruptStop.h"
+
+void Simulation_TestInteruptStop()
+{
+    CleanRobot rbt = CreatRobot();
+    char* mirror_type = (char*)"scrape";
+    RotXPlaneTask mirror_task(&rbt);
+    //SurfaceTask surface_task(&rbt);
+    TableTask table_task(&rbt);
+    //ShowerRoomTask showerroom_task(&rbt);
+
+    Vector5d q_fdb, q_cmd;
+    q_fdb<<0.2, 0.5, 0.7, 0.2, 0.5;//initial joint position
+
+    time_t timer = time(NULL);
+    char time_format[1024];
+    strftime(time_format, 1024, "%Y-%m-%d_%H.%M.%S", localtime(&timer));
+    string timestring(time_format);
+    string file_name = "/mnt/hgfs/VMShare/traj_pos" + timestring + ".txt";
+
+    ofstream ofile;
+    ofile.open(file_name, ios::out|ios::trunc);
+
+    int mainstate=0;  //主状态
+    int runstate=0;   //子状态
+
+    //测试时用的状态量，实际时由外部给信号
+    static int counttest_num = 0; int pause = 0;  //test
+
+    //暂停处理
+    double joint_vel[5];
+    InterruptStop interrupt_data(g_cycle_time);
+
+    //add pos
+    double pitch_x = 90*pi/180;
+    double inc_angle[] = { 20*pi/180, 50*pi/180 };
+    double pitch_high = pitch_x-inc_angle[0];
+    double pitch_low = pitch_x-inc_angle[1];
+    rbt.SetPitchRange(pitch_high, pitch_low);
+    Vector3d pos0 = rbt.FKSolveTool(q_fdb).pos;
+    double pitch0 = q_fdb(2)+rbt._tool_pitch;
+    double yaw0 = q_fdb(0)+q_fdb(4);
+    Vector3d rpy0(0, pitch0, yaw0);
+
+    //规划处理
+    TaskTrajPlanner tasktraj_planner(&pos0, &rpy0, false);
+    MatrixXd via_pos;
+    Vector3d posn[50], rpyn[50], seg_optn[50];
+
+    while(1)
+    {
+        switch(mainstate)
+        {
+        case 0: //standby
+        {
+            q_cmd = q_fdb;
+            //根据不同的任务，计算点位，添加路径
+            int tasknum = 2; //test
+            if(tasknum == 1) //擦玻璃数据
+            {
+                //preparation for clean mirror task
+                if (strcmp(mirror_type, "rectangle")==0)
+                {
+                    Vector3d pos1, pos2, pos3, pos4;
+                    pos1<<0.4, 0.7, 0.7; pos2<<-0.4, 0.7, 0.7; pos3<<-0.4, 0.7, 1; pos4<<0.4, 0.7, 1;
+                    via_pos.setZero(3, 4);
+                    via_pos<<pos1, pos2, pos3, pos4;
+                }
+                else if (strcmp(mirror_type, "circle")==0)
+                {
+                    Vector3d center(0, 0.7, 1);
+                    Vector3d norm_vec(0.03, 2, 0);
+                    double radius = 0.6;
+                    double interval = 0.1;
+                    via_pos.setZero(3, 3);
+                    via_pos.col(0) = center;
+                    via_pos.col(1) = norm_vec;
+                    via_pos(0, 2) = radius;
+                    via_pos(1, 2) = interval;
+                }
+                else
+                {
+                    double pitch_x = 90*pi/180;
+                    Vector3d pos1, pos2, pos3;
+                    pos1<<g_yaw0_x0, 0.8, 1.62;
+                    pos2<<g_yaw0_x0, 0.8, 0.84;
+                    pos3<<pitch_x, 0, 0;
+                    via_pos.setZero(3, 3);
+                    via_pos<<pos1, pos2, pos3;
+                }
+                //上面都是测试数据
+
+                //via_pos由相机提供，然后内部做一层转化处理，转为cal_via_pos
+                MatrixXd cal_via_pos = mirror_task.CalTrajViaPos(&via_pos,q_fdb);
+
+                Vector3d pos0 = cal_via_pos.col(0), rpy0 = cal_via_pos.col(1);
+                tasktraj_planner.AddStartPosRPY(&pos0, &rpy0);
+
+                for(int i = 0; i < cal_via_pos.cols()/3-1; i++)
+                {
+                    posn[i] = cal_via_pos.col((i+1)*3), rpyn[i] = cal_via_pos.col((i+1)*3+1), seg_optn[i] = cal_via_pos.col((i+1)*3+2);
+                    tasktraj_planner.AddPosRPY(&posn[i], &rpyn[i], seg_optn[i]);
+                }
+            }
+            else if(tasknum == 2) //擦桌子数据
+            {
+                Vector3d pos1, pos2, pos3, pos4;
+                pos1<<-0.3, 1, 0.86; pos2<<0.3, 1, 0.86; pos3<<0.3, 0.8, 0.86; pos4<<-0.3, 0.8, 0.86;
+                via_pos.setZero(3, 4);
+                via_pos<<pos1, pos2, pos3, pos4;
+
+                *operation = {};
+                cout<<"start to clean the table"<<endl;
+                //上面都是测试数据
+
+                MatrixXd cal_via_pos = table_task.CalTrajViaPos(&via_pos,q_fdb);
+
+                Vector3d pos0 = cal_via_pos.col(0), rpy0 = cal_via_pos.col(1);
+                tasktraj_planner.AddStartPosRPY(&pos0, &rpy0);
+
+                for(int i = 0; i < cal_via_pos.cols()/3-1; i++)
+                {
+                    posn[i] = cal_via_pos.col((i+1)*3), rpyn[i] = cal_via_pos.col((i+1)*3+1), seg_optn[i] = cal_via_pos.col((i+1)*3+2);
+                    tasktraj_planner.AddPosRPY(&posn[i], &rpyn[i], seg_optn[i]);
+                }
+            }
+            else if(tasknum == 3)  //自测添加点位数据
+            {
+                Vector3d pos1, pos2, pos3;
+                pos1<<g_yaw0_x0, 0.8, 1.62;
+                pos2<<g_yaw0_x0, 0.8, 0.84;
+                pos3<<g_yaw0_x0, 0.8-0.1, 0.84;
+
+                Vector3d rpy1, rpy2, rpy3;
+                rpy1<<0, rbt._pitch_high, 0;
+                rpy2<<0, rbt._pitch_low, 0;
+                rpy3<<0, rbt._pitch_low, 0;
+
+                tasktraj_planner.AddStartPosRPY(&pos0, &rpy0);
+                tasktraj_planner.AddPosRPY(&pos1, &rpy1, (char*)"both");
+                tasktraj_planner.AddPosRPY(&pos2, &rpy2, (char*)"both");
+                tasktraj_planner.AddPosRPY(&pos3, &rpy3, (char*)"pos");
+            }
+
+            //跳主状态running.moving
+            mainstate = 1;
+            runstate = 2;
+        }
+            break;
+        case 1: //running
+            switch(runstate)
+            {
+            case 1:  //interrupt
+                //多次触发暂停也只会响应一次pause信号
+                interrupt_data.InitInterruptData(g_jamax, joint_vel, q_cmd);
+
+                counttest_num++;  //test
+                pause = 0;
+
+                //暂停规划过程中
+                if(interrupt_data.GetInterruptStopPlanState())
+                {
+                    q_cmd = interrupt_data.RefreshInterruptStopPlan(q_fdb);
+
+                    if(interrupt_data.GetInterruptStopPlanState() == eInterruptPlanFinished)
+                    {
+//                        cout<<"interrupt done flag------------"<<endl;
+                        //外部触发重新开始
+                        int resume = 0;  //test
+                        if(resume)
+                        {
+                            //reinit tasktraj_planner and trans to moving
+                            Vector3d pos0 = rbt.FKSolveTool(q_cmd).pos;
+                            double pitch0 = q_fdb(2)+rbt._tool_pitch;
+                            double yaw0 = q_fdb(0)+q_fdb(4);
+                            Vector3d rpy0(0, pitch0, yaw0);
+                            tasktraj_planner.ReInitSegTrajPlanner(pos0, rpy0);
+
+                            interrupt_data.InitInterruptData(0);
+
+                            runstate = 2; //moving
+                        }
+                    }
+                }
+
+                break;
+            case 2:  //moving
+                Vector6d pos_rpy = tasktraj_planner.GeneratePoint();
+                q_cmd = rbt.IKSolvePitchYaw(pos_rpy.head(3), pos_rpy(4), pos_rpy(5), q_fdb);
+
+                //所有路径结束，跳回主状态standby；接着判断是否有任务过来，在standby里去添加路径
+                if(tasktraj_planner.GetSegTrajPlannerDone())
+                {
+                    mainstate = 0;
+                }
+                else if(pause)//外部触发pause
+                {                    
+                    runstate = 1;  //interrupt
+                }                     
+
+                break;
+            }
+
+            break;
+        case 2: //errorstop
+            break;
+        default:
+            break;
+        }
+
+        for(int i = 0; i < 5;i++)
+            joint_vel[i] = (q_cmd[i]-q_fdb[i])/g_cycle_time;
+
+        q_fdb = q_cmd;
+        ofile <<q_cmd[0]<<"\t"<<q_cmd[1]<<"\t"<<q_cmd[2]<<"\t"<<q_cmd[3]<<"\t"<<q_cmd[4]<<endl;
+    }
 }
 
 int main()
@@ -643,14 +858,6 @@ int main()
 
 	case jtrajlspb:
 		Testjtrajlspb();
-		break;
-
-	case ctrajarc:
-		Testctrajarc();
-		break;
-
-	case ctrajcircle:
-		Testctrajcircle();
 		break;
 
 	case ctrajarctrans:

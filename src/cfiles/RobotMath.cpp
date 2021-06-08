@@ -197,7 +197,9 @@ namespace RobotTools
 		return via_pos;
 	}
 
-	Matrix3d CalcPlaneRot(Vector3d center, Vector3d norm_vec, double px, double pz)
+
+
+	Matrix3d CalcPlaneRot(Vector3d center, Vector3d norm_vec)
 	{
 		//plane function:Ax+By+Cz+D=0
 		double D = -norm_vec.dot(center);
@@ -214,6 +216,42 @@ namespace RobotTools
 		rot<<n, o, a;
 
 		return rot;
+	}
+
+	MatrixXd CalcSplineTransPos(Vector3d pos1, Vector3d pos2, Vector3d pos3, double r, char* opt)
+	{
+		MatrixXd ctrlpos;
+		if (strcmp(opt, "spline")==0)
+		{
+			ctrlpos.setZero(3, 5);
+			ctrlpos.col(2) = pos2;
+			double line1_len = MathTools::Norm(pos2-pos1);
+			double line2_len = MathTools::Norm(pos3-pos2);
+			ctrlpos.col(0) = pos2+r/line1_len*(pos1-pos2);
+			ctrlpos.col(4) = pos2+r/line2_len*(pos3-pos2);
+			double ratio = 0.5;
+			ctrlpos.col(1) = ctrlpos.col(2)+ratio*(ctrlpos.col(0)-ctrlpos.col(2));
+			ctrlpos.col(3) = ctrlpos.col(2)+ratio*(ctrlpos.col(4)-ctrlpos.col(2));
+		}
+		else if(strcmp(opt,"arc")==0)
+		{
+			ctrlpos.setZero(3, 2);
+			double line1_len = MathTools::Norm(pos2-pos1);
+			double line2_len = MathTools::Norm(pos3-pos2);
+			ctrlpos.col(0) = pos2+r/line1_len*(pos1-pos2);
+			ctrlpos.col(1) = pos2+r/line2_len*(pos3-pos2);
+		}
+		return ctrlpos;
+	}
+
+	double CalcArcRadius(Vector3d pos1, Vector3d pos2, Vector3d pos3)
+	{
+		Vector3d p2p1 = pos1-pos2;
+		Vector3d p2p3 = pos3-pos2;
+		double inc_angle = acos(p2p1.dot(p2p3)/p2p1.norm()/p2p3.norm());
+		double radius = p2p1.norm()*tan(0.5*inc_angle);
+
+		return radius;
 	}
 
 	Pose PoseProduct(Pose p1, Pose p2)
@@ -261,7 +299,43 @@ namespace RobotTools
 		return res;
 	}
 
+	CAVP LinetoSpatial(CLineAVP* line_avp)
+	{
+		CAVP cavp;
+		cavp.pos.setZero();
+		cavp.vel.setZero();
+		cavp.acc.setZero();
+		cavp.pos.head(3) = line_avp->pos;
+		cavp.vel.head(3) = line_avp->vel;
+		cavp.acc.head(3) = line_avp->acc;
+
+		return cavp;
+	}
 
 
+	CAVP AngtoSpatial(CLineAVP* ang_avp)
+	{
+		CAVP cavp;
+		cavp.pos.setZero();
+		cavp.vel.setZero();
+		cavp.acc.setZero();
+		cavp.pos.segment(3, 3) = ang_avp->pos;
+		cavp.vel.segment(3, 3) = ang_avp->vel;
+		cavp.acc.segment(3, 3) = ang_avp->acc;
 
+		return cavp;
+	}
+
+	CAVP toSpatial(CLineAVP* line_avp, CLineAVP* ang_avp)
+	{
+		CAVP cavp;
+		cavp.pos.head(3) = line_avp->pos;
+		cavp.vel.head(3) = line_avp->vel;
+		cavp.acc.head(3) = line_avp->acc;
+		cavp.pos.segment(3, 3) = ang_avp->pos;
+		cavp.vel.segment(3, 3) = ang_avp->vel;
+		cavp.acc.segment(3, 3) = ang_avp->acc;
+
+		return cavp;
+	}
 }

@@ -4,7 +4,7 @@
 #include <math.h>
 #include <Eigen/Dense>
 
-#define	EPS	1e-8
+#define	EPS	1e-5
 #define pi	3.141592657
 
 using namespace std;
@@ -58,9 +58,9 @@ namespace RobotTools
 
 	struct CAVP
 	{
-		Matrix<double, 6, 1> pos;
-		Matrix<double, 6, 1> vel;
-		Matrix<double, 6, 1> acc;
+		Vector6d pos;
+		Vector6d vel;
+		Vector6d acc;
 	};
 
 	struct Pose
@@ -71,7 +71,30 @@ namespace RobotTools
 
 	MatrixXd CalcRectanglePath(MatrixXd* corner_pos, char* option, double interval);
 
-	Matrix3d CalcPlaneRot(Vector3d center, Vector3d norm_vec, double px, double pz);
+	/**
+	* @brief	calculate rotation matrix according point and normal vector
+	* @author	zxliao
+	* @date		2021/6/3
+	* @param	center		spatial point
+	* @param	norm_vec	normal vector
+	* @return	rot			rotation matrix
+	**/
+	Matrix3d CalcPlaneRot(Vector3d center, Vector3d norm_vec);
+
+	/**
+	* @brief	calculate control points with given zone radius
+	* @author	zxliao
+	* @date		2021/6/3
+	* @param	pos1		first corner point
+	* @param	pos2		second corner point
+	* @param	pos3		third corner point
+	* @param	r			transition radius between two lines
+	* @param	opt			transition option: 2 points for arc, 5 points for spline
+	* @return	ctrlpos		control points of transition
+	**/
+	MatrixXd CalcSplineTransPos(Vector3d pos1, Vector3d pos2, Vector3d pos3, double r, char* opt);
+
+	double CalcArcRadius(Vector3d pos1, Vector3d pos2, Vector3d pos3);
 
 	Pose PoseProduct(Pose p1, Pose p2);
 
@@ -81,5 +104,9 @@ namespace RobotTools
 
 	Matrix3d RotZ(double angle);
 
+	CAVP LinetoSpatial(CLineAVP* line_avp);
 
+	CAVP AngtoSpatial(CLineAVP* ang_avp);
+
+	CAVP toSpatial(CLineAVP* line_avp, CLineAVP* ang_avp);
 }

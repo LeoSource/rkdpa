@@ -416,3 +416,54 @@ int TableTask::RunLogicOperation(int state, int pre_state, char* operation)
 	return res;
 }
 
+MatrixXd TableTask::CalTrajViaPos(MatrixXd* pos_info, VectorXd q_fdb)
+{
+    _interval = 0.08;
+    MatrixXd tmp_via_pos;
+    if(!_obstacle)
+    {
+        tmp_via_pos = RobotTools::CalcRectanglePath(pos_info, "s",_interval);
+    }
+    else if (_obstacle)
+    {
+        //Vector2d alpha(0.7, -0.7);
+        tmp_via_pos = RobotTools::CalcRectanglePath(pos_info, "m",_interval);
+    }
+
+    MatrixXd via_pos;
+    via_pos.setZero(3, (tmp_via_pos.cols()+1+1)*3);
+
+    double pitch_x = (*pos_info)(0, 2);
+    double inc_angle[] = { 20*pi/180, 50*pi/180 };
+    double pitch_high = pitch_x-inc_angle[0];
+    double pitch_low = pitch_x-inc_angle[1];
+    _rbt->SetPitchRange(pitch_high, pitch_low);
+
+    Vector3d pos0 = _rbt->FKSolveTool(q_fdb).pos;
+    double pitch0 = q_fdb(2)+_rbt->_tool_pitch;
+    double yaw0 = q_fdb(0)+q_fdb(4);
+    Vector3d rpy0(0, pitch0, yaw0);
+    Vector6d pos_rpy0, pos_rpyn;
+    pos_rpy0<<pos0, rpy0;
+    pos_rpyn<<pos_info->col(0), Vector3d(0, _rbt->_pitch_high, 0);
+
+    via_pos.col(0) = pos0;
+    via_pos.col(1) = rpy0; //startpos.RPY
+    via_pos.col(2) = Vector3d(1,1,1);
+
+    for(int i = 0; i < tmp_via_pos.cols(); ++i)
+    {
+        via_pos.col((i+1)*3) = tmp_via_pos.col(i);
+        via_pos.col((i+1)*3 + 1) = rpy0;
+        via_pos.col((i+1)*3 + 2) = Vector3d(1, 0 ,0);
+    }
+
+    Vector5d stowed_jpos(g_stowed_jpos);
+    Vector3d pos_end = _rbt->FKSolveTool(stowed_jpos).pos;
+
+    via_pos.col((tmp_via_pos.cols()+1)*3) = pos_end;
+    via_pos.col((tmp_via_pos.cols()+1)*3 + 1) = rpy0;
+    via_pos.col((tmp_via_pos.cols()+1)*3 + 2) = Vector3d(1, 0 ,0);
+
+    return via_pos;
+}

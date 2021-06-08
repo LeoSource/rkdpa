@@ -31,7 +31,7 @@ void LspbTrajPlanner::InitPlanner(Vector2d pos, double max_vel, double max_acc, 
 	else
 		_maxvel_reached = false;
 	TransformPVA(pos, vel_con, max_vel, max_acc);
-	SetVelConstraint(h);
+	SetVelConstraint(h,duration(1));
 }
 
 void LspbTrajPlanner::InitPlanner(Vector2d pos, double max_vel, double max_acc, double tf)
@@ -130,26 +130,48 @@ void LspbTrajPlanner::SetTimeLimit(double h, Vector2d duration)
 	_td = _ta;
 }
 
-void LspbTrajPlanner::SetVelConstraint(double h)
+void LspbTrajPlanner::SetVelConstraint(double h, double tf)
 {
 	_t0 = 0;
 	assert(h*_amax>=0.5*fabs(pow(_v0, 2)+pow(_vf, 2)));
 
-	if (h*_amax>pow(_vmax, 2)-0.5*(pow(_v0, 2)+pow(_vf, 2)))
+	if (tf<0)
 	{
-		_maxvel_reached = true;
-		_ta = (_vmax-_v0)/_amax;
-		_td = (_vmax-_vf)/_amax;
-		_tf = h/_vmax+0.5*_vmax/_amax*pow(1-_v0/_vmax, 2)+0.5*_vmax/_amax*pow(1-_vf/_vmax, 2);
+		if (h*_amax>pow(_vmax, 2)-0.5*(pow(_v0, 2)+pow(_vf, 2)))
+		{
+			_maxvel_reached = true;
+			_ta = (_vmax-_v0)/_amax;
+			_td = (_vmax-_vf)/_amax;
+			_tf = h/_vmax+0.5*_vmax/_amax*pow(1-_v0/_vmax, 2)+0.5*_vmax/_amax*pow(1-_vf/_vmax, 2);
+		}
+		else
+		{
+			_maxvel_reached = false;
+			_vmax = sqrt(h*_amax+0.5*(pow(_v0, 2)+pow(_vf, 2)));
+			_ta = (_vmax-_v0)/_amax;
+			_td = (_vmax-_vf)/_amax;
+			_tf = _ta+_td;
+		}
 	}
 	else
 	{
-		_maxvel_reached = false;
-		_vmax = sqrt(h*_amax+0.5*(pow(_v0, 2)+pow(_vf, 2)));
-		_ta = (_vmax-_v0)/_amax;
-		_td = (_vmax-_vf)/_amax;
-		_tf = _ta+_td;
+		_tf = tf;
+		double tmp_v = pow(_amax, 2)*pow(_tf, 2)-4*_amax*h+2*_amax*(_v0+_vf)*_tf-pow(_v0-_vf, 2);
+
+		assert(tmp_v>0);
+
+		double vv = 0.5*(_v0+_vf+_amax*_tf-sqrt(tmp_v));
+		_ta = (vv-_v0)/_amax;
+		_td = (vv-_vf)/_amax;
+		double tmp_a = 4*pow(h, 2)-4*h*(_v0+_vf)*_tf+2*(pow(_v0, 2)+pow(_vf, 2))*pow(_tf, 2);
+		double alim = (2*h-_tf*(_v0+_vf)+sqrt(tmp_a))/pow(_tf, 2);
+		if (fabs(_amax-alim)<EPS)
+			_maxvel_reached = false;
+		else
+			_maxvel_reached = true;
+		_vmax = vv;
 	}
+
 }
 
 
@@ -158,19 +180,19 @@ RobotTools::JAVP LspbTrajPlanner::GenerateMotion(double t)
 	RobotTools::JAVP avp;
 	if (_maxvel_reached)
 	{
-		if ((t>=_t0) && (t<=_t0+_ta))
+		if ((t>=_t0) && (t<_t0+_ta))
 		{
 			avp.pos = _q0+_v0*(t-_t0)+0.5*(_vmax-_v0)/_ta*pow(t-_t0, 2);
 			avp.vel = _v0+(_vmax-_v0)/_ta*(t-_t0);
 			avp.acc = _amax;
 		}
-		else if ((t>_t0+_ta) && (t<=(_tf-_td)))
+		else if ((t>=_t0+_ta) && (t<(_tf-_td)))
 		{
 			avp.pos = _q0+0.5*_v0*_ta+_vmax*(t-_t0-0.5*_ta);
 			avp.vel = _vmax;
 			avp.acc = 0;
 		}
-		else if ((t>(_tf-_td)) && (t<=_tf))
+		else if ((t>=(_tf-_td)) && (t<=_tf))
 		{
 			avp.pos = _qf-_vf*(_tf-t)-0.5*(_vmax-_vf)/_td*pow(_tf-t, 2);
 			avp.vel = _vf+(_vmax-_vf)/_td*(_tf-t);

@@ -91,20 +91,19 @@ void RotXPlaneTask::SetTrajPos(MatrixXd* pos_info, int num_section, VectorXd q_f
 		pos_rpyn<<pos_info->col(0), Vector3d(0, _rbt->_pitch_high, 0);
 		double vmax[] = { g_cvmax,0.15 };
 		double amax[] = { g_camax,0.3 };
-		double duration[] = { -1,-1 };
 		double vel_cons[] = { 0,0,0,0 };
-		_line_traj[0] = LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, duration, vel_cons, "both");
+		_line_traj[0] = LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, "both");
 
 
 		pos_rpy0<<pos_info->col(0), pos_rpyn.tail(3);
 		pos_rpyn<<pos_info->col(1), Vector3d(0, _rbt->_pitch_low, 0);
-		_line_traj[1] = LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, duration, vel_cons, "both");
+		_line_traj[1] = LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, "both");
 
 		pos_rpy0 = pos_rpyn;
 		Vector3d pos_tmp(0, -0.1, 0);
 		Vector3d posn = pos_rpyn.head(3)+pos_tmp;
 		pos_rpyn<<posn, pos_rpy0.tail(3);
-		_line_traj[2] = LineTrajPlanner(pos_rpy0, pos_rpyn, vmax[0], amax[0], -1, vel_cons, "pos");
+		_line_traj[2] = LineTrajPlanner(pos_rpy0, pos_rpyn, vmax[0], amax[0], vel_cons, "pos");
 
 		_t = 0;
 	}
@@ -142,7 +141,7 @@ VectorXd RotXPlaneTask::RunPreCleanAction(VectorXd q_fdb)
 {
 	Vector5d q_traj;
 	Vector6d pos_rpy = _line_traj[0].GeneratePoint(_t);
-	q_traj = _rbt->IKSolveYaw(pos_rpy.head(3), pos_rpy(4), pos_rpy(5), q_fdb);
+	q_traj = _rbt->IKSolvePitchYaw(pos_rpy.head(3), pos_rpy(4), pos_rpy(5), q_fdb);
 	_t += g_cycle_time;
 	MathTools::LimitMax(_line_traj[0].GetFinalTime(), _t);
 	/*
@@ -179,7 +178,7 @@ VectorXd RotXPlaneTask::RunScrapeAction(VectorXd q_fdb)
 {
 	Vector5d q_traj;
 	Vector6d pos_rpy = _line_traj[1].GeneratePoint(_t);
-	q_traj = _rbt->IKSolveYaw(pos_rpy.head(3), pos_rpy(4), pos_rpy(5), q_fdb);
+	q_traj = _rbt->IKSolvePitchYaw(pos_rpy.head(3), pos_rpy(4), pos_rpy(5), q_fdb);
 	_t += g_cycle_time;
 	MathTools::LimitMax(_line_traj[1].GetFinalTime(), _t);
 	/*
@@ -198,7 +197,7 @@ VectorXd RotXPlaneTask::RunPostCleanAction(VectorXd q_fdb)
 {
 	Vector5d q_traj;
 	Vector6d pos_rpy = _line_traj[2].GeneratePoint(_t);
-	q_traj = _rbt->IKSolveYaw(pos_rpy.head(3), pos_rpy(4), pos_rpy(5), q_fdb);
+	q_traj = _rbt->IKSolvePitchYaw(pos_rpy.head(3), pos_rpy(4), pos_rpy(5), q_fdb);
 	_t += g_cycle_time;
 	MathTools::LimitMax(_line_traj[2].GetFinalTime(), _t);
 	/*
@@ -283,3 +282,46 @@ int RotXPlaneTask::RunLogicOperation(int state, int pre_state, char* operation)
 	return res;
 }
 
+MatrixXd RotXPlaneTask::CalTrajViaPos(MatrixXd* pos_info, VectorXd q_fdb)
+{
+    MatrixXd via_pos;
+    via_pos.setZero(3, 12);
+
+    double pitch_x = (*pos_info)(0, 2);
+    double inc_angle[] = { 20*pi/180, 50*pi/180 };
+    double pitch_high = pitch_x-inc_angle[0];
+    double pitch_low = pitch_x-inc_angle[1];
+    _rbt->SetPitchRange(pitch_high, pitch_low);
+
+    Vector3d pos0 = _rbt->FKSolveTool(q_fdb).pos;
+    double pitch0 = q_fdb(2)+_rbt->_tool_pitch;
+    double yaw0 = q_fdb(0)+q_fdb(4);
+    Vector3d rpy0(0, pitch0, yaw0);
+    Vector6d pos_rpy0, pos_rpyn;
+    pos_rpy0<<pos0, rpy0;
+    pos_rpyn<<pos_info->col(0), Vector3d(0, _rbt->_pitch_high, 0);
+	
+    via_pos.col(0) = pos0;
+    via_pos.col(1) = rpy0; //startpos.rpy
+    via_pos.col(2) = Vector3d(1,1,1); //该路径规划类型
+
+    via_pos.col(3) = pos_info->col(0);
+    via_pos.col(4) = Vector3d(0, _rbt->_pitch_high, 0); //rpy
+    via_pos.col(5) = Vector3d(0, 0, 1); //该路径规划类型 both
+
+    pos_rpy0<<pos_info->col(0), pos_rpyn.tail(3);
+    pos_rpyn<<pos_info->col(1), Vector3d(0, _rbt->_pitch_low, 0);
+    via_pos.col(6) = pos_info->col(1);
+    via_pos.col(7) = Vector3d(0, _rbt->_pitch_low, 0);  //rpy
+    via_pos.col(8) = Vector3d(0, 0, 1); //该路径规划类型 both
+
+    pos_rpy0 = pos_rpyn;
+    Vector3d pos_tmp(0, -0.1, 0);
+    Vector3d posn = pos_rpyn.head(3)+pos_tmp;
+    pos_rpyn<<posn, pos_rpy0.tail(3);
+    via_pos.col(9) = posn; //pos
+    via_pos.col(10) = pos_rpy0.tail(3); //rpy
+    via_pos.col(11) = Vector3d(1, 0, 0); //该路径规划类型 pos
+
+    return via_pos;
+}

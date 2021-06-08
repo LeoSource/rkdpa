@@ -40,6 +40,8 @@ public:
 
 	VectorXd RunTask(VectorXd q_fdb) override;
 
+    MatrixXd CalTrajViaPos(MatrixXd* pos_info, VectorXd q_fdb);
+
 	~TableTask() {}
 
 private:

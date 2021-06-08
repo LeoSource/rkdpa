@@ -107,7 +107,7 @@ VectorXd CleanRobot::IKSolvePitch(Vector3d pos, double pitch)
 	return q;
 }
 
-VectorXd CleanRobot::IKSolveYaw(Vector3d pos, double pitch, double yaw, VectorXd q_in)
+VectorXd CleanRobot::IKSolvePitchYaw(Vector3d pos, double pitch, double yaw, VectorXd q_in)
 {
 	VectorXd q(_nlinks);
 	q.setZero();

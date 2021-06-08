@@ -1,3 +1,11 @@
+/**
+* @file		CleanRobot.h
+* @brief	Clean Robot Class
+* @version	1.0.0
+* @author	zxliao
+* @email	zhixiangleo@163.com
+* @date		2021/6/1
+**/
 #pragma once
 
 #include "MDHLink.h"
@@ -41,7 +49,7 @@ public:
 
 	VectorXd IKSolvePitch(Vector3d pos, double pitch);
 
-	VectorXd IKSolveYaw(Vector3d pos, double pitch, double yaw, VectorXd q_in);
+	VectorXd IKSolvePitchYaw(Vector3d pos, double pitch, double yaw, VectorXd q_in);
 
 	//TO DO: update jacobian calculation functions
 	MatrixXd CalcJaco(VectorXd q);

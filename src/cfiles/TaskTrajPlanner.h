@@ -1,11 +1,22 @@
+/**
+* @file		TaskTrajPlanner.h
+* @brief	Cartesian trajectory plan for every task
+* @version	1.0.0
+* @author	zxliao
+* @email	zhixiangleo@163.com
+* @date		2021/6/7
+**/
 #pragma once
 
 #include "LineTrajPlanner.h"
+#include "ArcTrajPlanner.h"
 #include "GlobalParams.h"
 #include <vector>
 
 class TaskTrajPlanner
 {
+public:
+	bool _task_completed;
 private:
 	vector<BaseCTrajPlanner*> _segtraj_planner;
 	int _ntraj;
@@ -13,67 +24,135 @@ private:
 	vector<Vector3d*> _rpy_corner;
 	vector<Vector3d*> _pos_seg;
 	vector<Vector3d*> _rpy_seg;
+	vector<double> _varc;
 	double _t;
 	int _traj_idx;
+	bool _continuity;
 
 public:
-	TaskTrajPlanner() {}
-
-	TaskTrajPlanner(Vector3d pos0, Vector3d rpy0)
-	{
-		_pos_corner.push_back(&pos0);
-		_rpy_corner.push_back(&rpy0);
-		_ntraj = 0;
-		_t = 0;
-		_traj_idx = 0;
+	TaskTrajPlanner() 
+	{ 
+		_task_completed = true;
+		_continuity = false;
 	}
 
-	void AddPosRPY(Vector3d pos, Vector3d rpy, char* opt)
-	{
-		_pos_corner.push_back(&pos);
-		_rpy_corner.push_back(&rpy);
-		int pos_idx = _pos_corner.size();
-		_ntraj += 1;
-		Vector3d pos0 = *_pos_corner[pos_idx-2];
-		Vector3d posn = *_pos_corner[pos_idx-1];
-		Vector3d rpy0 = *_rpy_corner[pos_idx-2];
-		Vector3d rpyn = *_rpy_corner[pos_idx-1];
-		Vector6d pos_rpy0, pos_rpyn;
-		pos_rpy0<<pos0, rpy0;
-		pos_rpyn<<posn, rpyn;
-		double vmax[] = { g_cvmax,0.15 };
-		double amax[] = { g_camax,0.3 };
-		double duration[] = { -1,-1 };
-		double vel_cons[] = { 0,0,0,0 };
-		BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, duration, vel_cons, opt);
-		_segtraj_planner.push_back(traj_planner);
-		//delete traj_planner;
-	}
+	/**
+	* @brief	constructor
+	* @author	zxliao
+	* @date		2021/6/7
+	* @param	pos0	initial position
+	* @param	rpy0	initial rotation: rpy
+	* @param	conti_type	continuous arc transition between 2 lines
+	**/
+	TaskTrajPlanner(Vector3d* pos0, Vector3d* rpy0, bool conti_type);
 
-	Vector6d GeneratePoint()
-	{
-		Vector6d pos_rpy;
-		if (_traj_idx!=_ntraj)
-		{
-			pos_rpy = _segtraj_planner[_traj_idx]->GeneratePoint(_t);
-			_t += g_cycle_time;
-			MathTools::LimitMax(_segtraj_planner[_traj_idx]->GetFinalTime(), _t);
-			if (fabs(_t-_segtraj_planner[_traj_idx]->GetFinalTime())<g_cycle_time)
-			{
-				_traj_idx += 1;
-				_t = 0;
-			}
-		}
-		else
-		{
-			double t = _segtraj_planner[_ntraj-1]->GetFinalTime();
-			pos_rpy = _segtraj_planner[_ntraj-1]->GeneratePoint(t);
-		}
+	void AddStartPosRPY(Vector3d *pos0, Vector3d *rpy0);
 
-		return pos_rpy;
-	}
+	/**
+	* @brief	add task corner positino and rpy
+	* @author	zxliao
+	* @date		2021/6/7
+	* @param	pos		corner position
+	* @param	rpy		corner rotation: rpy
+	* @param	opt		option: both, pos or rot
+	**/
+	void AddPosRPY(Vector3d* pos, Vector3d* rpy, char* opt);
 
+	/**
+	* @brief	add task corner positino and rpy under continuous condition
+	* @author	zxliao
+	* @date		2021/6/8
+	* @param	pos		corner position
+	* @param	rpy		corner rotation: rpy
+	* @param	opt		option: both, pos or rot
+	**/
+	void AddContiPosRPY(Vector3d* pos, Vector3d* rpy, char* opt);
+
+	/**
+	* @brief	add task corner positino and rpy under discontinuous condition
+	* @author	zxliao
+	* @date		2021/6/8
+	* @param	pos		corner position
+	* @param	rpy		corner rotation: rpy
+	* @param	opt		option: both, pos or rot
+	**/
+	void AddDiscontiPosRPY(Vector3d* pos, Vector3d* rpy, char* opt);
+
+	/**
+	* @brief	generate trajectory data: position, rpy, spatial velocity and acceleration
+	* @author	zxliao
+	* @date		2021/6/7
+	* @return	cavp	trajectory data: position, rpy, spatial velocity and acceleration
+	**/
+	RobotTools::CAVP GenerateMotion();
+
+	/**
+	* @brief	generate trajectory data under continuous condition
+	* @author	zxliao
+	* @date		2021/6/8
+	* @return	cavp	trajectory data: position, rpy, spatial velocity and acceleration
+	**/
+	RobotTools::CAVP GenerateContiMotion();
+
+	/**
+	* @brief	generate trajectory data under discontinuous condition
+	* @author	zxliao
+	* @date		2021/6/8
+	* @return	cavp	trajectory data: position, rpy, spatial velocity and acceleration
+	**/
+	RobotTools::CAVP GenerateDiscontiMotion();
+
+	/**
+	* @brief	reset task trajectory planner
+	* @author	zxliao
+	* @date		2021/6/7
+	* @param	conti_type	continuous arc transition between 2 lines
+	**/
+	void Reset(bool conti_type);
+
+	/**
+	* @brief	reset task trajectory planner with position and rpy
+	* @author	zxliao
+	* @date		2021/6/7
+	* @param	pos0	initial position
+	* @param	rpy0	initial rotation: rpy
+	* @param	conti_type	continuous arc transition between 2 lines
+	**/
+	void Reset(Vector3d* pos0, Vector3d* rpy0, bool conti_type);
+
+	void AddPosRPY(Vector3d *pos, Vector3d *rpy, Vector3d &seg_opt);
+
+	/**
+	* @brief	generate trajectory position and rpy
+	* @author	zxliao
+	* @date		2021/6/7
+	* @return	pos_rpy		trajectory position and rpy
+	**/
+	Vector6d GeneratePoint();
+
+	void ReInitSegTrajPlanner(Vector3d &pos0, Vector3d &rpy0);
+
+	bool GetSegTrajPlannerDone();
 
 	~TaskTrajPlanner() {}
+
+private:
+	/**
+	* @brief	get the 3rd position to define arc
+	* @author	zxliao
+	* @date		2021/6/7
+	* @param	p1			1st position to define arc
+	* @param	p2			2nd position to define arc
+	* @param	p3_corner	3rd position on the p2p3 extended line
+	* @return	pos3		the 3rd position to define arc
+	**/
+	Vector3d UpdateSegPos(Vector3d p1, Vector3d p2, Vector3d p3_corner);
+
+	/**
+	* @brief	clear temp positions and planners
+	* @author	zxliao
+	* @date		2021/6/7
+	**/
+	void ClearTemp();
 };
 

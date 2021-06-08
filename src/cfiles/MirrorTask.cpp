@@ -104,7 +104,7 @@ void MirrorTask::SetCircleMirror(Vector3d center, Vector3d norm_vec, double radi
 		_pre_uplanner.InitPlanner(vp, g_cvmax, g_camax, _tf_pre);
 		_alphplanner.InitPlanner(valph, g_jvmax[0], g_jamax[0], _tf_pre);
 
-		_circel_rot = RobotTools::CalcPlaneRot(center, norm_vec, center(0)+1, center(2));
+		_circel_rot = RobotTools::CalcPlaneRot(center, norm_vec);
 		double v = interval/2/pi;
 		Vector2d theta(0, radius/v);
 		_splanner.InitPlanner(theta, 0.7, 0.2);
