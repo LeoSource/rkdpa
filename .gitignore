@@ -6,8 +6,8 @@ src/classes/*.asv
 src/tools/*.asv
 src/*.gif
 *.autosave
-src/simulink/*.slxc
-src/simulink/slprj/
+src/simulink/v1.0/*.slxc
+src/simulink/v1.0/slprj/
 
 # 暂时忽略solidworks模型文件
 model/
