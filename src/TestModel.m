@@ -476,7 +476,7 @@ plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), 
 grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
 if comparison
     q_cpp = load('./data/mirrortask_jpos1.csv');
-    q_cpp = reshape(q_cpp, rbt.nlinks, length(q_cpp)/5);
+    q_cpp = reshape(q_cpp, rbt.nlinks, []);
     tt = g_cycle_time*[0:size(q_cpp,2)-1];
     for idx=1:rbt.nlinks
         figure

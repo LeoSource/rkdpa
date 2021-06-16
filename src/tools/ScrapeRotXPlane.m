@@ -1,8 +1,7 @@
 function [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pitch_x,q0,dt)
 
-    sim_pos = []; pos = [];
+    sim_pos = [];
     sim_q = [];
-    pitch = []; yaw = [];
     inc_angle = [20, 50]*pi/180;
     pitch_high = pitch_x-inc_angle(1);
     pitch_low = pitch_x-inc_angle(2);
@@ -13,10 +12,9 @@ function [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pitch_x,q0,dt)
     yaw0 = q0(1)+q0(end);
     rpy0 = [0;pitch0;yaw0];
     ctraj = CTrajPlanner(pos0,rpy0, 1);    
-    ctraj.AddPosRPY([via_pos(:,1);0;rbt.pitch_high;0],'both');
-    ctraj.AddPosRPY([via_pos(:,2);0;rbt.pitch_low;0],'both');
-    posn = via_pos(:,2)+[0;-0.1;0];
-    ctraj.AddPosRPY([posn;0;rbt.pitch_low;0],'pos')
+    ctraj.AddPosRPY([via_pos(:,1);0;rbt.pitch_high;0]);
+    ctraj.AddPosRPY([via_pos(:,2);0;rbt.pitch_low;0]);
+    ctraj.AddPosRPY([via_pos(:,3);0;rbt.pitch_low;0])
     
     [pos, rpy] = ctraj.GenerateTraj(dt);
 

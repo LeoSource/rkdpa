@@ -14,7 +14,7 @@ g_stowed_pos = [0;0.7;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
-task = 'mirror';
+task = 'table';
 show_power = 0;
 q0 = [0.2,0.5,0.7,0.2,0.5]';
 switch task
@@ -34,23 +34,37 @@ switch task
             [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, norm_vec, interval, q0, dt);
         elseif strcmp(mirror_type, 'scrape')
             x0 = rbt.mdh(3,2)+rbt.mdh(5,3);
-            pos1 = [x0, 0.8, 1.62]; pos2 = [x0, 0.8, 0.84];
-            via_pos = [pos1', pos2'];
+            pos1 = [x0, 0.8, 1.62]; pos2 = [x0, 0.8, 0.84]; pos3 = pos2+[0,-0.1,0];
+            via_pos = [pos1', pos2', pos3'];
             [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pi/2,q0,dt);
         end
         
     case clean_task(2)
         %% wipe the table
-        pitch_x = -10;
-%         pos1 = rotx(pitch_x)*[0.2; 0.8; 0.8];
-%         pos2 = rotx(pitch_x)*[-0.2; 0.8; 0.8];
-%         pos3 = rotx(pitch_x)*[-0.2; 1.1; 0.8];
-%         pos4 = rotx(pitch_x)*[0.2; 1.1; 0.8];
+        sim_pos = [];
+        sim_q = [];
         dt = 0.01;
-        pos1 = [0.5, 0.6, 0.5]'; pos2 = [-0.5, 0.6, 0.5]'; pos3 = [-0.5, 0.9, 0.5]'; pos4 = [0.5, 0.9, 0.5]';
-        via_pos = CalcRectanglePath([pos1, pos2, pos3, pos4], 'm');
-%         [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt);
-        [sim_pos, sim_q] = BrushRotXPlane(rbt,via_pos,pitch_x*pi/180,q0,dt);
+        pos0 = rbt.FKSolveTool(q0).t;
+        pitch0 = q0(3)+rbt.tool_pitch;
+        yaw0 = q0(1)+q0(end);
+        rpy0 = [0;pitch0;yaw0];
+        ctraj = CTrajPlanner(pos0,rpy0, 1);
+        pos1 = [-0.2, 0.75, 0.65]'; pos2 = [0.2, 0.75, 0.65]';
+        pos3 = [0.2, 0.6, 0.65]'; pos4 = [-0.2, 0.6, 0.65]';
+        ctraj.AddPosRPY([pos1;0;0;0]);
+        ctraj.AddPosRPY([pos2;0;0;0]);
+        ctraj.AddPosRPY([pos3;0;0;0]);
+        ctraj.AddPosRPY([pos4;0;0;0]);
+        [pos, rpy] = ctraj.GenerateTraj(dt);
+
+        pre_q = q0;
+        for idx=1:size(pos,2)
+            tmp_q = rbt.IKSolvePitchYaw(pos(:,idx),rpy(2,idx),rpy(3,idx),pre_q);
+            sim_q = [sim_q, tmp_q];
+            pre_q = tmp_q;
+            pose_tmp = rbt.FKSolveTool(tmp_q);
+            sim_pos = [sim_pos, pose_tmp.t];
+        end
 
     case clean_task(3)
         %% wipe the washbasin
@@ -97,6 +111,8 @@ if strcmp(task, 'mirror')
     elseif strcmp(mirror_type, 'scrape')
         hold on; plot2(via_pos', 'bo'); axis equal; hold off;
     end
+elseif strcmp(task,'table')
+    hold on; plot2([pos1,pos2,pos3,pos4]', 'bo'); axis equal; hold off;
 elseif strcmp(task, 'sphere') || strcmp(task, 'ellipsoid')
     hold on; plot2(pos', '--'); plot3(via_pos(1,:), via_pos(2,:), via_pos(3,:), 'o'); hold off;
 end
