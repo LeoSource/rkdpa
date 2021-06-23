@@ -14,7 +14,7 @@ function [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pitch_x,q0,dt)
     ctraj = CTrajPlanner(pos0,rpy0, 1);    
     ctraj.AddPosRPY([via_pos(:,1);0;rbt.pitch_high;0]);
     ctraj.AddPosRPY([via_pos(:,2);0;rbt.pitch_low;0]);
-    ctraj.AddPosRPY([via_pos(:,3);0;rbt.pitch_low;0])
+    ctraj.AddPosRPY([via_pos(:,3);0;rbt.pitch_low;0]);
     
     [pos, rpy] = ctraj.GenerateTraj(dt);
 

@@ -12,7 +12,7 @@ g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi]*0.5;
 g_cvmax = 0.15; g_camax = 0.3;
 g_stowed_pos = [0;0.6;0;0;0];
 g_cycle_time = 0.005;
-test_mode = 'mirrortask';
+test_mode = 'tabletask';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -418,6 +418,7 @@ jaco_err = norm(rbt.CalcJacoTool(q)-test_jaco(:,1:5))
 
 q= [0.3,0.98,-0.91,0.91,0.56];
 jaco = rbt.CalcJacoTool(q)
+
     case 'redudantsolve'
 %% redundant solve for robot work
 pos1 = [0.5, 0.8, 1]; pos2 = [-0.5, 0.8, 1]; pos3 = [-0.5, 0.8, 1.8]; pos4 = [0.5, 0.8, 1.8];
@@ -447,6 +448,7 @@ grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
 figure
 plot2(pos', 'r--'); hold on; plot2(sim_pos', 'k-'); grid on; axis([-inf, inf, 0.6, 1, -inf, inf]);
 xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)'); legend('cmd\_pos', 'sim\_pos');
+
     case 'mirrortask'
 %%  comparison with cpp
 q0 = [0.2,0.5,0.7,0.2,0.5]';
@@ -474,6 +476,52 @@ end
 t = 0:dt:dt*(size(sim_q,2)-1);
 plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');
 grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
+if comparison
+    q_cpp = load('./data/mirrortask_jpos1.csv');
+    q_cpp = reshape(q_cpp, rbt.nlinks, []);
+    tt = g_cycle_time*[0:size(q_cpp,2)-1];
+    for idx=1:rbt.nlinks
+        figure
+        plot(t, sim_q(idx,:), 'b--'); xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+        plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
+        xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+        legend('matlab\_data', 'cpp\_data');
+    end
+end
+
+    case 'tabletask'
+%% comparison with cpp
+q0 = [0.2,0.5,0.7,0.2,0.5]';
+dt = 0.01;
+comparison = 1;
+sim_q = []; sim_pos = [];
+pos0 = rbt.FKSolveTool(q0).t;
+pitch0 = q0(3)+rbt.tool_pitch;
+yaw0 = q0(1)+q0(end);
+rpy0 = [0;pitch0;yaw0];
+ctraj = CTrajPlanner(pos0,rpy0, 1);
+pos1 = [-0.2, 0.8, 0.65]'; pos2 = [0.2, 0.8, 0.65]';
+pos3 = [0.2, 0.65, 0.65]'; pos4 = [-0.2, 0.65, 0.65]';
+ctraj.AddPosRPY([pos1;0;0;0]);
+ctraj.AddPosRPY([pos2;0;0;0]);
+ctraj.AddPosRPY([pos3;0;0;0]);
+ctraj.AddPosRPY([pos4;0;0;0]);
+[pos, rpy] = ctraj.GenerateTraj(dt);
+
+pre_q = q0;
+for idx=1:size(pos,2)
+    tmp_q = rbt.IKSolvePitchYaw(pos(:,idx),rpy(2,idx),rpy(3,idx),pre_q);
+    sim_q = [sim_q, tmp_q];
+    pre_q = tmp_q;
+    pose_tmp = rbt.FKSolveTool(tmp_q);
+    sim_pos = [sim_pos, pose_tmp.t];
+end
+t = 0:dt:dt*(size(sim_q,2)-1);
+plot(t,sim_q(1,:),'-', t, sim_q(2,:), '--', t, sim_q(3,:), '-.', t, sim_q(4,:), ':', t, sim_q(5,:), '-');
+grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5');
+plot2(sim_pos', 'r-');
+hold on; plot2([pos1,pos2,pos3,pos4]', 'bo'); axis equal; hold off;
+grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 if comparison
     q_cpp = load('./data/mirrortask_jpos1.csv');
     q_cpp = reshape(q_cpp, rbt.nlinks, []);
