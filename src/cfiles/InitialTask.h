@@ -8,6 +8,8 @@ public:
 
 	InitialTask(CleanRobot* rbt):BaseTask(rbt) {}
 
+	InitialTask(UrRobot* urrbt) :BaseTask(urrbt) {}
+
 	int RunLogicOperation(int state, int pre_state, char* operation) override
 	{
 		if (_task_completed)

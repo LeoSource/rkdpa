@@ -18,11 +18,12 @@ class BaseCTrajPlanner
 protected:
 	Vector3d _pos_initial, _rpy_initial;
 	Vector3d _pos_dir, _rot_dir;
+	Vector4d _angle_axis;
 	double _pos_len, _rot_len;
 	double _tf_pos, _tf_rot, _tf;
 	LspbTrajPlanner _pos_uplanner, _rot_uplanner;
 	char* _option;
-
+	Matrix3d _r0, _rn;
 public:
 	BaseCTrajPlanner() {}
 
@@ -161,8 +162,11 @@ protected:
 	**/
 	void InitRotPlanner(Vector3d rpy0, Vector3d rpyn, double ang_vmax, double ang_amax, double tf, double* vel_cons)
 	{
-		_rot_len = MathTools::Norm(rpyn-rpy0);
-		_rot_dir = (rpyn-rpy0)/_rot_len;
+		_r0 = RobotTools::FixedZYX2Tr(rpy0);
+		_rn = RobotTools::FixedZYX2Tr(rpyn);
+		Matrix3d r = _r0.inverse() * _rn;
+		_angle_axis = RobotTools::Tr2AngleAxis(r);
+		_rot_len = _angle_axis(3);
 		Vector2d vp(0, _rot_len), velcons(vel_cons[0], vel_cons[1]);
 		if (tf<0)
 			_rot_uplanner.InitPlanner(vp, ang_vmax, ang_amax, Vector2d(0, -1), velcons);
@@ -211,7 +215,12 @@ protected:
 			RobotTools::JAVP uavp = _rot_uplanner.GenerateMotion(t);
 			up = uavp.pos;
 		}
-		rpy = _rpy_initial+up*_rot_dir;
+		Vector4d temp_e;
+		temp_e << _angle_axis(0), _angle_axis(1), _angle_axis(2), up;
+		//cout << up << "\t"<<endl;
+		Matrix3d temp_r = RobotTools::AngleAxis2Tr(temp_e);
+		Matrix3d r = _r0* temp_r;
+		rpy = RobotTools::Tr2FixedZYX(r);
 
 		return rpy;
 	}
@@ -237,10 +246,17 @@ protected:
 		{
 			uavp = _rot_uplanner.GenerateMotion(t);
 		}
-		rpy_avp.pos = _rpy_initial+uavp.pos*_rot_dir;
-		rpy_avp.vel = uavp.vel*_rot_dir;
-		rpy_avp.acc = uavp.acc*_rot_dir;
-
+		Vector4d temp_e;
+		temp_e << _angle_axis(0), _angle_axis(1), _angle_axis(2), uavp.pos;
+		Matrix3d temp_r = RobotTools::AngleAxis2Tr(temp_e);
+		Matrix3d r = _r0* temp_r;
+		rpy_avp.pos = RobotTools::Tr2FixedZYX(r);
+		//rpy_avp.vel.setZero();
+		//rpy_avp.acc.setZero();
+		Vector3d axis; 
+		axis << _angle_axis(0), _angle_axis(1), _angle_axis(2);
+		rpy_avp.vel = _r0*(axis*uavp.vel);
+		rpy_avp.acc = _r0*(axis*uavp.acc);
 		return rpy_avp;
 	}
 

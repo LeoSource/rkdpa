@@ -285,9 +285,9 @@ int RotXPlaneTask::RunLogicOperation(int state, int pre_state, char* operation)
 MatrixXd RotXPlaneTask::CalTrajViaPos(MatrixXd* pos_info, VectorXd q_fdb)
 {
     MatrixXd via_pos;
-    via_pos.setZero(3, 12);
+    via_pos.setZero(3, (1 + 4)*3); //startpos + posnum
 
-    double pitch_x = (*pos_info)(0, 2);
+    double pitch_x = 90*pi/180;
     double inc_angle[] = { 20*pi/180, 50*pi/180 };
     double pitch_high = pitch_x-inc_angle[0];
     double pitch_low = pitch_x-inc_angle[1];
@@ -297,31 +297,37 @@ MatrixXd RotXPlaneTask::CalTrajViaPos(MatrixXd* pos_info, VectorXd q_fdb)
     double pitch0 = q_fdb(2)+_rbt->_tool_pitch;
     double yaw0 = q_fdb(0)+q_fdb(4);
     Vector3d rpy0(0, pitch0, yaw0);
-    Vector6d pos_rpy0, pos_rpyn;
-    pos_rpy0<<pos0, rpy0;
-    pos_rpyn<<pos_info->col(0), Vector3d(0, _rbt->_pitch_high, 0);
 	
     via_pos.col(0) = pos0;
     via_pos.col(1) = rpy0; //startpos.rpy
-    via_pos.col(2) = Vector3d(1,1,1); //该路径规划类型
+    via_pos.col(2) = Vector3d(1,1,1); //
 
     via_pos.col(3) = pos_info->col(0);
     via_pos.col(4) = Vector3d(0, _rbt->_pitch_high, 0); //rpy
-    via_pos.col(5) = Vector3d(0, 0, 1); //该路径规划类型 both
+    via_pos.col(5) = Vector3d(0, 0, 1); //
 
-    pos_rpy0<<pos_info->col(0), pos_rpyn.tail(3);
-    pos_rpyn<<pos_info->col(1), Vector3d(0, _rbt->_pitch_low, 0);
     via_pos.col(6) = pos_info->col(1);
-    via_pos.col(7) = Vector3d(0, _rbt->_pitch_low, 0);  //rpy
-    via_pos.col(8) = Vector3d(0, 0, 1); //该路径规划类型 both
+    via_pos.col(7) = Vector3d(0, _rbt->_pitch_high, 0);  //rpy
+    via_pos.col(8) = Vector3d(1, 0, 0); //
 
-    pos_rpy0 = pos_rpyn;
-    Vector3d pos_tmp(0, -0.1, 0);
-    Vector3d posn = pos_rpyn.head(3)+pos_tmp;
-    pos_rpyn<<posn, pos_rpy0.tail(3);
-    via_pos.col(9) = posn; //pos
-    via_pos.col(10) = pos_rpy0.tail(3); //rpy
-    via_pos.col(11) = Vector3d(1, 0, 0); //该路径规划类型 pos
+    via_pos.col(9) = pos_info->col(2);
+    via_pos.col(10) = Vector3d(0, _rbt->_pitch_low, 0);  //rpy
+    via_pos.col(11) = Vector3d(0, 0, 1); //
+
+    via_pos.col(12) = pos_info->col(3);
+    via_pos.col(13) = Vector3d(0, _rbt->_pitch_low, 0);  //rpy
+    via_pos.col(14) = Vector3d(1, 0, 0); //
+
+    for(int i = 0; i < pos_info->cols(); ++i)
+    {
+        double line1_len = MathTools::Norm(via_pos.col((i+1)*3) - via_pos.col(i*3));
+        if(line1_len < 0.2)
+        {
+            via_pos.col(2) = Vector3d(0, 0 ,0); //path smooth flag
+            break;
+        }
+
+    }
 
     return via_pos;
 }

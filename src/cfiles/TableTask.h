@@ -32,6 +32,8 @@ public:
 
 	TableTask(CleanRobot* rbt):BaseTask(rbt){}
 
+	TableTask(UrRobot* urrbt) :BaseTask(urrbt) {}
+
 	TableTask(CleanRobot* rbt, bool obstacle);
 
 	int RunLogicOperation(int state, int pre_state, char* operation) override;
@@ -41,6 +43,7 @@ public:
 	VectorXd RunTask(VectorXd q_fdb) override;
 
     MatrixXd CalTrajViaPos(MatrixXd* pos_info, VectorXd q_fdb);
+    MatrixXd CalTrajViaPos_absolatepos(MatrixXd* pos_info, VectorXd q_fdb);
 
 	~TableTask() {}
 

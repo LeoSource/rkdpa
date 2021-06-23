@@ -1,5 +1,30 @@
 #include "CleanRobot.h"
 
+
+CleanRobot::CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorXd offset):
+	_mdh_table(mdh_table),_type(type),_offset(offset)
+{
+	_nlinks = type.size();
+	_tool.pos = Vector3d::Zero();
+	_tool.rot = Matrix3d::Identity();
+	for (int idx = 0; idx<_nlinks; idx++)
+	{
+		double theta = mdh_table(idx, 0);
+		double d = mdh_table(idx, 1);
+		double a = mdh_table(idx, 2);
+		double alpha = mdh_table(idx, 3);
+		MDHLink tmp_link = MDHLink(theta, d, a, alpha, type(idx), offset(idx));
+		_links.push_back(tmp_link);
+
+		_qlimit.setZero(_nlinks, 2);
+		if (_links[idx]._type==e_rotation)
+			_qlimit.row(idx)<<-2*pi, 2*pi;
+		else
+			_qlimit.row(idx)<<-2, 2;
+	}
+	_hold_jpos = MatrixXd::Zero(5, 1);
+}
+
 CleanRobot::CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorXd offset, Pose tool):
 	_mdh_table(mdh_table),_type(type),_offset(offset),_tool(tool)
 {
@@ -44,6 +69,14 @@ CleanRobot::CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorX
 			_qlimit.row(idx)<<-2, 2;
 	}
 	_hold_jpos = MatrixXd::Zero(5, 1);
+}
+
+void CleanRobot::UpdateTool(double tool_pitch, Vector3d tool_pos)
+{
+	_tool_pitch = tool_pitch;
+	
+	_tool.pos = tool_pos;
+	_tool.rot = RotX(tool_pitch);
 }
 
 void CleanRobot::SetJntLimit(MatrixXd qlimit)
@@ -103,6 +136,7 @@ VectorXd CleanRobot::IKSolvePitch(Vector3d pos, double pitch)
 	double tmp_value = pos(1)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1-c1*s3*l4;
 	q(3) = tmp_value/(c1*c3)-w;
 	q(1) = pos(2)-s3*c5*ty-c3*tz-s3*(q(3)+w)-h+c3*l4;
+	MathTools::LimitVector(_qlimit.col(0), &q, _qlimit.col(1));
 
 	return q;
 }
@@ -128,6 +162,7 @@ VectorXd CleanRobot::IKSolvePitchYaw(Vector3d pos, double pitch, double yaw, Vec
 	double tmp_value = pos(1)-ty*(-s1*s5+c1*c3*c5)+c1*s3*tz-ly*c1-lx*s1-c1*s3*l4;
 	q(3) = tmp_value/(c1*c3)-w;
 	q(1) = pos(2)-s3*c5*ty-c3*tz-s3*(q(3)+w)-h+c3*l4;
+	MathTools::LimitVector(_qlimit.col(0), &q, _qlimit.col(1));
 
 	return q;
 }

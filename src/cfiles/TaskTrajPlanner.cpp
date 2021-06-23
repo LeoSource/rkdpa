@@ -11,25 +11,15 @@ TaskTrajPlanner::TaskTrajPlanner(Vector3d* pos0, Vector3d* rpy0, bool conti_type
 	_continuity = conti_type;
 }
 
-void TaskTrajPlanner::AddStartPosRPY(Vector3d *pos0, Vector3d *rpy0)
-{
-	_pos_corner.push_back(pos0);
-	_rpy_corner.push_back(rpy0);
-	_ntraj = 0;
-	_t = 0;
-	_traj_idx = 0;
-	_task_completed = false;
-}
-
-void TaskTrajPlanner::AddPosRPY(Vector3d* pos, Vector3d* rpy, char* opt)
-{
+void TaskTrajPlanner::AddPosRPY(Vector3d* pos, Vector3d* rpy)
+{		
 	if (_continuity)
-		AddContiPosRPY(pos, rpy, opt);
+		AddContiPosRPY(pos, rpy);
 	else
-		AddDiscontiPosRPY(pos, rpy, opt);
+		AddDiscontiPosRPY(pos, rpy);
 }
 
-void TaskTrajPlanner::AddContiPosRPY(Vector3d* pos, Vector3d* rpy, char* opt)
+void TaskTrajPlanner::AddContiPosRPY(Vector3d* pos, Vector3d* rpy)
 {
 	_pos_corner.push_back(pos);
 	_rpy_corner.push_back(rpy);
@@ -46,6 +36,8 @@ void TaskTrajPlanner::AddContiPosRPY(Vector3d* pos, Vector3d* rpy, char* opt)
 		double vmax[] = { g_cvmax,0.15 };
 		double amax[] = { g_camax,0.3 };
 		double vel_cons[] = { 0,0,0,0 };
+		char* opt = "none";
+		CalcTrajOption(opt, pos_rpy0, pos_rpyn);
 		BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, opt);
 		_segtraj_planner.push_back(traj_planner);
 		_ntraj = 1;
@@ -71,6 +63,8 @@ void TaskTrajPlanner::AddContiPosRPY(Vector3d* pos, Vector3d* rpy, char* opt)
 		double vel_cons[] = { 0,_varc[0],0,0 };
 		delete _segtraj_planner[0];
 		_segtraj_planner.clear();
+		char* opt = "none";
+		CalcTrajOption(opt, pos_rpy0, pos_rpyn);
 		BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, opt);
 		_segtraj_planner.push_back(traj_planner);
 		_ntraj = 3;
@@ -89,7 +83,7 @@ void TaskTrajPlanner::AddContiPosRPY(Vector3d* pos, Vector3d* rpy, char* opt)
 	}
 }
 
-void TaskTrajPlanner::AddDiscontiPosRPY(Vector3d* pos, Vector3d* rpy, char* opt)
+void TaskTrajPlanner::AddDiscontiPosRPY(Vector3d* pos, Vector3d* rpy)
 {
 	_pos_corner.push_back(pos);
 	_rpy_corner.push_back(rpy);
@@ -105,6 +99,8 @@ void TaskTrajPlanner::AddDiscontiPosRPY(Vector3d* pos, Vector3d* rpy, char* opt)
 	double vmax[] = { g_cvmax,0.15 };
 	double amax[] = { g_camax,0.3 };
 	double vel_cons[] = { 0,0,0,0 };
+	char* opt = "none";
+	CalcTrajOption(opt, pos_rpy0, pos_rpyn);
 	BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, opt);
 	_segtraj_planner.push_back(traj_planner);
 }
@@ -177,7 +173,9 @@ RobotTools::CAVP TaskTrajPlanner::GenerateContiMotion()
 			double vmax[] = { g_cvmax,0.15 };
 			double amax[] = { g_camax,0.3 };
 			double vel_cons[] = { v0,vf,0,0 };
-			BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, "both");
+			char* opt = "none";
+			CalcTrajOption(opt, pos_rpy0, pos_rpyn);
+			BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, opt);
 			_segtraj_planner.push_back(traj_planner);
 			_traj_idx += 1;
 			_t = -g_cycle_time;
@@ -244,7 +242,7 @@ void TaskTrajPlanner::AddPosRPY(Vector3d *pos, Vector3d *rpy, Vector3d &seg_opt)
 	else
 		opt = (char*)"both";
 
-	AddPosRPY(pos, rpy, opt);
+	AddPosRPY(pos, rpy);
 }
 
 Vector6d TaskTrajPlanner::GeneratePoint()
@@ -256,8 +254,7 @@ Vector6d TaskTrajPlanner::GeneratePoint()
 		_t += g_cycle_time;
 		MathTools::LimitMax(_segtraj_planner[_traj_idx]->GetFinalTime(), _t);
 		if (fabs(_t-_segtraj_planner[_traj_idx]->GetFinalTime())<g_cycle_time)
-		{
-			//delete _segtraj_planner[_traj_idx];
+		{			
 			_traj_idx += 1;
 			_t = 0;
 
@@ -290,36 +287,65 @@ Vector6d TaskTrajPlanner::GeneratePoint()
 
 void TaskTrajPlanner::ReInitSegTrajPlanner(Vector3d &pos0, Vector3d &rpy0)
 {
-	if ((int)_pos_corner.size() < _traj_idx+1)
-	{
-		return;
-	}
+    if(_continuity)
+    {
+        //temporary variable : cache segment pos
+        vector<Vector3d> posn;
+        vector<Vector3d> rpyn;
+        int length = (int)_pos_corner.size();
+        int trajindex = 0;
 
-	Vector3d posn = *_pos_corner[_traj_idx+1];
-	Vector3d rpyn = *_rpy_corner[_traj_idx+1];
+        if(_traj_idx%2 == 0)
+            trajindex = _traj_idx/2;
+        else if(_traj_idx%2 == 1)
+            trajindex = (_traj_idx-1)/2;
 
-	Vector6d pos_rpy0, pos_rpyn;
-	pos_rpy0<<pos0, rpy0;
-	pos_rpyn<<posn, rpyn;
+        for(int i = 0; i < length- trajindex - 1; ++i)
+        {
+            posn.push_back(*_pos_corner[trajindex+1 +i]);
+            rpyn.push_back(*_rpy_corner[trajindex+1 +i]);
+        }
 
-	double vmax[] = { g_cvmax,0.15 };
-	double amax[] = { g_camax,0.3 };
-	double duration[] = { -1,-1 };
-	double vel_cons[] = { 0,0,0,0 };
+        Reset(&pos0, &rpy0, false);
+        for(int i = 0; i < (int)posn.size(); ++i)
+        {
+            AddPosRPY(&posn[i], &rpyn[i]);
+        }
+
+        posn.clear();
+        rpyn.clear();
+        return;
+    }
+    else
+    {
+        Vector3d posn = *_pos_corner[_traj_idx+1];
+        Vector3d rpyn = *_rpy_corner[_traj_idx+1];
+
+        Vector6d pos_rpy0, pos_rpyn;
+        pos_rpy0<<pos0, rpy0;
+        pos_rpyn<<posn, rpyn;
+
+        double vmax[] = { g_cvmax,0.15 };
+        double amax[] = { g_camax,0.3 };
+        double vel_cons[] = { 0,0,0,0 };
 
 
-	vector<BaseCTrajPlanner*>::iterator iter_segtraj = _segtraj_planner.begin()+_traj_idx;
-	_segtraj_planner.erase(iter_segtraj);
+        vector<BaseCTrajPlanner*>::iterator iter_segtraj = _segtraj_planner.begin()+_traj_idx;
+        _segtraj_planner.erase(iter_segtraj);
 
-	BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, (char*)"both");
-	_segtraj_planner.insert(_segtraj_planner.begin()+_traj_idx, traj_planner);
+        char* opt = "none";
+        CalcTrajOption(opt, pos_rpy0, pos_rpyn);
 
-	_t = 0;
+        BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, opt);
+        _segtraj_planner.insert(_segtraj_planner.begin()+_traj_idx, traj_planner);
+
+        _t = 0;
+    }
 }
 
 bool TaskTrajPlanner::GetSegTrajPlannerDone()
 {
-	return _traj_idx==_ntraj;
+    return _task_completed;//_traj_idx==_ntraj;
 }
 
 Vector3d TaskTrajPlanner::UpdateSegPos(Vector3d p1, Vector3d p2, Vector3d p3_corner)
@@ -356,5 +382,21 @@ void TaskTrajPlanner::ClearTemp()
 	_rpy_corner.clear();
 	_rpy_seg.clear();
 	_varc.clear();
+}
+
+void TaskTrajPlanner::CalcTrajOption(char* &opt, Vector6d pos_rpy1, Vector6d pos_rpy2)
+{
+	double pos_len = MathTools::Norm(pos_rpy1.head(3) - pos_rpy2.head(3));
+	Vector4d angleaxis = RobotTools::CalcAngleAxis(pos_rpy1.tail(3), pos_rpy2.tail(3));
+	double rpy_len = angleaxis(3);
+	//char* opt;
+	if ((pos_len>EPS) && (rpy_len>EPS))
+		opt = "both";
+	else if ((pos_len>EPS) && (rpy_len <= EPS))
+		opt = "pos";
+	else if ((pos_len <= EPS) && (rpy_len>EPS))
+		opt = "rot";
+	else
+		opt = "none";
 }
 

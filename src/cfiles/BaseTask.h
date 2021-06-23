@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CleanRobot.h"
-
+#include "UrRobot.h"
 class BaseTask
 {
 public:
@@ -9,7 +9,7 @@ public:
 	bool _out_boundary;
 protected:
 	CleanRobot* _rbt;
-
+	UrRobot* _urrbt;
 public:
 	BaseTask() {}
 
@@ -20,6 +20,12 @@ public:
 		_out_boundary = false;
 	}
 
+	BaseTask(UrRobot* urrbt)
+	{
+		_urrbt = urrbt;
+		_task_completed = false;
+		_out_boundary = false;
+	}
 	void CheckWorkspace(Vector3d cmd_pos, VectorXd q_fdb)
 	{
 		bool jlimit = false, climit = false;
@@ -32,7 +38,11 @@ public:
 				break;
 			}
 		}
+#ifdef urrobt
+		Pose pose = _urrbt->FKSolve(q_fdb);
+#else
 		Pose pose = _rbt->FKSolve(q_fdb);
+#endif
 		if (fabs(MathTools::Norm(pose.pos-cmd_pos))>0.1)
 			climit = true;
 		

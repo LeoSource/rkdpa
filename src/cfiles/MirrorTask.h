@@ -37,6 +37,8 @@ public:
 
 	MirrorTask(CleanRobot* rbt):BaseTask(rbt) {}
 
+	MirrorTask(UrRobot* urrbt) :BaseTask(urrbt) {}
+
 	MirrorTask(CleanRobot* rbt, char* mirror_style);
 
 	int RunLogicOperation(int state, int pre_state, char* operation) override;

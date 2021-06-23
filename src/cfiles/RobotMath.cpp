@@ -1,5 +1,4 @@
 #include "RobotMath.h"
-
 namespace MathTools
 {
 	int Discretize(double* arr, int len, double value)
@@ -73,6 +72,68 @@ namespace MathTools
 		}
 
 		return theta;
+	}
+
+	int CalcSinCosEqua(double *x1, double *x2, double a, double b, double c)
+	{
+		double aa, discr;
+		int n;
+
+		if (a == 0. && b == 0. && c == 0.)
+		{
+			n = 0;
+			*x1 = -100;
+			*x2 = -100;
+		}
+		else if (a == b && b == c)
+		{
+			n = 2;
+			*x1 = -pi * 0.5;
+			*x2 = pi;
+		}
+		else if (b == 0. && c == 0.)
+		{
+			n = 2;
+			*x1 = -pi;
+			*x2 = pi;
+		}
+		else if (a == 0. && c == 0.)
+		{
+			n = 2;
+			*x1 = -pi * 0.5;
+			*x2 = pi * 0.5;
+		}
+		else
+		{
+			discr = a * a + b * b - c * c;
+			if (discr >= 0.)
+				aa = sqrt(discr);
+			else
+				aa = 0.;
+
+			if (discr < -0.01)
+			{
+				n = 0;
+				*x1 = -100;
+				*x2 = -100;
+			}
+			else
+			{
+				*x1 = 2. * atan2((double)(-a + aa), (double)(-b + c));
+				*x2 = 2. * atan2((double)(-a - aa), (double)(-b + c));
+				if (*x1 > 0 && *x1 > pi)
+					*x1 = *x1 - 2. * pi;
+				else if (*x1 < 0 && *x1 < -pi)
+					*x1 = *x1 + 2. * pi;
+
+				if (*x2 > 0 && *x2 > pi)
+					*x2 = *x2 - 2. * pi;
+				else if (*x2 < 0 && *x2 < -pi)
+					*x2 = *x2 + 2. * pi;
+				n = 2;
+			}
+		}
+		return (n);
 	}
 
 	int Sign(double x)
@@ -338,4 +399,253 @@ namespace RobotTools
 
 		return cavp;
 	}
+
+	Vector4d Tr2Quat1(Matrix3d r)
+	{
+		Vector4d res;
+		res.setZero();
+		const double trace = r(0, 0) + r(1, 1) + r(2, 2);
+		double root;
+		double u0, u1, u2, u3;
+
+		if (trace > 0.0) {
+			root = sqrt(trace + 1.0);
+			u0 = 0.5 * root;
+			root = 0.5 / root;
+			u1 = (r(2, 1) - r(1, 2)) * root;
+			u2 = (r(0, 2) - r(2, 0)) * root;
+			u3 = (r(1, 0) - r(0, 1)) * root;
+		}
+		else if (r(0, 0) >= r(1, 1) && r(0, 0) >= r(2, 2))
+		{
+			root = sqrt(1.0 + r(0, 0) - (r(1, 1) + r(2, 2)));
+			u1 = 0.5 * root;
+			root = 0.5 / root;
+			u2 = (r(0, 1) + r(1, 0)) * root;
+			u3 = (r(2, 0) + r(0, 2)) * root;
+			u0 = (r(2, 1) - r(1, 2)) * root;
+		}
+		else if (r(1, 1) >= r(2, 2))
+		{
+			root = sqrt(1.0 + r(1, 1) - (r(2, 2) + r(0, 0)));
+			u2 = 0.5 * root;
+			root = 0.5 / root;
+			u3 = (r(1, 2) + r(2, 1)) * root;
+			u1 = (r(0, 1) + r(1, 0)) * root;
+			u0 = (r(0, 2) - r(2, 0)) * root;
+		}
+		else
+		{
+			root = sqrt(1.0 + r(2, 2) - (r(0, 0) + r(1, 1)));
+			u3 = 0.5 * root;
+			root = 0.5 / root;
+			u1 = (r(2, 0) + r(0, 2)) * root;
+			u2 = (r(1, 2) + r(2, 1)) * root;
+			u0 = (r(1, 0) - r(0, 1)) * root;
+		}
+
+		{
+			double norm = sqrt(u0 * u0 + u1 * u1 + u2 * u2 + u3 * u3);
+
+			u0 /= norm;
+			u1 /= norm;
+			u2 /= norm;
+			u3 /= norm;
+		}
+		if (u0 < 0.0)
+		{
+			u0 = -u0;
+			u1 = -u1;
+			u2 = -u2;
+			u3 = -u3;
+		}
+		res << u0, u1, u2, u3;
+		return res;
+	}
+
+	Vector4d Tr2Quat2(Matrix3d r)
+	{
+		Vector4d res;
+		res.setZero();
+		const double trace = r(0, 0) + r(1, 1) + r(2, 2);
+		double root;
+		double u0, u1, u2, u3;
+
+		if (trace > 0.0) {
+			root = sqrt(trace + 1.0);
+			u0 = 0.5 * root;
+			root = 0.5 / root;
+			u1 = (r(2, 1) - r(1, 2)) * root;
+			u2 = (r(0, 2) - r(2, 0)) * root;
+			u3 = (r(1, 0) - r(0, 1)) * root;
+		}
+		else if (r(0, 0) >= r(1, 1) && r(0, 0) >= r(2, 2))
+		{
+			root = sqrt(1.0 + r(0, 0) - (r(1, 1) + r(2, 2)));
+			u1 = 0.5 * root;
+			root = 0.5 / root;
+			u2 = (r(0, 1) + r(1, 0)) * root;
+			u3 = (r(2, 0) + r(0, 2)) * root;
+			u0 = (r(2, 1) - r(1, 2)) * root;
+		}
+		else if (r(1, 1) >= r(2, 2))
+		{
+			root = sqrt(1.0 + r(1, 1) - (r(2, 2) + r(0, 0)));
+			u2 = 0.5 * root;
+			root = 0.5 / root;
+			u3 = (r(1, 2) + r(2, 1)) * root;
+			u1 = (r(0, 1) + r(1, 0)) * root;
+			u0 = (r(0, 2) - r(2, 0)) * root;
+		}
+		else
+		{
+			root = sqrt(1.0 + r(2, 2) - (r(0, 0) + r(1, 1)));
+			u3 = 0.5 * root;
+			root = 0.5 / root;
+			u1 = (r(2, 0) + r(0, 2)) * root;
+			u2 = (r(1, 2) + r(2, 1)) * root;
+			u0 = (r(1, 0) - r(0, 1)) * root;
+		}
+
+		{
+			double norm = sqrt(u0 * u0 + u1 * u1 + u2 * u2 + u3 * u3);
+
+			u0 /= norm;
+			u1 /= norm;
+			u2 /= norm;
+			u3 /= norm;
+		}
+		res << u0, u1, u2, u3;
+		return res;
+	}
+	Vector4d Tr2AngleAxis(Matrix3d r)
+	{
+		Vector4d res;
+		res.setZero();
+		Vector4d q = Tr2Quat1(r);
+		Vector4d q_temp;
+		q_temp.setZero();
+		bool offset = false;
+		double theta, x, y, z;
+		if (q(0) < 0)
+		{
+			offset = true;
+			q_temp(0) = -q(0);
+		}
+		else
+		{
+			q_temp(0) = q(0);
+		}
+		q_temp(1) = q(1);
+		q_temp(2) = q(2);
+		q_temp(3) = q(3);
+
+		theta = 2.0 * acos(q_temp(0));
+
+		if (fabs(theta) > 2.5e-2)
+		{
+			double sinth = sin(theta / 2.0);
+			x = q_temp(1) / sinth;
+			y = q_temp(2) / sinth;
+			z = q_temp(3) / sinth;
+		}
+		else
+		{
+			double vect_len;
+			vect_len = q_temp(1) * q_temp(1) + q_temp(2) * q_temp(2) + q_temp(3) * q_temp(3);
+			if (vect_len < EPS)
+			{
+				theta = 0.0;
+				x = 0.0;
+				y = 0.0;
+				z = 0.0;
+			}
+			else
+			{
+				double sin_theta_approx_half = sqrt(vect_len);
+				theta = (sin_theta_approx_half * 2.0);
+				x = q_temp(1) / sin_theta_approx_half;
+				y = q_temp(2) / sin_theta_approx_half;
+				z = q_temp(3) / sin_theta_approx_half;
+			}
+		}
+		if (offset == true)
+			theta = (2 * pi) - theta;
+		res << x, y, z, theta;
+		return res;
+	}
+
+	Matrix3d AngleAxis2Tr(Vector4d E)
+	{
+		Matrix3d r;
+		r.setIdentity();
+		double kx = E(0);
+		double ky = E(1);
+		double kz = E(2);
+		double ct = cos(E(3));
+		double st = sin(E(3));
+		double vt = 1 - ct;
+		r(0, 0) = kx*kx*vt + ct;     r(0, 1) = kx*ky*vt - kz*st;  r(0, 2) = kx*kz*vt + ky*st;
+		r(1, 0) = kx*ky*vt + kz*st;  r(1, 1) = ky*ky*vt + ct;     r(1, 2) = ky*kz*vt - kx*st;
+		r(2, 0) = kx*kz*vt - ky*st;  r(2, 1) = ky*kz*vt + kx*st;  r(2, 2) = kz*kz*vt + ct;
+		return r;
+	}
+
+	Vector3d Tr2FixedZYX(Matrix3d r)
+	{
+		Vector3d res;
+		res.setZero();
+		double x, y, z;
+		double sqr;
+		sqr = sqrt(r(1, 2) * r(1, 2) + r(2, 2) * r(2, 2));
+		y = atan2(r(0, 2), sqr);
+
+		if (fabs(y - pi * 0.5) <= EPS4)
+		{
+			z = 0.;
+			x = atan2(r(1, 0), r(1, 1));
+		}
+		else if (fabs(y + pi * 0.5) <= EPS4)
+		{
+			z = 0.;
+			x = atan2(-r(1, 0), r(1, 1));
+		}
+		else
+		{
+			/* No degeneration */
+			z = atan2(-r(0, 1), r(0, 0));
+			x = atan2(-r(1, 2), r(2, 2));
+		}
+		res << x, y, z;
+		return res;
+	}
+	Matrix3d FixedZYX2Tr(Vector3d rpy)
+	{
+		Matrix3d res;
+		res.setIdentity();
+		double Z = rpy(2);
+		double Y = rpy(1);
+		double X = rpy(0);
+		res(0, 0) = cos(Y)*cos(Z);
+		res(0, 1) = -cos(Y)*sin(Z);
+		res(0, 2) = sin(Y);
+		res(1, 0) = sin(X)*sin(Y)*cos(Z) + cos(X)*sin(Z);
+		res(1, 1) = -sin(X)*sin(Y)*sin(Z) + cos(X)*cos(Z);
+		res(1, 2) = -sin(X)*cos(Y);
+		res(2, 0) = -cos(X)*sin(Y)*cos(Z) + sin(X)*sin(Z);
+		res(2, 1) = cos(X)*sin(Y)*sin(Z) + sin(X)*cos(Z);
+		res(2, 2) = cos(X)*cos(Y);
+		return res;
+	}
+	Vector4d CalcAngleAxis(Vector3d rpy0, Vector3d rpyn)
+	{
+		Vector4d res;
+		res.setZero();
+		Matrix3d r0 = FixedZYX2Tr(rpy0);
+		Matrix3d rn = FixedZYX2Tr(rpyn);
+		Matrix3d r = r0.inverse() * rn;
+		res = Tr2AngleAxis(r);
+		return res;
+	}
+
 }

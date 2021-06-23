@@ -33,9 +33,13 @@ private:
 public:
 	CleanRobot(){}
 
+	CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorXd offset);
+
 	CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorXd offset, Pose tool);
 
 	CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorXd offset, double tool_pitch, Vector3d tool_pos);
+
+	void UpdateTool(double tool_pitch, Vector3d tool_pos);
 
 	void SetJntLimit(MatrixXd qlimit);
 

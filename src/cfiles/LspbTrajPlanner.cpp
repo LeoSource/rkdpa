@@ -133,11 +133,11 @@ void LspbTrajPlanner::SetTimeLimit(double h, Vector2d duration)
 void LspbTrajPlanner::SetVelConstraint(double h, double tf)
 {
 	_t0 = 0;
-	assert(h*_amax>=0.5*fabs(pow(_v0, 2)+pow(_vf, 2)));
+	assert(h*_amax>=0.5*fabs(pow(_v0, 2)-pow(_vf, 2)));
 
 	if (tf<0)
 	{
-		if (h*_amax>pow(_vmax, 2)-0.5*(pow(_v0, 2)+pow(_vf, 2)))
+		if (h*_amax>pow(_vmax, 2)-0.5*(pow(_v0, 2)-pow(_vf, 2)))
 		{
 			_maxvel_reached = true;
 			_ta = (_vmax-_v0)/_amax;

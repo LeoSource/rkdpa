@@ -8,6 +8,8 @@ public:
 
 	HoldTask(CleanRobot* rbt):BaseTask(rbt) {}
 
+	HoldTask(UrRobot* urrbt) :BaseTask(urrbt) {}
+
 	int RunLogicOperation(int state, int pre_state, char* operation) override
 	{
 		if (strcmp(operation, "mirror")==0)

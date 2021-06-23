@@ -5,6 +5,8 @@
 #include <Eigen/Dense>
 
 #define	EPS	1e-5
+#define	EPS3 1e-3
+#define EPS4 1e-4
 #define pi	3.141592657
 
 using namespace std;
@@ -17,6 +19,8 @@ namespace MathTools
 	int Discretize(VectorXd vec, int len, double value);
 
 	double CalcTransEqua(double a, double b, double c, double pre_value);
+
+	int CalcSinCosEqua(double *x1, double *x2, double a, double b, double c);
 
 	int Sign(double x);
 
@@ -109,4 +113,18 @@ namespace RobotTools
 	CAVP AngtoSpatial(CLineAVP* ang_avp);
 
 	CAVP toSpatial(CLineAVP* line_avp, CLineAVP* ang_avp);
+
+	Vector4d Tr2Quat1(Matrix3d r);
+
+	Vector4d Tr2Quat2(Matrix3d r);
+
+	Vector4d Tr2AngleAxis(Matrix3d r);
+
+	Matrix3d AngleAxis2Tr(Vector4d E);
+
+	Vector3d Tr2FixedZYX(Matrix3d r);
+
+	Matrix3d FixedZYX2Tr(Vector3d rpy);
+
+	Vector4d CalcAngleAxis(Vector3d rpy0, Vector3d rpyn);
 }

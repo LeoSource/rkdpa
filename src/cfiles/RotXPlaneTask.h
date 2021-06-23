@@ -32,6 +32,8 @@ public:
 
 	RotXPlaneTask(CleanRobot* rbt):BaseTask(rbt) {}
 
+	RotXPlaneTask(UrRobot* urrbt) :BaseTask(urrbt) {}
+
 	RotXPlaneTask(CleanRobot* rbt, char* clean_style);
 
 	int RunLogicOperation(int state, int pre_state, char* operation) override;

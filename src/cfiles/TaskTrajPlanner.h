@@ -46,17 +46,14 @@ public:
 	**/
 	TaskTrajPlanner(Vector3d* pos0, Vector3d* rpy0, bool conti_type);
 
-	void AddStartPosRPY(Vector3d *pos0, Vector3d *rpy0);
-
 	/**
 	* @brief	add task corner positino and rpy
 	* @author	zxliao
 	* @date		2021/6/7
 	* @param	pos		corner position
 	* @param	rpy		corner rotation: rpy
-	* @param	opt		option: both, pos or rot
 	**/
-	void AddPosRPY(Vector3d* pos, Vector3d* rpy, char* opt);
+	void AddPosRPY(Vector3d* pos, Vector3d* rpy);
 
 	/**
 	* @brief	add task corner positino and rpy under continuous condition
@@ -64,9 +61,8 @@ public:
 	* @date		2021/6/8
 	* @param	pos		corner position
 	* @param	rpy		corner rotation: rpy
-	* @param	opt		option: both, pos or rot
 	**/
-	void AddContiPosRPY(Vector3d* pos, Vector3d* rpy, char* opt);
+	void AddContiPosRPY(Vector3d* pos, Vector3d* rpy);
 
 	/**
 	* @brief	add task corner positino and rpy under discontinuous condition
@@ -74,9 +70,8 @@ public:
 	* @date		2021/6/8
 	* @param	pos		corner position
 	* @param	rpy		corner rotation: rpy
-	* @param	opt		option: both, pos or rot
 	**/
-	void AddDiscontiPosRPY(Vector3d* pos, Vector3d* rpy, char* opt);
+	void AddDiscontiPosRPY(Vector3d* pos, Vector3d* rpy);
 
 	/**
 	* @brief	generate trajectory data: position, rpy, spatial velocity and acceleration
@@ -154,5 +149,14 @@ private:
 	* @date		2021/6/7
 	**/
 	void ClearTemp();
-};
 
+	/**
+	* @brief	calculate planner option automacally
+	* @author	zxliao
+	* @date		2021/6/7
+	* @param	opt			option of task trajectory planner 
+	* @param	pos_rpy1	1st Cartesian position and rotation
+	* @param	pos_rpy2	2nd Cartesian position and rotation
+	**/
+	void CalcTrajOption(char* &opt, Vector6d pos_rpy1, Vector6d pos_rpy2);
+};
