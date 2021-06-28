@@ -18,17 +18,19 @@ classdef ArcTrajPlanner < handle
         rot_uplanner
 
         option
+        arc_style
     end
 
 
     methods
         %% initialize planner
         function obj = ArcTrajPlanner(pos1,pos2,pos3,line_vmax,line_amax,pvel_cons,...
-                                        rpy0,rpyn,ang_vmax,ang_amax,rvel_cons,opt)
-            obj.option = opt;
+                                        rpy0,rpyn,ang_vmax,ang_amax,rvel_cons,style)
+            obj.CalcTrajOption([pos1;rpy0], [pos3;rpyn]);
+            obj.arc_style = style;
             obj.pos_initial = pos1;
             obj.rpy_initial = rpy0;
-            if strcmp(opt, 'both')
+            if strcmp(obj.option, 'both')
                 obj.InitPosPlanner(pos1,pos2,pos3,line_vmax,line_amax,[],pvel_cons);
                 obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,[],rvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
@@ -39,11 +41,11 @@ classdef ArcTrajPlanner < handle
                 else
                     obj.InitPosPlanner(pos1,pos2,pos3,line_vmax,line_amax,obj.tf,pvel_cons);
                 end
-            elseif strcmp(opt, 'pos')
+            elseif strcmp(obj.option, 'pos')
                 obj.InitPosPlanner(pos1,pos2,pos3,line_vmax,line_amax,[],pvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
                 obj.tf = obj.tf_pos;
-            elseif strcmp(opt, 'rot')
+            elseif strcmp(obj.option, 'rot')
                 obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,[],rvel_cons);
                 obj.tf_rot = obj.rot_uplanner.tf;
                 obj.tf = obj.tf_rot;
@@ -53,27 +55,54 @@ classdef ArcTrajPlanner < handle
         end
 
         function InitPosPlanner(obj,pos1,pos2,pos3,line_vmax,line_amax,tf,vel_cons)
-            p2p1 = pos1-pos2; p2p3 = pos3-pos2;
-            inc_angle = acos(dot(p2p1,p2p3)/norm(p2p1)/norm(p2p3));
-            obj.theta = pi-inc_angle;
-            obj.radius = norm(p2p1)*tan(0.5*inc_angle);
-            pc = 0.5*(pos1+pos3); p2pc = pc-pos2;
-            scale = obj.radius/sin(0.5*inc_angle)/norm(p2pc);
-            p2center = scale*p2pc;
-            obj.center = pos2+p2center;
-            obj.pos_len = obj.radius*obj.theta;
+            obj.InitArcInfo(pos1,pos2,pos3);
             if isempty(tf)
                 obj.pos_uplanner = LspbTrajPlanner([0,obj.pos_len],line_vmax,line_amax,[],vel_cons);
             else
                 obj.pos_uplanner = LspbTrajPlanner([0,obj.pos_len],line_vmax,line_amax,tf,vel_cons);
             end
-
-            n = (pos1-obj.center)/norm(pos1-obj.center);
-            [a1, b1, c1, ~] = obj.PointsCoplane(pos1, pos2, pos3);
-            a = [a1; b1; c1]/norm([a1; b1; c1]);
-            o = cross(a,n);
-            obj.rot = [n, o, a];
-
+        end
+        
+        function InitArcInfo(obj,pos1,pos2,pos3)
+            if strcmp(obj.arc_style,'arctrans')
+                p2p1 = pos1-pos2; p2p3 = pos3-pos2;
+                inc_angle = acos(dot(p2p1,p2p3)/norm(p2p1)/norm(p2p3));
+                obj.theta = pi-inc_angle;
+                obj.radius = norm(p2p1)*tan(0.5*inc_angle);
+                pc = 0.5*(pos1+pos3); p2pc = pc-pos2;
+                scale = obj.radius/sin(0.5*inc_angle)/norm(p2pc);
+                p2center = scale*p2pc;
+                obj.center = pos2+p2center;
+                n = (pos1-obj.center)/norm(pos1-obj.center);
+                [a1, b1, c1, ~] = obj.PointsCoplane(pos1, pos2, pos3);
+                a = [a1; b1; c1]/norm([a1; b1; c1]);
+                o = cross(a,n);
+                obj.rot = [n, o, a];
+                obj.pos_len = obj.radius*obj.theta;
+            elseif strcmp(obj.arc_style,'arc')
+                [a1, b1, c1, d1] = obj.PointsCoplane(pos1, pos2, pos3);
+                [a2, b2, c2, d2] = obj.RadiusEqual(pos1, pos2);
+                [a3, b3, c3, d3] = obj.RadiusEqual(pos1, pos3);
+                center_tmp(1) = -(b1*c2*d3-b1*c3*d2-b2*c1*d3+b2*c3*d1+b3*c1*d2-b3*c2*d1)/...
+                                    (a1*b2*c3-a1*b3*c2-a2*b1*c3+a2*b3*c1+a3*b1*c2-a3*b2*c1);
+                center_tmp(2) = (a1*c2*d3-a1*c3*d2-a2*c1*d3+a2*c3*d1+a3*c1*d2-a3*c2*d1)/...
+                                    (a1*b2*c3-a1*b3*c2-a2*b1*c3+a2*b3*c1+a3*b1*c2-a3*b2*c1);
+                center_tmp(3) = -(a1*b2*d3-a1*b3*d2-a2*b1*d3+a2*b3*d1+a3*b1*d2-a3*b2*d1)/...
+                                    (a1*b2*c3-a1*b3*c2-a2*b1*c3+a2*b3*c1+a3*b1*c2-a3*b2*c1);
+                obj.center = reshape(center_tmp, 3,1);
+                tmp_value = (pos1(1)-obj.center(1))^2+(pos1(2)-obj.center(2))^2+(pos1(3)-obj.center(3))^2;
+                obj.radius = sqrt(tmp_value);
+                line_length = norm(pos3-pos1);
+                tmp_cos = (obj.radius^2+obj.radius^2-line_length^2)/(2*obj.radius*obj.radius);
+                obj.theta = acos(tmp_cos);
+                n = (pos1-obj.center)/norm(pos1-obj.center);
+                n = reshape(n, 3,1);
+                a = [a1; b1; c1]/norm([a1; b1; c1]);
+                o = cross(a,n);
+                obj.rot = [n, o, a];
+                obj.pos_len = obj.radius*obj.theta;
+            end
+            
         end
         
         function [a, b, c, d] = PointsCoplane(obj, pos1, pos2, pos3)
@@ -84,7 +113,15 @@ classdef ArcTrajPlanner < handle
             b = -(x1*z2-x2*z1-x1*z3+x3*z1+x2*z3-x3*z2);
             c = x1*y2-x2*y1-x1*y3+x3*y1+x2*y3-x3*y2;
             d = -(x1*y2*z3-x1*y3*z2-x2*y1*z3+x2*y3*z1+x3*y1*z2-x3*y2*z1);
-        end    
+        end
+        
+        function [a, b, c, d] = RadiusEqual(obj, pos1, pos2)
+            a = 2*(pos2(1)-pos1(1));
+            b = 2*(pos2(2)-pos1(2));
+            c = 2*(pos2(3)-pos1(3));
+            d = pos1(1)^2+pos1(2)^2+pos1(3)^2-...
+                pos2(1)^2-pos2(2)^2-pos2(3)^2;
+        end
 
         function InitRotPlanner(obj, rpy0, rpyn, ang_vmax, ang_amax, tf,vel_cons)
             rpy_len = norm(rpyn-rpy0);
@@ -94,6 +131,20 @@ classdef ArcTrajPlanner < handle
                 obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
             else
                 obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, tf, vel_cons);
+            end
+        end
+        
+        function CalcTrajOption(obj, pos_rpy1, pos_rpy2)
+            pos_length = norm(pos_rpy1(1:3)-pos_rpy2(1:3));
+            rpy_length = norm(pos_rpy1(4:6)-pos_rpy2(4:6));
+            if pos_length>1e-5 && rpy_length>1e-5
+                obj.option = "both";
+            elseif pos_length>1e-5 && rpy_length<=1e-5
+                obj.option = "pos";
+            elseif pos_length<=1e-5 && rpy_length>1e-5
+                obj.option = "rot";
+            else
+                obj.option = "none";
             end
         end
 

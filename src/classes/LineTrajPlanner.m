@@ -25,11 +25,11 @@ classdef LineTrajPlanner < handle
     methods
         %% initialize planner
         function obj = LineTrajPlanner(pos0, posn,line_vmax,line_amax,pvel_cons,...
-                                        rpy0,rpyn,ang_vmax,ang_amax,rvel_cons,opt)
-            obj.option = opt;
+                                        rpy0,rpyn,ang_vmax,ang_amax,rvel_cons)
+            obj.CalcTrajOption([pos0;rpy0], [posn;rpyn]);
             obj.pos_initial = pos0;
             obj.rpy_initial = rpy0;
-            if strcmp(opt,'both')
+            if strcmp(obj.option,'both')
                 obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,[],pvel_cons);
                 obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,[],rvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
@@ -40,11 +40,11 @@ classdef LineTrajPlanner < handle
                 else
                     obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,obj.tf,pvel_cons);
                 end
-            elseif strcmp(opt, 'pos')
+            elseif strcmp(obj.option, 'pos')
                 obj.InitPosPlanner(pos0,posn,line_vmax,line_amax,[],pvel_cons);
                 obj.tf_pos = obj.pos_uplanner.tf;
                 obj.tf = obj.tf_pos;
-            elseif strcmp(opt, 'rot')
+            elseif strcmp(obj.option, 'rot')
                 obj.InitRotPlanner(rpy0,rpyn,ang_vmax,ang_amax,[],rvel_cons);
                 obj.tf_rot = obj.rot_uplanner.tf;
                 obj.tf = obj.tf_rot;
@@ -72,6 +72,20 @@ classdef LineTrajPlanner < handle
                 obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
             else
                 obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, tf,vel_cons);
+            end
+        end
+        
+        function CalcTrajOption(obj, pos_rpy1, pos_rpy2)
+            pos_length = norm(pos_rpy1(1:3)-pos_rpy2(1:3));
+            rpy_length = norm(pos_rpy1(4:6)-pos_rpy2(4:6));
+            if pos_length>1e-5 && rpy_length>1e-5
+                obj.option = "both";
+            elseif pos_length>1e-5 && rpy_length<=1e-5
+                obj.option = "pos";
+            elseif pos_length<=1e-5 && rpy_length>1e-5
+                obj.option = "rot";
+            else
+                obj.option = "none";
             end
         end
         

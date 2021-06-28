@@ -12,7 +12,7 @@ g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi]*0.5;
 g_cvmax = 0.15; g_camax = 0.3;
 g_stowed_pos = [0;0.6;0;0;0];
 g_cycle_time = 0.005;
-test_mode = 'tabletask';
+test_mode = 'ctrajarc';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -170,28 +170,36 @@ subplot(4,1,3); plot(time, vel(:,3)); ylabel('vz');
 
     case 'ctrajarc'
 %% cartesian arc path trajectory plan using lspb
-pos1 = [0, -2, 0];
-pos2 = [1, 0, 1];
-pos3 = [0, 3, 3];
-arcpath = ArcPathPlanner(pos1, pos2, pos3, 'arc');
-planner = LspbTrajPlanner([0, arcpath.theta], 2, 2, 2);
-[alp, alpv, alpa] = planner.GenerateTraj(0.01);
-[pos, vel, acc] = arcpath.GenerateTraj(alp, alpv, alpa);
-arcpath.PlotTraj(alp,alpv,alpa,2,0.01);
+pos1 = [0, -2, 0]';
+pos2 = [1, 0, 1]';
+pos3 = [0, 3, 3]';
+arctrajtest = 1;
+if arctrajtest
+    arctraj = ArcTrajPlanner(pos1,pos2,pos3,1,2,[0,0],[0;0;0],[0;0;0],[],[],[],'arc');
+    [pos,pvel,pacc,rpy,rvel,racc] = arctraj.GenerateTraj(0.01);
+    plot2(pos'); grid on; xlabel('x'); ylabel('y'); zlabel('z');
+    hold on; plot2([pos1,pos2,pos3]', 'ro');
+else
+    arcpath = ArcPathPlanner(pos1, pos2, pos3, 'arc');
+    planner = LspbTrajPlanner([0, arcpath.theta], 2, 2, 2);
+    [alp, alpv, alpa] = planner.GenerateTraj(0.01);
+    [pos, vel, acc] = arcpath.GenerateTraj(alp, alpv, alpa);
+    arcpath.PlotTraj(alp,alpv,alpa,2,0.01);
 
-figure
-f1 = plot3([pos1(1); pos2(1); pos3(1)], [pos1(2); pos2(2); pos3(2)], [pos1(3); pos2(3); pos3(3)], 'ro');
-grid on
-xlabel('x'); ylabel('y'); zlabel('z');
-hold on
-f2 = plot3(pos(1,:), pos(2,:), pos(3,:), 'b--');
-% comparison test with Cpp
-pos_cpp = load('./data/ctrajarc_pos.csv');
-np = length(pos_cpp)/3;
-pos_cpp = reshape(pos_cpp, 3, np);
-f3 = plot3(pos_cpp(1,:), pos_cpp(2,:), pos_cpp(3,:), 'r-');
-legend([f2, f3], 'matlab\_data', 'cpp\_data');
-arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
+    figure
+    f1 = plot3([pos1(1); pos2(1); pos3(1)], [pos1(2); pos2(2); pos3(2)], [pos1(3); pos2(3); pos3(3)], 'ro');
+    grid on
+    xlabel('x'); ylabel('y'); zlabel('z');
+    hold on
+    f2 = plot3(pos(1,:), pos(2,:), pos(3,:), 'b--');
+    % comparison test with Cpp
+    pos_cpp = load('./data/ctrajarc_pos.csv');
+    np = length(pos_cpp)/3;
+    pos_cpp = reshape(pos_cpp, 3, np);
+    f3 = plot3(pos_cpp(1,:), pos_cpp(2,:), pos_cpp(3,:), 'r-');
+    legend([f2, f3], 'matlab\_data', 'cpp\_data');
+    arcpath.PlotTraj(alp, alpv, alpa, 2, 0.01);
+end
 
     case 'ctrajcircle'
 %% cartesian circle path trajectory plan using lspb
@@ -500,8 +508,8 @@ pitch0 = q0(3)+rbt.tool_pitch;
 yaw0 = q0(1)+q0(end);
 rpy0 = [0;pitch0;yaw0];
 ctraj = CTrajPlanner(pos0,rpy0, 1);
-pos1 = [-0.2, 0.8, 0.65]'; pos2 = [0.2, 0.8, 0.65]';
-pos3 = [0.2, 0.65, 0.65]'; pos4 = [-0.2, 0.65, 0.65]';
+pos1 = [0.5, 0.7, 0.5]'; pos2 = [-0.5, 0.7, 0.5]';
+pos3 = [-0.5, 0.9, 0.5]'; pos4 = [0.5, 0.9, 0.5]';
 ctraj.AddPosRPY([pos1;0;0;0]);
 ctraj.AddPosRPY([pos2;0;0;0]);
 ctraj.AddPosRPY([pos3;0;0;0]);

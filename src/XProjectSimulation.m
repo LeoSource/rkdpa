@@ -14,7 +14,7 @@ g_stowed_pos = [0;0.7;0;0;0];
 g_cycle_time = 0.001;
 %% task setting and trajectory plan
 clean_task = {'mirror', 'table', 'sphere', 'ellipsoid'};
-task = 'table';
+task = 'mirror';
 show_power = 0;
 q0 = [0.2,0.5,0.7,0.2,0.5]';
 switch task
