@@ -28,7 +28,9 @@ classdef CubicBSplinePlanner < handle
     methods
         %% Constructor of Class and Other Settings
         function obj = CubicBSplinePlanner(via_pos, option, uk)
+            %%%usually, uk is the final time of of planner
             obj.pdegree = 3;
+            %%%input position is the control position%%%
             if strcmp(option, 'ctrlpos')
                 obj.ctrl_pos = via_pos;
                 obj.num_ctrlp = size(via_pos,2);
@@ -273,6 +275,7 @@ classdef CubicBSplinePlanner < handle
 %                     [u,du,ddu] = uplanner2.GenerateMotion(t-uk(end-npts+1));
 %                 else
 %                     u = t; du = 1; ddu = 0;
+
 %                 end
                 [u,du,ddu] = uplanner.GenerateMotion(t);
                 [p, v, a] = obj.GenerateMotion(u, du, ddu);
