@@ -21,11 +21,15 @@ classdef HybridTrajPlanner < handle
             obj.continuity = type;
         end
         
-        function AddPosRPY(obj,pos_rpy)                
+        function AddPosRPY(obj,pos_rpy)
             if obj.continuity
-                obj.AddContiPosRPY(pos_rpy);
+                for idx=1:size(pos_rpy,2)
+                    obj.AddContiPosRPY(pos_rpy(:,idx));
+                end
             else
-                obj.AddDiscontiPosRPY(pos_rpy)
+                for idx=1:size(pos_rpy,2)
+                    obj.AddDiscontiPosRPY(pos_rpy(:,idx));
+                end
             end
         end
         

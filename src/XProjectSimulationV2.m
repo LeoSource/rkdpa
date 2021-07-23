@@ -36,9 +36,7 @@ rpy0 = tr2rpy(pose0,'xyz');
 ctraj = HybridTrajPlanner(pos0,rpy0', 1);
 pos1 = [0.5,0,1]'; pos2 = [0.65,0,1]'; pos3 = [0.65,0,0.6]';
 rpy1 = [0,pi/2,pi/2]'; rpy2 = [0,pi/2,pi/2]'; rpy3 = [0,pi/2,pi/2]';
-ctraj.AddPosRPY([pos1;rpy1]);
-ctraj.AddPosRPY([pos2;rpy2]);
-ctraj.AddPosRPY([pos3;rpy3]);
+ctraj.AddPosRPY([[pos1;rpy1],[pos2;rpy2],[pos3;rpy3]]);
 [pos,~,~,rpy,~,~] = ctraj.GenerateTraj(dt);
 
 sim_q = []; sim_pos = []; pre_q = q0;
