@@ -39,13 +39,13 @@ rpy1 = [0,pi/2,pi/2]'; rpy2 = [0,pi/2,pi/2]'; rpy3 = [0,pi/2,pi/2]';
 ctraj.AddPosRPY([pos1;rpy1]);
 ctraj.AddPosRPY([pos2;rpy2]);
 ctraj.AddPosRPY([pos3;rpy3]);
-[pos, rpy] = ctraj.GenerateTraj(dt);
+[pos,~,~,rpy,~,~] = ctraj.GenerateTraj(dt);
 
 sim_q = []; sim_pos = []; pre_q = q0;
 for idx=1:size(pos,2)
     cmd_pose = SE3.rpy(180/pi*rpy(:,idx)','xyz');
     cmd_pose.t = pos(:,idx);
-    rot_mount = t2r(cmd_pose)*t2r(pose_tool)';
+    rot_mount = cmd_pose.R*(pose_tool.R)';
     pos_mount = cmd_pose.t-rot_mount*pose_tool.t;
     pose_mount = rt2tr(rot_mount,pos_mount);
     tmp_q = rbt.ikine(pose_mount, 'q0',pre_q', 'tol',1e-5)';

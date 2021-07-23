@@ -77,19 +77,20 @@ classdef HybridTrajPlanner < handle
                                                                                         rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
         end
 
-        function [pos,rpy] = GenerateTraj(obj,dt)
+        function [pos,pvel,pacc,rpy,rvel,racc] = GenerateTraj(obj,dt)
             if obj.continuity
-                [pos, rpy] = obj.GenerateContiTraj(dt);
+                [pos,pvel,pacc,rpy,rvel,racc] = obj.GenerateContiTraj(dt);
             else
-                [pos, rpy] = obj.GenerateDiscontiTraj(dt);
+                [pos,pvel,pacc,rpy,rvel,racc] = obj.GenerateDiscontiTraj(dt);
             end
         end
         
-        function [pos,rpy] = GenerateContiTraj(obj,dt)
+        function [pos,pvel,pacc,rpy,rvel,racc] = GenerateContiTraj(obj,dt)
             global g_cvmax g_camax
-            pos = []; rpy = [];
+            pos = []; pvel = []; pacc = [];
+            rpy = []; rvel = []; racc = [];
             for idx=1:obj.ntraj
-                [p,vp,~,r,~,~] = obj.segpath_planner{idx}.GenerateTraj(dt);
+                [p,vp,ap,r,vr,ar] = obj.segpath_planner{idx}.GenerateTraj(dt);
                 % make transition between line and arc smooth
                 if idx~=obj.ntraj
                     if mod(idx,2)==1
@@ -116,18 +117,22 @@ classdef HybridTrajPlanner < handle
                         obj.segpath_planner{idx+1} = LinePlanner(pos0,posn,g_cvmax(1),g_camax(1),[v0,vf],...
                                             rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
                     end
-                    pos = [pos,p(:,1:end-1)]; rpy = [rpy,r(:,1:end-1)];
+                    pos = [pos,p(:,1:end-1)]; pvel = [pvel,vp(:,1:end-1)]; pacc = [pacc,ap(:,1:end-1)];
+                    rpy = [rpy,r(:,1:end-1)]; rvel = [rvel,vr(:,1:end-1)]; racc = [racc,ar(:,1:end-1)];
                 else
-                    pos = [pos,p]; rpy = [rpy,r];
+                    pos = [pos,p(:,1:end-1)]; pvel = [pvel,vp(:,1:end-1)]; pacc = [pacc,ap(:,1:end-1)];
+                    rpy = [rpy,r(:,1:end-1)]; rvel = [rvel,vr(:,1:end-1)]; racc = [racc,ar(:,1:end-1)];
                 end
             end
         end
         
-        function [pos,rpy] = GenerateDiscontiTraj(obj,dt)
-            pos = []; rpy = [];
+        function [pos,pvel,pacc,rpy,rvel,racc] = GenerateDiscontiTraj(obj,dt)
+            pos = []; pvel = []; pacc = [];
+            rpy = []; rvel = []; racc = [];
             for idx=1:obj.ntraj
-                [p,r] = obj.segpath_planner{idx}.GeneratePath(dt);
-                pos = [pos,p]; rpy = [rpy,r];
+                [p,vp,ap,r,vr,ar] = obj.segpath_planner{idx}.GenerateTraj(dt);
+                pos = [pos,p]; pvel = [pvel,vp]; pacc = [pacc, ap];
+                rpy = [rpy,r]; rvel = [rvel, vr]; racc = [racc, ar];
             end
         end
         

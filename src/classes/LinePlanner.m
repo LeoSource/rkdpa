@@ -67,6 +67,7 @@ classdef LinePlanner < handle
         function InitRotPlanner(obj, rpy0, rpyn, ang_vmax, ang_amax, tf,vel_cons)
             delta_rot = rpy2r(180/pi*rpyn','xyz')*rpy2r(180/pi*rpy0','xyz')';
             [rpy_len, obj.rot_dir] = tr2angvec(delta_rot);
+            obj.rot_dir = reshape(obj.rot_dir, 3,1);
             obj.rot_len = rpy_len;
             if isempty(tf)
                 obj.rot_uplanner = LspbPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
