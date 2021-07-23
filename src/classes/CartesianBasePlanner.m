@@ -1,4 +1,4 @@
-classdef HybridTrajPlanner < handle
+classdef CartesianBasePlanner < handle
 
     properties
         segpath_planner
@@ -14,11 +14,11 @@ classdef HybridTrajPlanner < handle
     end
 
     methods
-        function obj = HybridTrajPlanner(pos0, rpy0, type)
+        function obj = CartesianBasePlanner(pos0, rpy0, conti_type)
             obj.pos_corner = pos0;
             obj.rpy_corner = rpy0;
             obj.ntraj = 0;
-            obj.continuity = type;
+            obj.continuity = conti_type;
         end
         
         function AddPosRPY(obj,pos_rpy)

@@ -1,13 +1,13 @@
 classdef JointPlanner < handle
     
     properties
-        q0
-        qf
+        jpos
         vmax
         amax
         tf
-        uplanner
         nj
+        ntraj
+        segplanner
         plan_idx
         unplan_idx
 
@@ -15,57 +15,73 @@ classdef JointPlanner < handle
     end
 
     methods
-        function obj = JointPlanner(q0,qf,vmax,amax,sync)
-            obj.q0 = q0;
-            obj.qf = qf;
-            obj.vmax = vmax;
-            obj.amax = amax;
+        function obj = JointPlanner(q0,sync)
+            global g_jvmax g_jamax
+            obj.jpos = q0;
+            obj.vmax = g_jvmax;
+            obj.amax = g_jamax;
             obj.sync = sync;
             obj.nj = length(q0);
-            obj.plan_idx = []; obj.unplan_idx = [];
-            for idx=1:obj.nj
-                if(abs(q0(idx)-qf(idx))>1e-5)
-                    obj.plan_idx = [obj.plan_idx,idx];
-                else
-                    obj.unplan_idx = [obj.unplan_idx,idx];
+            obj.plan_idx = [];
+            obj.unplan_idx = [];
+        end
+
+        function AddJntPos(obj,q)
+            obj.jpos = [obj.jpos, q];
+            obj.ntraj = size(obj.jpos,2)-1;
+            for traj_idx=1:obj.ntraj
+                q0 = obj.jpos(:,traj_idx);
+                qf = obj.jpos(:,traj_idx+1);
+                planidx = []; unplanidx = [];
+                for idx=1:obj.nj
+                    if(abs(q0(idx)-qf(idx))>1e-5)
+                        planidx = [planidx,idx];
+                    else
+                        unplanidx = [unplanidx,idx];
+                    end
                 end
-            end
-            tf_tmp = [];
-            for idx=obj.plan_idx
-                obj.uplanner{idx} = LspbPlanner([q0(idx),qf(idx)],...
-                                    vmax(idx),amax(idx));
-                tf_tmp = [tf_tmp,obj.uplanner{idx}.tf];
-            end
-            obj.tf = max(tf_tmp);
-            if(sync)
-                for idx=obj.plan_idx
-                    obj.uplanner{idx} = LspbPlanner([q0(idx),qf(idx)],...
-                                        vmax(idx),amax(idx),obj.tf);
+                tf_tmp = [];
+                for idx=planidx
+                    uplanner{idx} = LspbPlanner([q0(idx),qf(idx)],...
+                                            obj.vmax(idx),obj.amax(idx));
+                    tf_tmp = [tf_tmp,uplanner{idx}.tf];
                 end
+                obj.tf(traj_idx) = max(tf_tmp);
+                if(obj.sync)
+                    for idx=planidx
+                        uplanner{idx} = LspbPlanner([q0(idx),qf(idx)],...
+                                                obj.vmax(idx),obj.amax(idx),obj.tf(traj_idx));
+                    end
+                end
+                obj.segplanner{traj_idx} = uplanner;
+                obj.plan_idx{traj_idx} = planidx;
+                obj.unplan_idx{traj_idx} = unplanidx;
             end
         end
 
 
-        function [p,v,a] = GenerateMotion(obj,t)
+        function [p,v,a] = GenerateMotion(obj,traj_idx,t)
             p = zeros(obj.nj,1); v = zeros(obj.nj,1); a = zeros(obj.nj,1);
-            if ~isempty(obj.plan_idx)
-                for idx=obj.plan_idx
-                    t_limit(idx) = LimitNumber(0,t,obj.uplanner{idx}.tf);
-                    [p(idx),v(idx),a(idx)] = obj.uplanner{idx}.GenerateMotion(t_limit(idx));
+            if ~isempty(obj.plan_idx{traj_idx})
+                for idx=obj.plan_idx{traj_idx}
+                    t_limit(idx) = LimitNumber(0,t,obj.segplanner{traj_idx}{idx}.tf);
+                    [p(idx),v(idx),a(idx)] = obj.segplanner{traj_idx}{idx}.GenerateMotion(t_limit(idx));
                 end
             end
-            if ~isempty(obj.unplan_idx)
-                for idx=obj.unplan_idx
-                    p(idx) = obj.q0(idx);
+            if ~isempty(obj.unplan_idx{traj_idx})
+                for idx=obj.unplan_idx{traj_idx}
+                    p(idx) = obj.jpos(idx,traj_idx);
                 end
             end
         end
 
         function [pos,vel,acc] = GenerateTraj(obj,dt)
             pos = []; vel = []; acc = [];
-            for t=0:dt:obj.tf
-                [p,v,a] = obj.GenerateMotion(t);
-                pos = [pos,p]; vel = [vel,v]; acc = [acc, a];
+            for traj_idx=1:obj.ntraj
+                for t=0:dt:obj.tf(traj_idx)
+                    [p,v,a] = obj.GenerateMotion(traj_idx,t);
+                    pos = [pos,p]; vel = [vel,v]; acc = [acc, a];
+                end
             end
         end
 

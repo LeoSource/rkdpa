@@ -48,7 +48,7 @@ switch task
         pitch0 = q0(3)+rbt.tool_pitch;
         yaw0 = q0(1)+q0(end);
         rpy0 = [0;pitch0;yaw0];
-        ctraj = HybridTrajPlanner(pos0,rpy0, 1);
+        ctraj = CartesianBasePlanner(pos0,rpy0, 1);
         pos1 = [-0.2, 0.75, 0.65]'; pos2 = [0.2, 0.75, 0.65]';
         pos3 = [0.2, 0.6, 0.65]'; pos4 = [-0.2, 0.6, 0.65]';
         ctraj.AddPosRPY([pos1;0;0;0]);
