@@ -65,9 +65,9 @@ classdef LineTrajPlanner < handle
         end
 
         function InitRotPlanner(obj, rpy0, rpyn, ang_vmax, ang_amax, tf,vel_cons)
-            rpy_len = norm(rpyn-rpy0);
+            delta_rot = rpy2r(180/pi*rpyn','xyz')*rpy2r(180/pi*rpy0','xyz')';
+            [rpy_len, obj.rot_dir] = tr2angvec(delta_rot);
             obj.rot_len = rpy_len;
-            obj.rot_dir = (rpyn-rpy0)/rpy_len;
             if isempty(tf)
                 obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
             else
@@ -77,7 +77,9 @@ classdef LineTrajPlanner < handle
         
         function CalcTrajOption(obj, pos_rpy1, pos_rpy2)
             pos_length = norm(pos_rpy1(1:3)-pos_rpy2(1:3));
-            rpy_length = norm(pos_rpy1(4:6)-pos_rpy2(4:6));
+            %there is unit wrong with rpy2r function
+            delta_rot = rpy2r(180/pi*pos_rpy2(4:6)','xyz')*rpy2r(180/pi*pos_rpy1(4:6)','xyz')';
+            [rpy_length, ~] = tr2angvec(delta_rot);
             if pos_length>1e-5 && rpy_length>1e-5
                 obj.option = "both";
             elseif pos_length>1e-5 && rpy_length<=1e-5
@@ -138,9 +140,11 @@ classdef LineTrajPlanner < handle
             else
                 [up,uv,ua] = obj.rot_uplanner.GenerateMotion(t);
             end
-            p = obj.rpy_initial+up*obj.rot_dir;
-            v = uv*obj.rot_dir;
-            a = ua*obj.rot_dir;
+            delta_rot = angvec2r(up, obj.rot_dir);
+            cmd_rot = delta_rot*rpy2r(180/pi*obj.rpy_initial', 'xyz');
+            p = tr2rpy(cmd_rot, 'xyz')';
+            v = obj.rot_dir*uv;
+            a = obj.rot_dir*ua;
         end
 
         %% generate path        
@@ -180,7 +184,9 @@ classdef LineTrajPlanner < handle
             else
                 [up,~,~] = obj.rot_uplanner.GenerateMotion(t);
             end
-            rpy = obj.rpy_initial+up*obj.rot_dir;
+            delta_rot = angvec2r(up, obj.rot_dir);
+            cmd_rot = delta_rot*rpy2r(180/pi*obj.rpy_initial', 'xyz');
+            rpy = tr2rpy(cmd_rot, 'xyz')';
         end
 
     end
