@@ -33,7 +33,7 @@ comparision = 0;
 pose0 = rbt.fkine(q0)*pose_tool;
 pos0 = pose0.t;
 rpy0 = tr2rpy(pose0,'xyz');
-ctraj = CTrajPlanner(pos0,rpy0', 0);
+ctraj = HybridTrajPlanner(pos0,rpy0', 1);
 pos1 = [0.5,0,1]'; pos2 = [0.65,0,1]'; pos3 = [0.65,0,0.6]';
 rpy1 = [0,pi/2,pi/2]'; rpy2 = [0,pi/2,pi/2]'; rpy3 = [0,pi/2,pi/2]';
 ctraj.AddPosRPY([pos1;rpy1]);
@@ -72,7 +72,6 @@ if comparision
     tt = g_cycle_time*[0:size(q_cpp,2)-1];
     for idx=1:rbt.n
         figure
-%         plot(t, sim_q(idx,:), 'b--'); xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
         plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
         xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
         legend('matlab\_data', 'cpp\_data');

@@ -7,16 +7,16 @@ function [sim_pos, sim_q, pos] = CleanSurface(rbt,npts,posn,via_pos,q0,dt)
     pitch0 = q0(3)+rbt.tool_pitch;
     rpy0 = [0;pitch0;yaw0];
     pos0 = rbt.FKSolveTool(q0).t;
-    line_traj = LineTrajPlanner(pos0,via_pos(:,1),g_cvmax,g_camax,[0,0],...
-                                rpy0,[0;-pi/6;0],0.15,0.3,[0,0],'both');
+    line_traj = LinePlanner(pos0,via_pos(:,1),g_cvmax(1),g_camax(1),[0,0],...
+                                rpy0,[0;-pi/6;0],g_cvmax(2),g_camax(2),[0,0],'both');
     [pos_tmp,~,~,rpy_tmp,~,~] = line_traj.GenerateTraj(dt);
     pos = [pos,pos_tmp];
     rpy = [rpy,rpy_tmp];
     
     %% clean washbasin action
     planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
-    uplanner = LspbTrajPlanner([planner.uknot_vec(1),planner.uknot_vec(end)],2,1,planner.uknot_vec(end));
-    aplanner = LspbTrajPlanner([0,2*pi*length(npts)], 1, 2, 60);
+    uplanner = LspbPlanner([planner.uknot_vec(1),planner.uknot_vec(end)],2,1,planner.uknot_vec(end));
+    aplanner = LspbPlanner([0,2*pi*length(npts)], 1, 2, 60);
     for t=planner.uknot_vec(1):dt:planner.uknot_vec(end)
         [u,du,ddu] = uplanner.GenerateMotion(t);
         [p,v,a] = planner.GenerateMotion(u,du,ddu);
@@ -27,7 +27,7 @@ function [sim_pos, sim_q, pos] = CleanSurface(rbt,npts,posn,via_pos,q0,dt)
     rpy = [rpy,rpy_tmp];
     
     %% post-clean action
-    line_traj = LineTrajPlanner(via_pos(:,end),posn,g_cvmax,g_camax,[0,0],...
+    line_traj = LineTrajPlanner(via_pos(:,end),posn,g_cvmax(1),g_camax(1),[0,0],...
                                 rpy(:,end),[],[],[],[],'pos');
     [pos_tmp,~,~,rpy_tmp,~,~] = line_traj.GenerateTraj(dt);
     pos = [pos, pos_tmp];

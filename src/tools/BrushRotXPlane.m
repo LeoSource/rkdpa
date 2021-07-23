@@ -5,20 +5,19 @@ function [sim_pos, sim_q] = BrushRotXPlane(rbt,via_pos,pitch_x,q0,dt)
     sim_q = [];
     pitch = []; yaw = [];
     
-
     %% pre-clean action
     % initialize planner
     yaw0 = q0(1)+q0(end);
     pitch0 = q0(3)+rbt.tool_pitch;
-    pre_yawplanner = LspbTrajPlanner([yaw0,0],g_jvmax(1),g_jamax(1));
-    pre_pitchPLanner = LspbTrajPlanner([pitch0, pitch_x], g_jvmax(3), g_jamax(3));
+    pre_yawplanner = LspbPlanner([yaw0,0],g_jvmax(1),g_jamax(1));
+    pre_pitchPLanner = LspbPlanner([pitch0, pitch_x], g_jvmax(3), g_jamax(3));
     pos0 = rbt.FKSolveTool(q0).t;
     line_length = norm(via_pos(:,1)-pos0);
-    pre_uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
+    pre_uplanner = LspbPlanner([0,line_length], g_cvmax(1), g_camax(1));
     tf_pre = max([pre_yawplanner.tf, pre_pitchPLanner.tf, pre_uplanner.tf]);
-    pre_yawplanner = LspbTrajPlanner([yaw0,0],g_jvmax(1),g_jamax(1), tf_pre);
-    pre_pitchPLanner = LspbTrajPlanner([pitch0, pitch_x], g_jvmax(3), g_jamax(3), tf_pre);
-    pre_uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax, tf_pre);
+    pre_yawplanner = LspbPlanner([yaw0,0],g_jvmax(1),g_jamax(1), tf_pre);
+    pre_pitchPLanner = LspbPlanner([pitch0, pitch_x], g_jvmax(3), g_jamax(3), tf_pre);
+    pre_uplanner = LspbPlanner([0,line_length], g_cvmax(1), g_camax(1), tf_pre);
     % generate trajectory
     [up,~,~] = pre_uplanner.GenerateTraj(dt);
     pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
@@ -29,7 +28,7 @@ function [sim_pos, sim_q] = BrushRotXPlane(rbt,via_pos,pitch_x,q0,dt)
     %% clean plane action
     s = []; sv = []; sa = [];
     cpath = ArcTransPathPlanner(via_pos, 0);
-    varc = sqrt(g_camax*cpath.radius);
+    varc = sqrt(g_camax(1)*cpath.radius);
     for idx=1:length(cpath.dis_interval)-1
         if mod(idx,2)==1
             if idx==1
@@ -39,7 +38,7 @@ function [sim_pos, sim_q] = BrushRotXPlane(rbt,via_pos,pitch_x,q0,dt)
             else
                 vel_cons = [varc,varc];
             end
-            splanner = LspbTrajPlanner([cpath.dis_interval(idx),cpath.dis_interval(idx+1)],g_cvmax,g_camax,[],vel_cons);
+            splanner = LspbPlanner([cpath.dis_interval(idx),cpath.dis_interval(idx+1)],g_cvmax(1),g_camax(1),[],vel_cons);
             [s_tmp,sv_tmp,sa_tmp] = splanner.GenerateTraj(dt);
         else
             t_len = (cpath.dis_interval(idx+1)-cpath.dis_interval(idx))/varc;
@@ -58,7 +57,7 @@ function [sim_pos, sim_q] = BrushRotXPlane(rbt,via_pos,pitch_x,q0,dt)
     %% post-clean action
     posn = rbt.FKSolveTool(g_stowed_pos).t;
     line_length = norm(posn-via_pos(:,end));
-    uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
+    uplanner = LspbPlanner([0,line_length],g_cvmax(1),g_camax(1));
     [up,~,~] = uplanner.GenerateTraj(dt);
     pos_tmp = via_pos(:,end)+up.*(posn-via_pos(:,end))/line_length;
     pos = [pos, pos_tmp];

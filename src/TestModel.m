@@ -9,10 +9,10 @@ rbt = CleanRobot;
 global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos g_cycle_time
 g_jvmax = [pi, 0.15, 0.8*pi, 0.5, 0.8*pi]*0.5;
 g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi]*0.5;
-g_cvmax = 0.15; g_camax = 0.3;
+g_cvmax = [0.15,0.15]; g_camax = [0.3,0.3];
 g_stowed_pos = [0;0.6;0;0;0];
 g_cycle_time = 0.005;
-test_mode = 'ctrajarc';
+test_mode = 'ctrajbspline';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -133,9 +133,9 @@ plot(0:dt:tf, acc, 'k-'); grid on; ylabel('acceleration');
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
-planner = LspbTrajPlanner([0,0], 2, 1);
+planner = LspbPlanner([0,0], 2, 1);
 planner.PlotAVP(0.01);
-planner = LspbTrajPlanner([20, 10], 16, 10, [0,3]);
+planner = LspbPlanner([20, 10], 16, 10, [0,3]);
 [p, v, a] = planner.GenerateMotion(1)
 
 trajplanner = DoubleSVelTrajPlanner([10, 0],[0, 0], 5, 10, 30);
@@ -148,7 +148,7 @@ trajplanner.PlotMotion(0.001, 'pvaj');
 pos_initial = [0, 0, 0];
 pos_goal = [3, 4, 5];
 line_length = norm(pos_goal-pos_initial);
-planner = LspbTrajPlanner([0, line_length], 2, 5, 5);
+planner = LspbPlanner([0, line_length], 2, 5, 5);
 [p, v, ~] = planner.GenerateTraj(0.01);
 pos = pos_initial+p'.*(pos_goal-pos_initial)/line_length;
 vel = v'.*(pos_goal-pos_initial)/line_length;
@@ -175,13 +175,13 @@ pos2 = [1, 0, 1]';
 pos3 = [0, 3, 3]';
 arctrajtest = 1;
 if arctrajtest
-    arctraj = ArcTrajPlanner(pos1,pos2,pos3,1,2,[0,0],[0;0;0],[0;0;0],[],[],[],'arc');
+    arctraj = ArcPlanner(pos1,pos2,pos3,1,2,[0,0],[0;0;0],[0;0;0],[],[],[],'arc');
     [pos,pvel,pacc,rpy,rvel,racc] = arctraj.GenerateTraj(0.01);
     plot2(pos'); grid on; xlabel('x'); ylabel('y'); zlabel('z');
     hold on; plot2([pos1,pos2,pos3]', 'ro');
 else
     arcpath = ArcPathPlanner(pos1, pos2, pos3, 'arc');
-    planner = LspbTrajPlanner([0, arcpath.theta], 2, 2, 2);
+    planner = LspbPlanner([0, arcpath.theta], 2, 2, 2);
     [alp, alpv, alpa] = planner.GenerateTraj(0.01);
     [pos, vel, acc] = arcpath.GenerateTraj(alp, alpv, alpa);
     arcpath.PlotTraj(alp,alpv,alpa,2,0.01);
@@ -209,7 +209,7 @@ radius = 0.6;
 interval = 0.1;
 v = interval/2/pi;
 theta_end = radius/v;
-thplanner = LspbTrajPlanner([0,theta_end], 0.7, 0.2);
+thplanner = LspbPlanner([0,theta_end], 0.7, 0.2);
 [thp, thv, tha] = thplanner.GenerateTraj(0.01);
 r = v*thp;
 x = center(1)+r.*cos(thp);
@@ -245,7 +245,7 @@ thplanner.PlotAVP(0.01);
 %{
 center = [1;2;3]; n_vec = [1;0;0]; radius = 0.5; tf = 4;
 circlepath = ArcPathPlanner(center, n_vec, radius, 'circle');
-planner = LspbTrajPlanner([0, circlepath.theta], 2, 4, tf);
+planner = LspbPlanner([0, circlepath.theta], 2, 4, tf);
 [alp, alpv, alpa] = planner.GenerateTraj(0.01);
 [pos, vel, acc] = circlepath.GenerateTraj(alp, alpv, alpa);
 plot3(pos(1,:), pos(2,:), pos(3,:));
@@ -263,7 +263,7 @@ pos1 = [0.7, 0.8, 1]; pos2 = [-0.7, 0.8, 1]; pos3 = [-0.7, 0.8, 2.4]; pos4 = [0.
 % pos1 = [0.8, 0.2, 0.7]; pos2 = [-0.8, 0.2, 0.7]; pos3 = [-0.8, 0.8, 0.7]; pos4 = [0.8, 0.8, 0.7];
 via_pos = CalcRectanglePath([pos1', pos2', pos3', pos4'], 's');
 % cpath = ArcTransPathPlanner(via_pos, 0);   
-% splanner = LspbTrajPlanner([0,cpath.distance], 0.5 , 2);
+% splanner = LspbPlanner([0,cpath.distance], 0.5 , 2);
 % [s, sv, sa] = splanner.GenerateMotion(10);
 % [pos, vel, acc] = cpath.GenerateMotion(s, sv, sa)
 continuity = 1;
@@ -282,7 +282,7 @@ if continuity
             else
                 vel_cons = [varc, varc];
             end
-            jplanner = LspbTrajPlanner([cpath.dis_interval(idx), cpath.dis_interval(idx+1)],g_cvmax,g_camax,[],vel_cons);
+            jplanner = LspbPlanner([cpath.dis_interval(idx), cpath.dis_interval(idx+1)],g_cvmax,g_camax,[],vel_cons);
             [s_tmp, sv_tmp, sa_tmp] = jplanner.GenerateTraj(dt);
         else
             t_len = (cpath.dis_interval(idx+1)-cpath.dis_interval(idx))/varc;
@@ -308,7 +308,7 @@ else
     for idx=1:size(via_pos,2)-1
         dis = norm(via_pos(:,idx+1)-via_pos(:,idx));
         line_dir = (via_pos(:,idx+1)-via_pos(:,idx))/dis;
-        jplanner = LspbTrajPlanner([0,dis], max_vel, max_acc);
+        jplanner = LspbPlanner([0,dis], max_vel, max_acc);
         [s,sv,sa] = jplanner.GenerateTraj(dt);
         p = via_pos(:,idx)+s.*line_dir;
         v = sv.*line_dir;
@@ -397,7 +397,7 @@ end
 pos1 = [0.2, 0.8, 0.8]'; pos2 = [0, 0.8, 0.8]'; pos3 = [-0.2, 0.8, 0.8]'; pos4 = [-0.2, 0.95, 0.8]'; pos5 = [-0.2, 1.1, 0.8]';
 via_pos = [pos1,pos2,pos3,pos4,pos5];
 % planner = CubicBSplinePlanner(via_pos, 'approximation', 60);
-planner = CubicBSplinePlanner(via_pos, 'ctrlpos',5);
+planner = CubicBSplinePlanner(via_pos, 'interpolation',10);
 planner.PlotAVP(0.01);
 planner.PlotBSpline(0.01); hold on;
 if size(via_pos,1)==3
@@ -435,7 +435,7 @@ radius = 0.04;
 tf = 40; dt = 0.001;
 via_pos = CalcRectanglePath2([pos1', pos2', pos3', pos4'], 9, 's');
 cpath = ArcTransPathPlanner(via_pos, radius);
-planner = LspbTrajPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
+planner = LspbPlanner([0, cpath.distance], tf, 0.5, 2, 'limitvel');
 [s, sv, sa] = planner.GenerateTraj(dt);
 [pos, vel, acc] = cpath.GenerateTraj(s, sv, sa);
 q = rbt.IKSolve(pos1, 'q2first', 0);
@@ -507,7 +507,7 @@ pos0 = rbt.FKSolveTool(q0).t;
 pitch0 = q0(3)+rbt.tool_pitch;
 yaw0 = q0(1)+q0(end);
 rpy0 = [0;pitch0;yaw0];
-ctraj = CTrajPlanner(pos0,rpy0, 1);
+ctraj = HybridTrajPlanner(pos0,rpy0, 1);
 pos1 = [0.5, 0.7, 0.5]'; pos2 = [-0.5, 0.7, 0.5]';
 pos3 = [-0.5, 0.9, 0.5]'; pos4 = [0.5, 0.9, 0.5]';
 ctraj.AddPosRPY([pos1;0;0;0]);

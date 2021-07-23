@@ -1,4 +1,4 @@
-classdef LspbTrajPlanner < handle
+classdef LspbPlanner < handle
     % lspb trajectory(trapezoidal velocity profile)
     % TO DO: trajectory through a sequence of points
     
@@ -20,7 +20,7 @@ classdef LspbTrajPlanner < handle
     end
     
     methods
-        function obj = LspbTrajPlanner(pos, max_vel, max_acc, duration, vel_cons)
+        function obj = LspbPlanner(pos, max_vel, max_acc, duration, vel_cons)
             % assume that: jmin = -jmax, amin = -amax, vmin = -vmax, t0 = 0
             % generic initial and final values of velocity
             % initial and final accelerations set to zeros

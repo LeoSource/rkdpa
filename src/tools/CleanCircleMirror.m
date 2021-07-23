@@ -4,7 +4,7 @@ function [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, n
     sim_pos = []; sim_q = []; pos = []; alph = []; circle_pos = [];
 
     %% pre-clean action
-    jplanner = LspbTrajPlanner([q0(3), 0], g_jvmax(3), g_jamax(3));
+    jplanner = LspbPlanner([q0(3), 0], g_jvmax(3), g_jamax(3));
     [jpos, ~,~] = jplanner.GenerateTraj(dt);
     tmp_q = [ones(1,length(jpos))*q0(1); ones(1,length(jpos))*q0(2); jpos;...
              ones(1,length(jpos))*q0(4); ones(1,length(jpos))*q0(5)];
@@ -14,12 +14,12 @@ function [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, n
     sim_q = [sim_q, tmp_q];
     pos0 = rbt.FKSolveTool(tmp_q(:,end)).t;
     line_length = norm(center-pos0);
-    uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
+    uplanner = LspbPlanner([0,line_length], g_cvmax(1), g_camax(1));
     alph0 = q0(1)+q0(end);
-    alphplanner = LspbTrajPlanner([alph0,0], g_jvmax(1), g_jamax(end));
+    alphplanner = LspbPlanner([alph0,0], g_jvmax(1), g_jamax(end));
     tf_pre = max(alphplanner.tf,uplanner.tf);
-    alphplanner = LspbTrajPlanner([alph0,0], g_jvmax(1), g_jamax(end), tf_pre);
-    uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax, tf_pre);
+    alphplanner = LspbPlanner([alph0,0], g_jvmax(1), g_jamax(end), tf_pre);
+    uplanner = LspbPlanner([0,line_length], g_cvmax(1), g_camax(1), tf_pre);
     [up,~,~] = uplanner.GenerateTraj(dt);
     pos_tmp = pos0+up.*(center-pos0)/line_length;
     pos = [pos, pos_tmp];
@@ -35,7 +35,7 @@ function [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, n
     
     v = interval/2/pi;
     theta_end = radius/v;
-    thplanner = LspbTrajPlanner([0,theta_end], 0.7, 0.2);
+    thplanner = LspbPlanner([0,theta_end], 0.7, 0.2);
     [thp, thv, tha] = thplanner.GenerateTraj(dt);
     r = v*thp;
     for idx=1:length(thp)
@@ -47,7 +47,7 @@ function [circle_pos, sim_pos, sim_q] = CleanCircleMirror(rbt, center, radius, n
     %% post-clean action
     posn = rbt.FKSolveTool(g_stowed_pos).t;
     line_length = norm(posn-pos(:,end));
-    uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
+    uplanner = LspbPlanner([0,line_length],g_cvmax(1),g_camax(1));
     [up,~,~] = uplanner.GenerateTraj(dt);
     pos_tmp = pos(:,end)+up.*(posn-pos(:,end))/line_length;
     pos = [pos, pos_tmp];

@@ -4,7 +4,7 @@
 %   Author:
 %   liao zhixiang, zhixiangleo@163.com
 
-classdef LineTrajPlanner < handle
+classdef LinePlanner < handle
 
     properties
         pos_initial
@@ -24,7 +24,7 @@ classdef LineTrajPlanner < handle
 
     methods
         %% initialize planner
-        function obj = LineTrajPlanner(pos0, posn,line_vmax,line_amax,pvel_cons,...
+        function obj = LinePlanner(pos0, posn,line_vmax,line_amax,pvel_cons,...
                                         rpy0,rpyn,ang_vmax,ang_amax,rvel_cons)
             obj.CalcTrajOption([pos0;rpy0], [posn;rpyn]);
             obj.pos_initial = pos0;
@@ -58,9 +58,9 @@ classdef LineTrajPlanner < handle
             obj.pos_len = line_len;
             obj.pos_dir = (posn-pos0)/line_len;
             if isempty(tf)
-                obj.pos_uplanner = LspbTrajPlanner([0,line_len], line_vmax, line_amax,[],vel_cons);
+                obj.pos_uplanner = LspbPlanner([0,line_len], line_vmax, line_amax,[],vel_cons);
             else
-                obj.pos_uplanner = LspbTrajPlanner([0,line_len], line_vmax, line_amax,tf,vel_cons);
+                obj.pos_uplanner = LspbPlanner([0,line_len], line_vmax, line_amax,tf,vel_cons);
             end
         end
 
@@ -69,9 +69,9 @@ classdef LineTrajPlanner < handle
             [rpy_len, obj.rot_dir] = tr2angvec(delta_rot);
             obj.rot_len = rpy_len;
             if isempty(tf)
-                obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
+                obj.rot_uplanner = LspbPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
             else
-                obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, tf,vel_cons);
+                obj.rot_uplanner = LspbPlanner([0,rpy_len], ang_vmax, ang_amax, tf,vel_cons);
             end
         end
         

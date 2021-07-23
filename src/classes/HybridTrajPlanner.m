@@ -1,4 +1,4 @@
-classdef CTrajPlanner < handle
+classdef HybridTrajPlanner < handle
 
     properties
         segpath_planner
@@ -14,7 +14,7 @@ classdef CTrajPlanner < handle
     end
 
     methods
-        function obj = CTrajPlanner(pos0, rpy0, type)
+        function obj = HybridTrajPlanner(pos0, rpy0, type)
             obj.pos_corner = pos0;
             obj.rpy_corner = rpy0;
             obj.ntraj = 0;
@@ -38,19 +38,19 @@ classdef CTrajPlanner < handle
                 posn = obj.pos_corner(:,2);
                 rpy0 = obj.rpy_corner(:,1);
                 rpyn = obj.rpy_corner(:,2);
-                obj.segpath_planner{1} = LineTrajPlanner(pos0,posn,g_cvmax(1),g_camax(1),[0,0],...
+                obj.segpath_planner{1} = LinePlanner(pos0,posn,g_cvmax(1),g_camax(1),[0,0],...
                                                         rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
                 obj.ntraj = 1;
             elseif size(obj.pos_corner,2)==3
                 pos_tmp = CalcSplineTransPos(obj.pos_corner(:,1:3),0.05,'arc');
                 obj.pos_seg = [obj.pos_seg, pos_tmp];
                 [~,radius,~] = CalcArcInfo(obj.pos_seg(:,1),obj.pos_corner(:,2),obj.pos_seg(:,2));
-                obj.varc(1) = sqrt(g_camax*radius);
+                obj.varc(1) = sqrt(g_camax(1)*radius);
                 pos0 = obj.pos_corner(:,1);
                 posn = obj.pos_seg(:,1);
                 rpy0 = obj.rpy_corner(:,1);
                 rpyn = obj.rpy_corner(:,2);
-                obj.segpath_planner{1} = LineTrajPlanner(pos0,posn,g_cvmax(1),g_camax(1),[0,obj.varc(1)],...
+                obj.segpath_planner{1} = LinePlanner(pos0,posn,g_cvmax(1),g_camax(1),[0,obj.varc(1)],...
                                                                 rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
                 obj.ntraj = 3;
             else
@@ -73,7 +73,7 @@ classdef CTrajPlanner < handle
             posn = obj.pos_corner(:,np);
             rpy0 = obj.rpy_corner(:,np-1);
             rpyn = obj.rpy_corner(:,np);
-            obj.segpath_planner{obj.ntraj} = LineTrajPlanner(pos0,posn,g_cvmax(1),g_camax(1),[0,0],...
+            obj.segpath_planner{obj.ntraj} = LinePlanner(pos0,posn,g_cvmax(1),g_camax(1),[0,0],...
                                                                                         rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
         end
 
@@ -98,7 +98,7 @@ classdef CTrajPlanner < handle
                         pos2 = obj.pos_corner(:,(idx+1)/2+1);
                         pos3 = obj.UpdateSegPos(pos1,pos2,obj.pos_corner(:,(idx+1)/2+2));
                         vcons = norm(vp(:,end));
-                        obj.segpath_planner{idx+1} = ArcTrajPlanner(pos1,pos2,pos3,vcons,g_camax(1),[vcons,vcons],...
+                        obj.segpath_planner{idx+1} = ArcPlanner(pos1,pos2,pos3,vcons,g_camax(1),[vcons,vcons],...
                                                                     r(:,end),r(:,end),[],[],[], 'arctrans');
                     else
                         % plan the next trajectory: line segment
@@ -113,7 +113,7 @@ classdef CTrajPlanner < handle
                             posn = obj.pos_seg(:,idx+1);
                             vf = obj.varc(idx/2+1);
                         end
-                        obj.segpath_planner{idx+1} = LineTrajPlanner(pos0,posn,g_cvmax(1),g_camax(1),[v0,vf],...
+                        obj.segpath_planner{idx+1} = LinePlanner(pos0,posn,g_cvmax(1),g_camax(1),[v0,vf],...
                                             rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
                     end
                     pos = [pos,p(:,1:end-1)]; rpy = [rpy,r(:,1:end-1)];

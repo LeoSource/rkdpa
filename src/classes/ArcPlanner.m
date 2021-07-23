@@ -1,4 +1,4 @@
-classdef ArcTrajPlanner < handle
+classdef ArcPlanner < handle
 
     properties
         center
@@ -24,7 +24,7 @@ classdef ArcTrajPlanner < handle
 
     methods
         %% initialize planner
-        function obj = ArcTrajPlanner(pos1,pos2,pos3,line_vmax,line_amax,pvel_cons,...
+        function obj = ArcPlanner(pos1,pos2,pos3,line_vmax,line_amax,pvel_cons,...
                                         rpy0,rpyn,ang_vmax,ang_amax,rvel_cons,style)
             obj.CalcTrajOption([pos1;rpy0], [pos3;rpyn]);
             obj.arc_style = style;
@@ -57,9 +57,9 @@ classdef ArcTrajPlanner < handle
         function InitPosPlanner(obj,pos1,pos2,pos3,line_vmax,line_amax,tf,vel_cons)
             obj.InitArcInfo(pos1,pos2,pos3);
             if isempty(tf)
-                obj.pos_uplanner = LspbTrajPlanner([0,obj.pos_len],line_vmax,line_amax,[],vel_cons);
+                obj.pos_uplanner = LspbPlanner([0,obj.pos_len],line_vmax,line_amax,[],vel_cons);
             else
-                obj.pos_uplanner = LspbTrajPlanner([0,obj.pos_len],line_vmax,line_amax,tf,vel_cons);
+                obj.pos_uplanner = LspbPlanner([0,obj.pos_len],line_vmax,line_amax,tf,vel_cons);
             end
         end
         
@@ -128,9 +128,9 @@ classdef ArcTrajPlanner < handle
             [rpy_len, obj.rot_dir] = tr2angvec(delta_rot);
             obj.rot_len = rpy_len;
             if isempty(tf)
-                obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
+                obj.rot_uplanner = LspbPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
             else
-                obj.rot_uplanner = LspbTrajPlanner([0,rpy_len], ang_vmax, ang_amax, tf, vel_cons);
+                obj.rot_uplanner = LspbPlanner([0,rpy_len], ang_vmax, ang_amax, tf, vel_cons);
             end
         end
         

@@ -5,7 +5,7 @@ function [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt)
     sim_q = []; sim_qd = [];
     alph = []; 
     %%  pre-clean action
-    jplanner = LspbTrajPlanner([q0(3), 0], g_jvmax(3), g_jamax(3));
+    jplanner = LspbPlanner([q0(3), 0], g_jvmax(3), g_jamax(3));
     [jpos, jvel,~] = jplanner.GenerateTraj(dt);
     tmp_q = [ones(1,length(jpos))*q0(1); ones(1,length(jpos))*q0(2); jpos;...
              ones(1,length(jpos))*q0(4); ones(1,length(jpos))*q0(5)];
@@ -17,11 +17,11 @@ function [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt)
     pos0 = rbt.FKSolveTool(tmp_q(:,end)).t;
     line_length = norm(via_pos(:,1)-pos0);
     alph0 = q0(1)+q0(end);
-    alphplanner = LspbTrajPlanner([alph0,0], g_jvmax(1), g_jamax(end));
-    uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax);
+    alphplanner = LspbPlanner([alph0,0], g_jvmax(1), g_jamax(end));
+    uplanner = LspbPlanner([0,line_length], g_cvmax(1), g_camax(1));
     tf_pre = max(alphplanner.tf,uplanner.tf);
-    alphplanner = LspbTrajPlanner([alph0,0], g_jvmax(1), g_jamax(end), tf_pre);
-    uplanner = LspbTrajPlanner([0,line_length], g_cvmax, g_camax, tf_pre);
+    alphplanner = LspbPlanner([alph0,0], g_jvmax(1), g_jamax(end), tf_pre);
+    uplanner = LspbPlanner([0,line_length], g_cvmax(1), g_camax(1), tf_pre);
     [up,uv,~] = uplanner.GenerateTraj(dt);
     pos_tmp = pos0+up.*(via_pos(:,1)-pos0)/line_length;
     vel_tmp = (via_pos(:,1)-pos0)/line_length.*uv;
@@ -31,7 +31,7 @@ function [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt)
     %%  clean mirror action
     s = []; sv = []; sa = [];
     cpath = ArcTransPathPlanner(via_pos, 0);
-    varc = sqrt(g_camax*cpath.radius);
+    varc = sqrt(g_camax(1)*cpath.radius);
     for idx=1:length(cpath.dis_interval)-1
         if mod(idx,2)==1
             if idx==1
@@ -41,7 +41,7 @@ function [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt)
             else
                 vel_cons = [varc,varc];
             end
-            splanner = LspbTrajPlanner([cpath.dis_interval(idx),cpath.dis_interval(idx+1)],g_cvmax,g_camax,[],vel_cons);
+            splanner = LspbPlanner([cpath.dis_interval(idx),cpath.dis_interval(idx+1)],g_cvmax(1),g_camax(1),[],vel_cons);
             [s_tmp,sv_tmp,sa_tmp] = splanner.GenerateTraj(dt);
         else
             t_len = (cpath.dis_interval(idx+1)-cpath.dis_interval(idx))/varc;
@@ -59,7 +59,7 @@ function [sim_pos, sim_q, sim_qd] = CleanRectPlane(rbt,via_pos,q0,dt)
     %%  post-clean action
     posn = rbt.FKSolveTool(g_stowed_pos).t;
     line_length = norm(posn-via_pos(:,end));
-    uplanner = LspbTrajPlanner([0,line_length],g_cvmax,g_camax);
+    uplanner = LspbPlanner([0,line_length],g_cvmax(1),g_camax(1));
     [up,uv,~] = uplanner.GenerateTraj(dt);
     pos_tmp = via_pos(:,end)+up.*(posn-via_pos(:,end))/line_length;
     vel_tmp = uv.*(posn-via_pos(:,end))/line_length;
