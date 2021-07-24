@@ -11,7 +11,7 @@ function [sim_pos, sim_q] = ScrapeRotXPlane(rbt,via_pos,pitch_x,q0,dt)
     pitch0 = q0(3)+rbt.tool_pitch;
     yaw0 = q0(1)+q0(end);
     rpy0 = [0;pitch0;yaw0];
-    ctraj = HybridTrajPlanner(pos0,rpy0, 1);    
+    ctraj = CartesianBasePlanner(pos0,rpy0, 1);    
     ctraj.AddPosRPY([via_pos(:,1);0;rbt.pitch_high;0]);
     ctraj.AddPosRPY([via_pos(:,2);0;rbt.pitch_low;0]);
     ctraj.AddPosRPY([via_pos(:,3);0;rbt.pitch_low;0]);

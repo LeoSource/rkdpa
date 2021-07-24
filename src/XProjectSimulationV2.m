@@ -23,6 +23,18 @@ mdh_table = [0, d1, 0, 0, 0, 0;...
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot');
 pose_tool = SE3;
 pose_tool.t = [0,0,0.116];
+
+
+% q1 = zeros(6,1);
+% q2 = [1,2,1,2,3,2]';
+% q3 = [2,1,1,2,2,3]';
+% taskplanner = TaskTrajPlanner(rbt);
+% taskplanner.AddTraj([q1,q2,q3,q1], 'joint', 0);
+% [p,v,a] = taskplanner.GenerateTraj(0.01);
+% t = 0.01*[0:size(p,2)-1];
+% plot(t,p(1,:), t,p(2,:), t,p(3,:), t,p(4,:), t,p(5,:), t,p(6,:));
+
+
 simu_mode = 'mirror';
 switch simu_mode
     case 'mirror'
@@ -33,11 +45,14 @@ comparision = 0;
 pose0 = rbt.fkine(q0)*pose_tool;
 pos0 = pose0.t;
 rpy0 = tr2rpy(pose0,'xyz');
-ctraj = CartesianBasePlanner(pos0,rpy0', 1);
+ctraj = CartesianBasePlanner([pos0;rpy0'], 1);
 pos1 = [0.5,0,1]'; pos2 = [0.65,0,1]'; pos3 = [0.65,0,0.6]';
 rpy1 = [0,pi/2,pi/2]'; rpy2 = [0,pi/2,pi/2]'; rpy3 = [0,pi/2,pi/2]';
-ctraj.AddPosRPY([[pos1;rpy1],[pos2;rpy2],[pos3;rpy3]]);
-[pos,~,~,rpy,~,~] = ctraj.GenerateTraj(dt);
+taskplanner = TaskTrajPlanner(rbt);
+taskplanner.AddTraj([[pos0;rpy0'],[pos1;rpy1],[pos2;rpy2],[pos3;rpy3]], 'cartesian', 0);
+[p,v,a] = taskplanner.GenerateTraj(0.01);
+% ctraj.AddPosRPY([[pos1;rpy1],[pos2;rpy2],[pos3;rpy3]]);
+% [pos,~,~,rpy,~,~] = ctraj.GenerateTraj(dt);
 
 sim_q = []; sim_pos = []; pre_q = q0;
 for idx=1:size(pos,2)

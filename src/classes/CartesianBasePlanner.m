@@ -14,9 +14,9 @@ classdef CartesianBasePlanner < handle
     end
 
     methods
-        function obj = CartesianBasePlanner(pos0, rpy0, conti_type)
-            obj.pos_corner = pos0;
-            obj.rpy_corner = rpy0;
+        function obj = CartesianBasePlanner(pos_rpy0, conti_type)
+            obj.pos_corner = pos_rpy0(1:3);
+            obj.rpy_corner = pos_rpy0(4:6);
             obj.ntraj = 0;
             obj.continuity = conti_type;
         end
