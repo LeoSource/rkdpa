@@ -23,12 +23,6 @@ mdh_table = [0, d1, 0, 0, 0, 0;...
 pose_tool = SE3;
 pose_tool.t = [0,0,0.116];
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
-% quiver3(0,0,0,1,0,0,0.5,'r','filled','LineWidth',2);
-% hold on
-% quiver3(0,0,0,0,1,0,1,'g','filled','LineWidth',2);
-% quiver3(0,0,0,0,0,1,2,'b','filled','LineWidth',2);
-% hold off
-% isa(pose_tool, 'SE3')
 simu_mode = 'mirror';
 switch simu_mode
     case 'mirror'
@@ -51,8 +45,9 @@ taskplanner.AddTraj([[pos1;rpy1],[pos2;rpy2],[pos3;rpy3]], 'cartesian', 0);
 [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(0.01);
 %% plot and compare with cpp data
 figure
-plot2(cpos(1:3,:)', 'r--'); hold on; plot2(cpos_sim', 'k');
-plot2([pos1,pos2,pos3]', 'bo'); axis equal; hold off;
+plot2(cpos(1:3,:)', 'r--'); hold on;plot2(cpos_sim', 'k');
+plot2([pos1,pos2,pos3]', 'bo'); axis equal;
+PlotRPY(cpos, 40); hold off;
 grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
 t = 0:dt:dt*(size(jpos,2)-1);
