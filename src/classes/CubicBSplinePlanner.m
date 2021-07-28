@@ -30,6 +30,7 @@ classdef CubicBSplinePlanner < handle
         function obj = CubicBSplinePlanner(via_pos, option, uk)
             %%%usually, uk is the final time of of planner
             obj.pdegree = 3;
+            obj.option = option;
             %%%input position is the control position%%%
             if strcmp(option, 'ctrlpos')
                 obj.ctrl_pos = via_pos;
@@ -208,11 +209,22 @@ classdef CubicBSplinePlanner < handle
         end
 
         %% Generate B-Spline Curve, Velocity and Acceleration
+        function [pos, vel, acc] = GenerateTraj(obj, dt)
+            pos = []; vel = []; acc = [];
+            tf = obj.uknot_vec(end);
+            uplanner = LspbPlanner([0,tf],2,1,tf);
+            for t=0:dt:tf
+                [u, du, ddu] = uplanner.GenerateMotion(t);
+                [p, v, a] = obj.GenerateMotion(u, du, ddu);
+                pos = [pos,p]; vel = [vel,v]; acc = [acc,a];
+            end
+        end
+        
         function [p, v, a] = GenerateMotion(obj, u, du, ddu)
             p = obj.GeneratePos(u);
             v = obj.GenerateVel(u, du);
             a = obj.GenerateAcc(u, du, ddu);
-            v = [v; norm(v)]; a = [a; norm(a)];
+%             v = [v; norm(v)]; a = [a; norm(a)];
         end
 
         function pos = GeneratePos(obj, u)
@@ -267,7 +279,7 @@ classdef CubicBSplinePlanner < handle
             npts = 3;
 %             uplanner1 = PolyTrajPlanner(uk(1:npts), uk(1:npts), [0,1], 3);
 %             uplanner2 = PolyTrajPlanner(uk(end-npts+1:end), uk(end-npts+1:end)-uk(end-npts+1), [1,0], 3);
-            uplanner = LspbTrajPlanner([uk(1),uk(end)],2,1,uk(end));
+            uplanner = LspbPlanner([uk(1),uk(end)],2,1,uk(end));
             for t=uk(1):dt:uk(end)
 %                 if t>=uk(1) && t<=uk(npts)
 %                     [u,du,ddu] = uplanner1.GenerateMotion(t);

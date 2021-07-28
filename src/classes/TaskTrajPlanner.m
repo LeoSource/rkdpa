@@ -44,6 +44,19 @@ classdef TaskTrajPlanner < handle
                 obj.traj_type{obj.ntraj} = 'joint';
                 obj.pre_trajq = via_pos(:,end);
                 obj.pre_trajpose = obj.robot.fkine(obj.pre_trajq);
+            case 'bspline'
+                pos0 = obj.pre_trajpose.t;
+                rpy0 = tr2rpy(obj.pre_trajpose, 'xyz')';
+                pos_rpy0 = [pos0;rpy0];
+                tf_uk = CalcBSplineTime([pos_rpy0,via_pos]);
+                posplanner = CubicBSplinePlanner([pos0,via_pos(1:3,:)], traj_opt, tf_uk);
+                rotplanner = CubicBSplinePlanner([rpy0,via_pos(4:6,:)], traj_opt, tf_uk);
+                obj.ntraj = obj.ntraj+1;
+                obj.segplanner{obj.ntraj} = {posplanner, rotplanner};
+                obj.traj_type{obj.ntraj} = 'bspline';
+                obj.pre_trajpose = SE3.rpy(180/pi*via_pos(4:6,end)', 'xyz');
+                obj.pre_trajpose.t = via_pos(1:3,end);
+                obj.pre_trajq = obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5);
             end
         end
 
@@ -69,6 +82,14 @@ classdef TaskTrajPlanner < handle
 %                     if obj.compare_plan
 %                         cpos_sim = [cpos_sim,p(1:3,:)];
 %                     end
+                case 'bspline'
+                    [p,vp,ap] = obj.segplanner{traj_idx}{1}.GenerateTraj(dt);
+                    [r,vr,ar] = obj.segplanner{traj_idx}{2}.GenerateTraj(dt);
+                    pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
+                    cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
+                    [jp,jv,ja,cp_sim] = obj.Transform2Joint(pos_tmp,vel_tmp,acc_tmp);
+                    jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
+                    cpos_sim=[cpos_sim,cp_sim];
                 end
             end
         end
@@ -85,6 +106,11 @@ classdef TaskTrajPlanner < handle
                     [jp,jv,ja] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     [p,v,a] = obj.Transform2Cart(jp,jv,ja);
                     cpos = [cpos, p]; cvel = [cvel, v]; cacc = [acc, a];
+                case 'bspline'
+                    [p,vp,ap] = obj.segplanner{traj_idx}{1}.GenerateTraj(dt);
+                    [r,vr,ar] = obj.segplanner{traj_idx}{2}.GenerateTraj(dt);
+                    pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
+                    cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
                 end
             end
         end
@@ -101,6 +127,12 @@ classdef TaskTrajPlanner < handle
                 case 'joint'
                     [jp,jv,ja] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
+                case 'bspline'
+                    [p,vp,ap] = obj.segplanner{traj_idx}{1}.GenerateTraj(dt);
+                    [r,vr,ar] = obj.segplanner{traj_idx}{2}.GenerateTraj(dt);
+                    pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
+                    [jp,jv,ja] = obj.Transform2Joint(pos_tmp,vel_tmp,acc_tmp);
+                    jpos = [jpos,jp]; jvel = [jvel,jv]; jacc = [jacc,ja];
                 end
             end
         end
@@ -149,3 +181,21 @@ classdef TaskTrajPlanner < handle
 
 end
 
+function tf = CalcBSplineTime(pos_rpy)
+    np = size(pos_rpy,2);
+    pos_len = 0;
+    rot_len = 0;
+    for idx=1:np-1
+        pos_len = pos_len+norm(pos_rpy(1:3,idx+1)-pos_rpy(1:3,idx));
+        r0 = rpy2r(180/pi*pos_rpy(4:6,idx)','xyz');
+        rn = rpy2r(180/pi*pos_rpy(4:6,idx+1)','xyz');
+        delta_rot = rn*r0';
+        [rpy_len,~] = tr2angvec(delta_rot);
+        rot_len = rot_len+rpy_len;
+    end
+    tscale = 1.2;
+    global g_cvmax
+    tf_pos = pos_len/g_cvmax(1)*tscale;
+    tf_rot = rot_len/g_cvmax(2)*tscale;
+    tf = max([tf_pos,tf_rot]);
+end
