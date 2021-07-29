@@ -79,7 +79,7 @@ if compare_cpp
     tt = g_cycle_time*[0:size(q_cpp,2)-1];
     for idx=1:rbt.n
         figure
-        plot(t, sim_q(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
+        plot(t, jpos(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
         xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
         legend('matlab\_data', 'cpp\_data');
     end

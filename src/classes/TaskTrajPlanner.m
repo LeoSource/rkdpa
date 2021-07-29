@@ -28,7 +28,7 @@ classdef TaskTrajPlanner < handle
             case 'cartesian'
                 pos0 = obj.pre_trajpose.t;
                 rpy0 = tr2rpy(obj.pre_trajpose,'xyz')';
-                cplanner = CartesianBasePlanner([pos0;rpy0], traj_opt);
+                cplanner = CartesianPlanner([pos0;rpy0], traj_opt);
                 cplanner.AddPosRPY(via_pos);
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = cplanner;

@@ -1,4 +1,4 @@
-classdef CartesianBasePlanner < handle
+classdef CartesianPlanner < handle
 
     properties
         segpath_planner
@@ -14,7 +14,7 @@ classdef CartesianBasePlanner < handle
     end
 
     methods
-        function obj = CartesianBasePlanner(pos_rpy0, conti_type)
+        function obj = CartesianPlanner(pos_rpy0, conti_type)
             obj.pos_corner = pos_rpy0(1:3);
             obj.rpy_corner = pos_rpy0(4:6);
             obj.ntraj = 0;

@@ -507,7 +507,7 @@ pos0 = rbt.FKSolveTool(q0).t;
 pitch0 = q0(3)+rbt.tool_pitch;
 yaw0 = q0(1)+q0(end);
 rpy0 = [0;pitch0;yaw0];
-ctraj = CartesianBasePlanner(pos0,rpy0, 1);
+ctraj = CartesianPlanner(pos0,rpy0, 1);
 pos1 = [0.5, 0.7, 0.5]'; pos2 = [-0.5, 0.7, 0.5]';
 pos3 = [-0.5, 0.9, 0.5]'; pos4 = [0.5, 0.9, 0.5]';
 ctraj.AddPosRPY([pos1;0;0;0]);
