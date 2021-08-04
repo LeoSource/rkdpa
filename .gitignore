@@ -1,12 +1,13 @@
 # 忽略simulink仿真过程临时文件
 src/slprj/
 src/*.slxc
-src/*.asv
 src/classes/*.asv
 src/tools/*.asv
 src/*.gif
 *.autosave
 *.original
+*.slxc
+src/simulink/slprj/
 src/simulink/v1.0/*.slxc
 src/simulink/v1.0/slprj/
 src/simulink/v2.0/*.slxc
