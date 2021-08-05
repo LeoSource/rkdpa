@@ -5,6 +5,7 @@ src/classes/*.asv
 src/tools/*.asv
 src/*.gif
 *.autosave
+*.asv
 *.original
 *.slxc
 src/simulink/slprj/
