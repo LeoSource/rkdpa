@@ -35,19 +35,19 @@ q0 = [0,0,0,0,-pi/2,0]';
 q1 = [0,145,-240,90,-90,0]'*pi/180;
 q2 = [0,-35,50,-100,-90,0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
-taskplanner.AddTraj([q1,q2], 'joint', 1);
+% taskplanner.AddTraj([q1,q2], 'joint', 1);
 %%%%% mirror task pose %%%%%
 pos1 = [0.5,0,1]'; pos2 = [0.65,0,1]'; pos3 = [0.65,0,0.6]';
 rpy1 = [0,pi/2,pi/2]'; rpy2 = [0,pi/2,pi/2]'; rpy3 = [0,pi/2,pi/2]';
 via_pos1 = [[pos1;rpy1],[pos2;rpy2],[pos3;rpy3]];
-taskplanner.AddTraj(via_pos1, 'cartesian', 0);
+% taskplanner.AddTraj(via_pos1, 'cartesian', 0);
 %%%%% table task pose %%%%%
 q1 = [0,-35,50,-105,-90,0]'*pi/180;
 pos1 = [0.8,0,0.23]'; pos2 = [0.8,0.4,0.23]'; pos3 = [0.4,0.4,0.23]'; pos4 = [0.4,0,0.23]';
 rpy1 = [0,pi/6,-pi]'; rpy2 = [0,0,-5*pi/6]'; rpy3 = [0,-pi/6,-pi]'; rpy4 = [0,0,-7*pi/6]';
 via_pos2 = [[pos1;rpy1], [pos2;rpy2], [pos3;rpy3], [pos4;rpy4]];
-taskplanner.AddTraj(q1, 'joint', 1);
-taskplanner.AddTraj(via_pos2, 'cartesian', 1);
+% taskplanner.AddTraj(q1, 'joint', 1);
+% taskplanner.AddTraj(via_pos2, 'cartesian', 1);
 %%%%% toilet task pose %%%%%
 q1 = [0,-35,50,-105,-90,0]'*pi/180;
 q2 = [0.35,0.52,0.52,-1.1,-1.4,0.52]';
