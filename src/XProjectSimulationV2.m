@@ -20,11 +20,26 @@ mdh_table = [0, d1, 0, 0, 0, 0;...
                     0, d4, a3, 0, 0, -pi/2;...
                     0, d5, 0, -pi/2, 0, 0;...
                     0, d6, 0, pi/2, 0, 0];
-pose_tool = SE3;
-pose_tool.t = [0,0,0.116];
+pose_tool = SE3(rotx(-10), [0,0,0.116]);
+qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
+qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
-simu_mode = 'mirror';
+simu_mode = 'workspace';
 switch simu_mode
+    case 'workspace'
+%% plot workspace
+nump = 5000;
+tmp_q = rand(1,6,nump);
+q = qmin'+tmp_q.*(qmax'-qmin');
+for idx=1:nump
+    pos(:,idx) = rbt.fkine(q(:,:,idx)).t;
+end
+
+figure
+plot3(pos(1,:), pos(2,:), pos(3,:), 'r.', 'MarkerSize', 3);
+grid on
+xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+    
     case 'mirror'
 %% simulation all task
 compare_cpp = 0;
