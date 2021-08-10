@@ -193,7 +193,7 @@ function tf = CalcBSplineTime(pos_rpy)
         [rpy_len,~] = tr2angvec(delta_rot);
         rot_len = rot_len+rpy_len;
     end
-    tscale = 1.2;
+    tscale = 1.5;
     global g_cvmax
     tf_pos = pos_len/g_cvmax(1)*tscale;
     tf_rot = rot_len/g_cvmax(2)*tscale;

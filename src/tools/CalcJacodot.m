@@ -40,7 +40,6 @@ end
 %p0t = p0i+pit  ====>dot(pit) = dot(p0t)-dot(p0i)
 function vit = CalcVelit(robot, q, qd, nidx)
     v0t = robot.jacob0(q', 'trans')*qd;
-    n = robot.n;
     w = zeros(3,1);
     v = zeros(3,1);
     pre_rot = eye(3);
@@ -53,7 +52,7 @@ function vit = CalcVelit(robot, q, qd, nidx)
             w = w+e0i*qd(idx);
         else
             v = v+cross(w,pi1_i)+e0i*qd(idx);
-            w = w;
+%             w = w;
         end
         pre_rot = r0i;
     end
