@@ -20,7 +20,8 @@ mdh_table = [0, d1, 0, 0, 0, 0;...
                     0, d4, a3, 0, 0, -pi/2;...
                     0, d5, 0, -pi/2, 0, 0;...
                     0, d6, 0, pi/2, 0, 0];
-pose_tool = SE3(rotx(-10), [0,0,0.116]);
+% pose_tool = SE3(rotx(-10), [0,0,0.116]);
+pose_tool = SE3(rotx(0), [0,0,0.116]);
 qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
