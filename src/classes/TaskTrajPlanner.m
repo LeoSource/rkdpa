@@ -57,6 +57,27 @@ classdef TaskTrajPlanner < handle
                 obj.pre_trajpose = SE3.rpy(180/pi*via_pos(4:6,end)', 'xyz');
                 obj.pre_trajpose.t = via_pos(1:3,end);
                 obj.pre_trajq = obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5);
+            case 'arc'
+                %add line trajectory befor arc for transition
+                pos0 = obj.pre_trajpose.t;
+                rpy0 = tr2rpy(obj.pre_trajpose, 'xyz')';
+                cplanner = CartesianPlanner([pos0;rpy0], false);
+                cplanner.AddPosRPY(via_pos(:,1));
+                obj.ntraj = obj.ntraj+1;
+                obj.segplanner{obj.ntraj} = cplanner;
+                obj.traj_type{obj.ntraj} = 'cartesian';
+                %add arc trajectory
+                pos1 = via_pos(1:3,1); pos2 = via_pos(1:3,2); pos3 = via_pos(1:3,3);
+                rpy1 = via_pos(4:6,1); rpy3 = via_pos(4:6,3);
+                global g_cvmax g_camax
+                arcplanner = ArcPlanner(pos1,pos2,pos3,g_cvmax(1),g_camax(1),[0,0],...
+                                    rpy1,rpy3,g_cvmax(2),g_camax(2),[0,0], 'arc');
+                obj.ntraj = obj.ntraj+1;
+                obj.segplanner{obj.ntraj} = arcplanner;
+                obj.traj_type{obj.ntraj} = 'arc';
+                obj.pre_trajpose = SE3.rpy(180/pi*rpy3', 'xyz');
+                obj.pre_trajpose.t = pos3;
+                obj.pre_trajq = obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5);
             end
         end
 
@@ -90,6 +111,13 @@ classdef TaskTrajPlanner < handle
                     [jp,jv,ja,cp_sim] = obj.Transform2Joint(pos_tmp,vel_tmp,acc_tmp);
                     jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
                     cpos_sim=[cpos_sim,cp_sim];
+                case 'arc'
+                    [p,vp,ap,r,vr,ar] = obj.segplanner{traj_idx}.GenerateTraj(dt);
+                    pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
+                    cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
+                    [jp,jv,ja,cp_sim] = obj.Transform2Joint(pos_tmp,vel_tmp,acc_tmp);
+                    jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
+                    cpos_sim=[cpos_sim,cp_sim];
                 end
             end
         end
@@ -109,6 +137,10 @@ classdef TaskTrajPlanner < handle
                 case 'bspline'
                     [p,vp,ap] = obj.segplanner{traj_idx}{1}.GenerateTraj(dt);
                     [r,vr,ar] = obj.segplanner{traj_idx}{2}.GenerateTraj(dt);
+                    pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
+                    cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
+                case 'arc'
+                    [p,vp,ap,r,vr,ar] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
                     cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
                 end
@@ -133,6 +165,11 @@ classdef TaskTrajPlanner < handle
                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
                     [jp,jv,ja] = obj.Transform2Joint(pos_tmp,vel_tmp,acc_tmp);
                     jpos = [jpos,jp]; jvel = [jvel,jv]; jacc = [jacc,ja];
+                case 'arc'
+                    [p,vp,ap,r,vr,ar] = obj.segplanner{traj_idx}.GenerateTraj(dt);
+                    pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
+                    [jp,jv,ja] = obj.Transform2Joint(pos_tmp,vel_tmp,acc_tmp);
+                    jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
                 end
             end
         end
