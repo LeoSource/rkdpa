@@ -25,7 +25,7 @@ pose_tool = SE3(rotx(0), [0,0,0.116]);
 qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
-simu_mode = 'workspace';
+simu_mode = 'toilet_lid';
 switch simu_mode
     case 'workspace'
 %% plot workspace
@@ -75,7 +75,6 @@ rpy4 = [-113,8.6,-177.7]'*pi/180; rpy5 = [-109.2,4.4,-179.4]'*pi/180;
 via_pos3 = [[pos1;rpy1], [pos2;rpy2], [pos3;rpy3], [pos4;rpy4], [pos5;rpy5]];
 taskplanner.AddTraj(via_pos3, 'bspline', 'interpolation');
 
-
 [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
 %% plot and compare with cpp data
 figure
@@ -101,8 +100,20 @@ if compare_cpp
     end
 end
 
+    case 'toilet_lid'
+%% simulate toilet lifting
+compare_cpp = 0;
+compare_plan = 1;
+dt = 0.01;
+a = [0.8,0.1,0.0]'; b = [0.8,-0.2,0.0]'; c = [0.5, -0.3, 0]'; theta = pi/2;
+vision_pos = [a,b,c,[theta;0;0]];
+via_posrpy = CalcViapos(vision_pos, 'toilet_lid');
+pos1 = via_posrpy(1:3,1); pos2 = via_posrpy(1:3,2); pos3 = via_posrpy(1:3,3);
+r = via_posrpy(4:6,1);
+arcplanner = ArcPlanner(pos1,pos2,pos3,g_cvmax(1),g_camax(1),[0,0],...
+                                    r(:,end),r(:,end),g_cvmax(2),g_camax(2),[0,0], 'arc');
+[pos,pvel,pacc,rpy,rvel,racc] = arcplanner.GenerateTraj(dt);
 
-
-
-
+PlotRPY([pos;rpy], 30); axis equal;
+grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 end

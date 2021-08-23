@@ -50,8 +50,37 @@ function via_posrpy = CalcViapos(vision_pos, type)
             via_posrpy(:,2*idx-1) = [pos1; rpy'];
             via_posrpy(:,2*idx) = [pos2; rpy'];
         end
-    elseif strcmp(type, 'washbowl')
-
+    elseif strcmp(type, 'toilet_lid')
+        %the 3rd point is the mark point: posC
+        %rotation axis is the 2nd point to 1st: posB->posA
+        posA = vision_pos(:,1); posB = vision_pos(:,2); posC = vision_pos(:,3);
+        theta = vision_pos(1,end);
+        z0 = posA-posB;
+        z0 = z0/norm(z0);
+        radius = norm(cross(z0,posC-posB));
+        scale = dot(posC,z0)-dot(posB,z0);
+        posM = posB+scale*z0;
+        x0 = posC-posM;
+        x0 = x0/norm(x0);
+        y0 = cross(z0,x0);
+        rot_mat = [x0,y0,z0];
+        via_posrpy(1:3,1) = posC;
+        tmp_pos(1,1) = radius*cos(theta/2);
+        tmp_pos(2,1) = radius*sin(theta/2);
+        tmp_pos(3,1) = 0;
+        via_posrpy(1:3,2) = posM+rot_mat*tmp_pos;
+        tmp_pos(1,1) = radius*cos(theta);
+        tmp_pos(2,1) = radius*sin(theta);
+        tmp_pos(3,1) = 0;
+        via_posrpy(1:3,3) = posM+rot_mat*tmp_pos;
+        rpy_z0 = z0;
+        rpy_y0 = [0;0;1];
+        rpy_x0 = cross(rpy_y0,rpy_z0);
+        rpy_mat = [rpy_x0, rpy_y0, rpy_z0];
+        rpy = tr2rpy(rpy_mat, 'xyz');
+        via_posrpy(4:6,1) = rpy;
+        via_posrpy(4:6,2) = rpy;
+        via_posrpy(4:6,3) = rpy;
     end
 
 end
