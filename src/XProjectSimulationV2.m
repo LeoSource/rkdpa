@@ -8,7 +8,7 @@ addpath('tools');
 global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos g_cycle_time
 g_jvmax = [pi/4, pi/4, pi/4, pi/4, pi/4, pi/4];
 g_jamax = [pi/2, pi/2, pi/2, pi/2, pi/2, pi/2];
-g_cvmax = [0.15, 0.15]; g_camax = [0.3, 0.3];
+g_cvmax = [0.1, 0.2]; g_camax = [0.3, 0.3];
 g_stowed_pos = [0;0;0;0;-pi/2;0];
 g_cycle_time = 0.005;
 
@@ -25,10 +25,11 @@ pose_tool = SE3(rotx(0), [0,0,0.29]);
 qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
-simu_mode = 'toilet_lid';
+simu_mode = 'mirror';
 switch simu_mode
     case 'workspace'
 %% plot workspace
+joint_plot = 0;
 nump = 5000;
 tmp_q = rand(1,6,nump);
 q = qmin'+tmp_q.*(qmax'-qmin');
@@ -41,8 +42,9 @@ plot3(pos(1,:), pos(2,:), pos(3,:), 'r.', 'MarkerSize', 3);
 grid on
 xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
     
-    case 'mirror'
+    case 'common'
 %% simulation all task
+joint_plot = 1;
 compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
@@ -76,33 +78,17 @@ via_pos3 = [[pos1;rpy1], [pos2;rpy2], [pos3;rpy3], [pos4;rpy4], [pos5;rpy5]];
 taskplanner.AddTraj(via_pos3, 'bspline', 'interpolation');
 
 [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
-%% plot and compare with cpp data
+
 figure
 plot2(cpos(1:3,:)', 'r--'); hold on;plot2(cpos_sim', 'k');
 plot2([via_pos1(1:3,:), via_pos2(1:3,:)]', 'bo'); axis square vis3d;
 PlotRPY(cpos, 60); hold off;
 grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
-t = 0:dt:dt*(size(jpos,2)-1);
-figure
-plot(t,jpos(1,:),'-', t, jpos(2,:), '--', t, jpos(3,:), '-.', t, jpos(4,:), ':', t, jpos(5,:), '-', t,jpos(6,:),'k');
-grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5', 'q6');
-
-if compare_cpp
-    q_cpp = load('./data/mirrortask_jpos1.csv');
-    q_cpp = reshape(q_cpp, rbt.n, []);
-    tt = g_cycle_time*[0:size(q_cpp,2)-1];
-    for idx=1:rbt.n
-        figure
-        plot(t, jpos(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
-        xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
-        legend('matlab\_data', 'cpp\_data');
-    end
-end
-
     case 'toilet_lid'
 %% simulate toilet lifting
-compare_cpp = 1;
+joint_plot = 1;
+compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
 q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
@@ -117,27 +103,48 @@ taskplanner.AddTraj(via_posrpy, 'arc');
 figure
 plot2(cpos(1:3,:)', 'r--'); hold on; plot2(cpos_sim', 'k');
 plot2(via_posrpy(1:3,:)', 'bo'); axis equal;
-% PlotRPY(cpos, 50);
+PlotRPY(cpos, 50);
 grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
-t = 0:dt:dt*(size(jpos,2)-1);
-figure
-plot(t,jpos(1,:),'-', t, jpos(2,:), '--', t, jpos(3,:), '-.', t, jpos(4,:), ':', t, jpos(5,:), '-', t,jpos(6,:),'k');
-grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5', 'q6');
+    case 'mirror'
+%% simulate scrape mirror 
+joint_plot = 1;
+compare_cpp = 0;
+compare_plan = 1;
+dt = 0.01;
+q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
+taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
+p1 = [0.8,-0.1,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.1,0.81]';
+vision_pos = [p1,p2,p3,p4];
+via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
+taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
 
-if compare_cpp
-    q_cpp = load('./data/mirrortask_jpos1.csv');
-    q_cpp = reshape(q_cpp, 6, []);
-    tt = g_cycle_time*[0:size(q_cpp,2)-1];
-    for idx=1:rbt.n
-        figure
-        plot(t, jpos(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
-        xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
-        legend('matlab\_data', 'cpp\_data');
+[cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+
+figure
+plot2(cpos(1:3,:)', 'r--');hold on;
+plot2(via_posrpy(1:3,:)', 'bo'); plot2(vision_pos', 'r*'); axis equal;
+PlotRPY(cpos, 60);
+grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+
+end
+
+%% plot for each joint position
+if joint_plot
+    t = 0:dt:dt*(size(jpos,2)-1);
+    figure
+    plot(t,jpos(1,:),'-', t, jpos(2,:), '--', t, jpos(3,:), '-.', t, jpos(4,:), ':', t, jpos(5,:), '-', t,jpos(6,:),'k');
+    grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5', 'q6');
+
+    if compare_cpp
+        q_cpp = load('./data/mirrortask_jpos1.csv');
+        q_cpp = reshape(q_cpp, 6, []);
+        tt = g_cycle_time*[0:size(q_cpp,2)-1];
+        for idx=1:rbt.n
+            figure
+            plot(t, jpos(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
+            xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+            legend('matlab\_data', 'cpp\_data');
+        end
     end
 end
-
-
-end
-
-

@@ -11,7 +11,7 @@ x0_mirror = corner_pos(:,4)-corner_pos(:,1);
 x0_mirror = x0_mirror/norm(x0_mirror);
 y0_mirror = corner_pos(:,2)-corner_pos(:,1);
 y0_mirror = y0_mirror/norm(y0_mirror);
-z0_mirror = cross(x0,y0);
+z0_mirror = cross(x0_mirror,y0_mirror);
 rot_mirror = [x0_mirror,y0_mirror,z0_mirror];
 
 corner_pos_new(:,1) = corner_pos(:,1)+lenscraper/2*x0_mirror+lenscraper/2*y0_mirror;
