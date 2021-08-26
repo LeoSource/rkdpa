@@ -21,7 +21,7 @@ mdh_table = [0, d1, 0, 0, 0, 0;...
                     0, d5, 0, -pi/2, 0, 0;...
                     0, d6, 0, pi/2, 0, 0];
 % pose_tool = SE3(rotx(-10), [0,0,0.116]);
-pose_tool = SE3(rotx(0), [0,0,0.116]);
+pose_tool = SE3(rotx(0), [0,0,0.29]);
 qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
@@ -102,20 +102,42 @@ end
 
     case 'toilet_lid'
 %% simulate toilet lifting
-compare_cpp = 0;
+compare_cpp = 1;
 compare_plan = 1;
 dt = 0.01;
-q0 = [0,0,0,0,-pi/2,0]';
+q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
-a = [0.8,0.1,0.0]'; b = [0.8,-0.2,0.0]'; c = [0.5, -0.3, 0]'; theta = pi/2;
+a = [0.815, 0.431, -0.2876]'; b = [0.7674, 0.1089, -0.3071]'; c = [0.6015, 0.1089, -0.3071]'; theta = pi/2;
 vision_pos = [a,b,c,[theta;0;0]];
 via_posrpy = CalcViapos(vision_pos, 'toilet_lid');
 taskplanner.AddTraj(via_posrpy, 'arc');
 
-[cpos,~,~] = taskplanner.GenerateCartTraj(dt);
+[cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
 
-PlotRPY(cpos, 50); axis equal;
+figure
+plot2(cpos(1:3,:)', 'r--'); hold on; plot2(cpos_sim', 'k');
+plot2(via_posrpy(1:3,:)', 'bo'); axis equal;
+% PlotRPY(cpos, 50);
 grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+
+t = 0:dt:dt*(size(jpos,2)-1);
+figure
+plot(t,jpos(1,:),'-', t, jpos(2,:), '--', t, jpos(3,:), '-.', t, jpos(4,:), ':', t, jpos(5,:), '-', t,jpos(6,:),'k');
+grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5', 'q6');
+
+if compare_cpp
+    q_cpp = load('./data/mirrortask_jpos1.csv');
+    q_cpp = reshape(q_cpp, 6, []);
+    tt = g_cycle_time*[0:size(q_cpp,2)-1];
+    for idx=1:rbt.n
+        figure
+        plot(t, jpos(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
+        xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+        legend('matlab\_data', 'cpp\_data');
+    end
+end
+
+
 end
 
 
