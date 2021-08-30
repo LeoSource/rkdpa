@@ -96,7 +96,7 @@ taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 a = [0.815, 0.431, -0.2876]'; b = [0.7674, 0.1089, -0.3071]'; c = [0.6015, 0.1089, -0.3071]'; theta = pi/2;
 vision_pos = [a,b,c,[theta;0;0]];
 via_posrpy = CalcViapos(vision_pos, 'toilet_lid');
-taskplanner.AddTraj(via_posrpy, 'arc');
+taskplanner.AddTraj(via_posrpy, 'arc', 0);
 
 [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
 
@@ -116,10 +116,15 @@ q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 p1 = [0.8,-0.1,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.1,0.81]';
 vision_pos = [p1,p2,p3,p4];
-via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
-taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
+% via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
+via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.12);
+taskplanner.AddTraj(via_posrpy, 'cartesian', 1);
 
-[cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+if compare_plan
+    [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+else
+    [cpos,cvel,cacc] = taskplanner.GenerateCartTraj(dt);
+end
 
 figure
 plot2(cpos(1:3,:)', 'r--');hold on;
