@@ -20,7 +20,7 @@ corner_pos_new(:,3) = corner_pos(:,3)-lenscraper/2*x0_mirror-lenscraper/2*y0_mir
 corner_pos_new(:,4) = corner_pos(:,4)-lenscraper/2*x0_mirror+lenscraper/2*y0_mirror;
 
 height_target = norm(corner_pos_new(:,2)-corner_pos_new(:,3));
-cycle_num = round(height_target/lenscraper)+1;
+cycle_num = ceil(height_target/lenscraper)+1;
 step_size = height_target/(cycle_num-1);
 start_pos1 = corner_pos_new(:,3);
 start_pos2 = corner_pos_new(:,4);
