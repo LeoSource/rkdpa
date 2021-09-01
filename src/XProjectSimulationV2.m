@@ -8,7 +8,7 @@ addpath('tools');
 global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos g_cycle_time
 g_jvmax = [pi/4, pi/4, pi/4, pi/4, pi/4, pi/4];
 g_jamax = [pi/2, pi/2, pi/2, pi/2, pi/2, pi/2];
-g_cvmax = [0.1, 0.2]; g_camax = [0.3, 0.3];
+g_cvmax = [0.15, 0.15]; g_camax = [0.3, 0.3];
 g_stowed_pos = [0;0;0;0;-pi/2;0];
 g_cycle_time = 0.005;
 
@@ -109,16 +109,16 @@ grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
     case 'mirror'
 %% simulate scrape mirror 
 joint_plot = 1;
-compare_cpp = 0;
+compare_cpp = 1;
 compare_plan = 1;
 dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 p1 = [0.8,-0.1,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.1,0.81]';
 vision_pos = [p1,p2,p3,p4];
-% via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
-via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.12);
-taskplanner.AddTraj(via_posrpy, 'cartesian', 1);
+via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
+% via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.08);
+taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
 
 if compare_plan
     [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);

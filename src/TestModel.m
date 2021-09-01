@@ -12,7 +12,7 @@ g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi]*0.5;
 g_cvmax = [0.15,0.15]; g_camax = [0.3,0.3];
 g_stowed_pos = [0;0.6;0;0;0];
 g_cycle_time = 0.005;
-test_mode = 'ctrajbspline';
+test_mode = 'jtrajlspb';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -133,10 +133,10 @@ plot(0:dt:tf, acc, 'k-'); grid on; ylabel('acceleration');
 
     case 'jtrajlspb'
 %% joint trajectory plan using lspb 
-planner = LspbPlanner([0,0], 2, 1);
+% planner = LspbPlanner([0,0], 2, 1);
+% planner.PlotAVP(0.01);
+planner = LspbPlanner([0, 500], 200, 40, [] , [200,20]);
 planner.PlotAVP(0.01);
-planner = LspbPlanner([20, 10], 16, 10, [0,3]);
-[p, v, a] = planner.GenerateMotion(1)
 
 trajplanner = DoubleSVelTrajPlanner([10, 0],[0, 0], 5, 10, 30);
 trajplanner.SetPhaseDuration(5, 1/3, 1/5);
