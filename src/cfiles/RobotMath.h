@@ -1,5 +1,5 @@
 #pragma once
-
+#include "ErrorID.h"
 #include <algorithm>
 #include <math.h>
 #include <Eigen/Dense>
@@ -7,7 +7,11 @@
 #define	EPS	1e-5
 #define	EPS3 1e-3
 #define EPS4 1e-4
+#define EPS5 1e-5
 #define pi	3.141592657
+
+const double D2R = pi/180.0;
+const double R2D = 180.0/pi;
 
 using namespace std;
 using namespace Eigen;
@@ -24,13 +28,25 @@ namespace MathTools
 
 	int Sign(double x);
 
-	void LimitNum(double min_value, double& value, double max_value);
+    int LimitNum(double min_value, double& value, double max_value);
 
 	void LimitMin(double min_value, double& value);
 
 	void LimitMax(double max_value, double& value);
 
-	void LimitVector(VectorXd min_vec, VectorXd* value, VectorXd max_vec);
+	template<typename T>
+	T LimitMaxValue(T max_value, T value)
+	{
+		T res;
+		if (value>max_value)
+			res = max_value;
+		else
+			res = value;
+
+		return res;
+	}
+
+    int LimitVector(VectorXd min_vec, VectorXd* value, VectorXd max_vec);
 
 	bool Any(VectorXd vec);
 
@@ -73,32 +89,21 @@ namespace RobotTools
 		Matrix3d rot;
 	};
 
-	MatrixXd CalcRectanglePath(MatrixXd* corner_pos, char* option, double interval);
+	enum TrajType
+	{
+		eJointSpace,
+		eCartesianSpace,
+		eCartesianArc,
+		eBSpline
+	};
 
-	/**
-	* @brief	calculate rotation matrix according point and normal vector
-	* @author	zxliao
-	* @date		2021/6/3
-	* @param	center		spatial point
-	* @param	norm_vec	normal vector
-	* @return	rot			rotation matrix
-	**/
-	Matrix3d CalcPlaneRot(Vector3d center, Vector3d norm_vec);
-
-	/**
-	* @brief	calculate control points with given zone radius
-	* @author	zxliao
-	* @date		2021/6/3
-	* @param	pos1		first corner point
-	* @param	pos2		second corner point
-	* @param	pos3		third corner point
-	* @param	r			transition radius between two lines
-	* @param	opt			transition option: 2 points for arc, 5 points for spline
-	* @return	ctrlpos		control points of transition
-	**/
-	MatrixXd CalcSplineTransPos(Vector3d pos1, Vector3d pos2, Vector3d pos3, double r, char* opt);
-
-	double CalcArcRadius(Vector3d pos1, Vector3d pos2, Vector3d pos3);
+	enum CTrajRange
+	{
+		ePos,
+		eRot,
+		eBoth,
+		eNone
+	};
 
 	Pose PoseProduct(Pose p1, Pose p2);
 
@@ -114,6 +119,8 @@ namespace RobotTools
 
 	CAVP toSpatial(CLineAVP* line_avp, CLineAVP* ang_avp);
 
+	Matrix3d RPY2Jaco(Vector3d rpy);
+
 	Vector4d Tr2Quat1(Matrix3d r);
 
 	Vector4d Tr2Quat2(Matrix3d r);
@@ -127,4 +134,28 @@ namespace RobotTools
 	Matrix3d FixedZYX2Tr(Vector3d rpy);
 
 	Vector4d CalcAngleAxis(Vector3d rpy0, Vector3d rpyn);
+}
+
+namespace PlanTools
+{
+    MatrixXd CalcMirrorPath(MatrixXd* corner_pos, double interval);
+
+	MatrixXd CalcRectanglePath(MatrixXd* corner_pos, string, double interval);
+
+	Matrix3d CalcPlaneRot(Vector3d center, Vector3d norm_vec);
+
+	MatrixXd CalcSplineTransPos(Vector3d pos1, Vector3d pos2, Vector3d pos3, double r, string opt);
+
+	void CalcToiletPath(MatrixXd& via_posrpy, MatrixXd* vision_pos, double theta);
+
+	void CalcTablePath(MatrixXd& via_posrpy, MatrixXd* vision_pos, double theta, double interval);
+
+	void CalcToiletlidPath(MatrixXd& via_posrpy, MatrixXd* vision_pos, double theta);
+
+	void CalcMirrorPath_Line(MatrixXd& vis_posrpy, MatrixXd* corner_pos, double lenscraper, double inc_ang, double dis_trans);
+
+	void CalcMirrorPath(MatrixXd& via_posrpy, MatrixXd* corner_pos, double lenscraper, double slant_ang, double inc_ang);
+
+	double CalcArcRadius(Vector3d pos1, Vector3d pos2, Vector3d pos3);
+ 
 }

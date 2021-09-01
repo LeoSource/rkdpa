@@ -1,5 +1,5 @@
 /**
-* @file		LineTrajPlanner.h
+* @file		LinePlanner.h
 * @brief	Cartesian line trajectory plan
 * @version	1.0.0
 * @author	zxliao
@@ -8,12 +8,14 @@
 **/
 #pragma once
 
-#include "BaseCTrajPlanner.h"
+#include "BaseCartesianPlanner.h"
 
-class LineTrajPlanner : public BaseCTrajPlanner
+class LinePlanner : public BaseCartesianPlanner
 {
 public:
-	LineTrajPlanner() {}
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+public:
+	LinePlanner() {}
 
 	/**
 	* @brief	constructor
@@ -25,34 +27,40 @@ public:
 	* @param	amax		spatial acceleration constraint
 	* @param	duration	initial and final time
 	* @param	vel_cons	initial and final spatial velocity
-	* @param	opt			option of planner
 	**/
-	LineTrajPlanner(Vector6d pos0, Vector6d posn, double* vmax, double* amax, double* vel_cons, char* opt)
-		:BaseCTrajPlanner(pos0, posn, vmax, amax, vel_cons, opt)
+	LinePlanner(Vector6d pos0, Vector6d posn, double* vmax,
+				double* amax, double* vel_cons)
+		:BaseCartesianPlanner(pos0, posn, vmax, amax, vel_cons)
 	{
-		if (strcmp(_option, "both")==0)
+		if (_option==RobotTools::eBoth)
 		{
-			InitPosPlanner(pos0.head(3), posn.head(3), vmax[0], amax[0], -1, vel_cons);
-			InitRotPlanner(pos0.tail(3), posn.tail(3), vmax[1], amax[1], -1, &(vel_cons[2]));
+            InitPosPlanner(pos0.head(3), posn.head(3), vmax[0],
+							amax[0], -1, vel_cons);
+            InitRotPlanner(pos0.tail(3), posn.tail(3), vmax[1],
+							amax[1], -1, &(vel_cons[2]));
 			_tf_pos = _pos_uplanner.GetFinalTime();
 			_tf_rot = _rot_uplanner.GetFinalTime();
 			Vector2d tf(_tf_pos, _tf_rot);
 			_tf = tf.maxCoeff();
 			if (_tf_pos>_tf_rot)
-				InitRotPlanner(pos0.tail(3), posn.tail(3), vmax[1], amax[1], _tf, &(vel_cons[2]));
+                InitRotPlanner(pos0.tail(3), posn.tail(3), vmax[1],
+								amax[1], _tf, &(vel_cons[2]));
 			else
-				InitPosPlanner(pos0.head(3), posn.head(3), vmax[0], amax[0], _tf, vel_cons);
+                InitPosPlanner(pos0.head(3), posn.head(3), vmax[0],
+								amax[0], _tf, vel_cons);
 		}
-		else if (strcmp(_option, "pos")==0)
+		else if (_option==RobotTools::ePos)
 		{
-			InitPosPlanner(pos0.head(3), posn.head(3), vmax[0], amax[0], -1, vel_cons);
+            InitPosPlanner(pos0.head(3), posn.head(3), vmax[0],
+							amax[0], -1, vel_cons);
 			_tf_pos = _pos_uplanner.GetFinalTime();
 			_tf = _tf_pos;
 			_tf_rot = 0;
 		}
-		else if (strcmp(_option, "rot")==0)
+		else if (_option==RobotTools::eRot)
 		{
-			InitRotPlanner(pos0.tail(3), posn.tail(3), vmax[1], amax[1], -1, &(vel_cons[2]));
+            InitRotPlanner(pos0.tail(3), posn.tail(3), vmax[1],
+							amax[1], -1, &(vel_cons[2]));
 			_tf_rot = _rot_uplanner.GetFinalTime();
 			_tf = _tf_rot;
 			_tf_pos = 0;
@@ -69,19 +77,19 @@ public:
 	* @param	amax		line or angular acceleration constraint
 	* @param	duration	initial and final time
 	* @param	vel_cons	initial and final line or angular velocity
-	* @param	opt			option of planner
 	**/
-	LineTrajPlanner(Vector6d pos0, Vector6d posn, double vmax, double amax, double* vel_cons, char* opt)
-		:BaseCTrajPlanner(pos0, posn, vmax, amax, vel_cons, opt)
+	LinePlanner(Vector6d pos0, Vector6d posn, double vmax,
+				double amax, double* vel_cons)
+		:BaseCartesianPlanner(pos0, posn, vmax, amax, vel_cons)
 	{
-		if (strcmp(_option, "pos")==0)
+		if (_option==RobotTools::ePos)
 		{
 			InitPosPlanner(pos0.head(3), posn.head(3), vmax, amax, -1, vel_cons);
 			_tf_pos = _pos_uplanner.GetFinalTime();
 			_tf = _tf_pos;
 			_tf_rot = 0;
 		}
-		else if (strcmp(_option, "rot")==0)
+		else if (_option==RobotTools::eRot)
 		{
 			InitRotPlanner(pos0.tail(3), posn.tail(3), vmax, amax, -1, vel_cons);
 			_tf_rot = _rot_uplanner.GetFinalTime();
@@ -91,7 +99,7 @@ public:
 	}
 
 
-	~LineTrajPlanner() {}
+	~LinePlanner() {}
 
 private:
 	/**
@@ -105,18 +113,22 @@ private:
 	* @param	tf			final time
 	* @param	vel_cons	initial and final line velocity
 	**/
-	void InitPosPlanner(Vector3d pos0, Vector3d posn, double line_vmax, double line_amax, double tf, double* vel_cons) override
+    void InitPosPlanner(Vector3d pos0, Vector3d posn, double line_vmax,
+						double line_amax, double tf, double* vel_cons) override
 	{
 		_pos_len = MathTools::Norm(posn-pos0);
 		_pos_dir = (posn-pos0)/_pos_len;
 		if (tf<0)
-			_pos_uplanner.InitPlanner(Vector2d(0, _pos_len), line_vmax, line_amax, Vector2d(0, -1), Vector2d(vel_cons[0], vel_cons[1]));
+            _pos_uplanner.InitPlanner(Vector2d(0, _pos_len), line_vmax,
+				line_amax, Vector2d(0, -1), Vector2d(vel_cons[0], vel_cons[1]));
 		else
-			_pos_uplanner.InitPlanner(Vector2d(0, _pos_len), line_vmax, line_amax, Vector2d(0, tf), Vector2d(vel_cons[0], vel_cons[1]));
+            _pos_uplanner.InitPlanner(Vector2d(0, _pos_len), line_vmax,
+				line_amax, Vector2d(0, tf), Vector2d(vel_cons[0], vel_cons[1]));
 	}
 
-	void InitPosPlanner(Vector3d pos1, Vector3d pos2, Vector3d pos3, double vmax, double amax, double tf, double* vel_cons) override
-	{}
+    void InitPosPlanner(Vector3d pos1, Vector3d pos2, Vector3d pos3,
+				double vmax, double amax, double tf, double* vel_cons) override
+	{	}
 
 	/**
 	* @brief	generate position motion data

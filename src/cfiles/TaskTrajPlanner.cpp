@@ -1,366 +1,272 @@
 #include "TaskTrajPlanner.h"
 
-TaskTrajPlanner::TaskTrajPlanner(Vector3d* pos0, Vector3d* rpy0, bool conti_type)
+
+TaskTrajPlanner::TaskTrajPlanner(UrRobot* robot_model, Vector6d q0)
+	:_robot(robot_model),_pre_q(q0),_pre_trajq(q0)
 {
-	_pos_corner.push_back(pos0);
-	_rpy_corner.push_back(rpy0);
-	_ntraj = 0;
-	_t = 0;
-	_traj_idx = 0;
 	_task_completed = false;
-	_continuity = conti_type;
+	_ntraj = 0;
+	_traj_idx = 0;
+	_pre_trajpose = _robot->FKSolveTool(q0);
 }
 
-void TaskTrajPlanner::AddPosRPY(Vector3d* pos, Vector3d* rpy)
-{		
-	if (_continuity)
-		AddContiPosRPY(pos, rpy);
-	else
-		AddDiscontiPosRPY(pos, rpy);
-}
-
-void TaskTrajPlanner::AddContiPosRPY(Vector3d* pos, Vector3d* rpy)
+void TaskTrajPlanner::AddTraj(MatrixXd* via_pos, TrajType traj_type, bool traj_opt)
 {
-	_pos_corner.push_back(pos);
-	_rpy_corner.push_back(rpy);
-	int np = _pos_corner.size();
-	if (np==2)
+	switch (traj_type)
 	{
-		Vector3d pos0 = *_pos_corner[0];
-		Vector3d posn = *_pos_corner[1];
-		Vector3d rpy0 = *_rpy_corner[0];
-		Vector3d rpyn = *_rpy_corner[1];
-		Vector6d pos_rpy0, pos_rpyn;
+	case RobotTools::eJointSpace:
+	{
+		BaseTrajPlanner* jplanner = new JointPlanner(_pre_trajq, traj_opt);
+		jplanner->AddViaPos(via_pos);
+		_segplanner.push_back(jplanner);
+		_ntraj += 1;
+		_traj_type.push_back(eJointSpace);
+		_pre_trajq = via_pos->rightCols(1);
+		_pre_trajpose = _robot->FKSolveTool(_pre_trajq);
+		break;
+	}
+	case RobotTools::eCartesianSpace:
+	{
+		int np = static_cast<int>(via_pos->cols());
+		for (int idx = 0; idx < np; idx++)
+		{
+			Vector6d pos_rpy = via_pos->col(idx);
+			CheckCartWorkspace(pos_rpy.head(3));
+		}
+		Vector3d pos0 = _pre_trajpose.pos;
+		Vector3d rpy0 = RobotTools::Tr2FixedZYX(_pre_trajpose.rot);
+		Vector6d pos_rpy0;
 		pos_rpy0<<pos0, rpy0;
-		pos_rpyn<<posn, rpyn;
-		double vmax[] = { g_cvmax,0.15 };
-		double amax[] = { g_camax,0.3 };
-		double vel_cons[] = { 0,0,0,0 };
-		char* opt = "none";
-		CalcTrajOption(opt, pos_rpy0, pos_rpyn);
-		BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, opt);
-		_segtraj_planner.push_back(traj_planner);
-		_ntraj = 1;
+		BaseTrajPlanner* cplanner = new CartesianPlanner(pos_rpy0, traj_opt);
+		cplanner->AddViaPos(via_pos);
+		_segplanner.push_back(cplanner);
+		_ntraj += 1;
+		_traj_type.push_back(eCartesianSpace);
+		Vector6d pos_rpyn = via_pos->rightCols(1);
+		_pre_trajpose.pos = pos_rpyn.head(3);
+		_pre_trajpose.rot = RobotTools::FixedZYX2Tr(pos_rpyn.tail(3));
+		_robot->IKSolve(&_pre_trajq, &_pre_trajpose, &_pre_trajq);
 	}
-	else if (np==3)
+		break;
+	case RobotTools::eCartesianArc:
 	{
-		MatrixXd pos_tmp = RobotTools::CalcSplineTransPos(*_pos_corner[0], *_pos_corner[1], *_pos_corner[2], 0.05, "arc");
-		Vector3d* p1 = new Vector3d(pos_tmp.col(0));
-		Vector3d* p2 = new Vector3d(pos_tmp.col(1));
-		_pos_seg.push_back(p1);
-		_pos_seg.push_back(p2);
-		double radius = RobotTools::CalcArcRadius(*_pos_seg[0], *_pos_corner[1], *_pos_seg[1]);
-		_varc.push_back(sqrt(g_camax*radius));
-		Vector3d pos0 = *_pos_corner[0];
-		Vector3d posn = *_pos_seg[0];
-		Vector3d rpy0 = *_rpy_corner[0];
-		Vector3d rpyn = *_rpy_corner[1];
-		Vector6d pos_rpy0, pos_rpyn;
+		//add line trajectory befor arc for transition
+		Vector3d pos0 = _pre_trajpose.pos;
+		Vector3d rpy0 = RobotTools::Tr2FixedZYX(_pre_trajpose.rot);
+		Vector6d pos_rpy0;
 		pos_rpy0<<pos0, rpy0;
-		pos_rpyn<<posn, rpyn;
-		double vmax[] = { g_cvmax,0.15 };
-		double amax[] = { g_camax,0.3 };
-		double vel_cons[] = { 0,_varc[0],0,0 };
-		delete _segtraj_planner[0];
-		_segtraj_planner.clear();
-		char* opt = "none";
-		CalcTrajOption(opt, pos_rpy0, pos_rpyn);
-		BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, opt);
-		_segtraj_planner.push_back(traj_planner);
-		_ntraj = 3;
+		BaseTrajPlanner* lineplanner = new CartesianPlanner(pos_rpy0, false);
+		MatrixXd pos_trans = via_pos->col(0);
+		lineplanner->AddViaPos(&pos_trans);
+		_segplanner.push_back(lineplanner);
+		_ntraj += 1;
+		_traj_type.push_back(eCartesianSpace);
+		//add arc trajectory
+		Vector6d pos_rpy1 = via_pos->col(0);
+		Vector6d pos_rpy3 = via_pos->col(2);
+		Vector3d pos2 = via_pos->col(1).head(3);
+		BaseTrajPlanner* arcplanner = new CartesianPlanner(&pos_rpy1, &pos2, &pos_rpy3);
+		_segplanner.push_back(arcplanner);
+		_ntraj += 1;
+		_traj_type.push_back(eCartesianArc);
+		Vector6d pos_rpyn = via_pos->col(2);
+		_pre_trajpose.pos = pos_rpyn.head(3);
+		_pre_trajpose.rot = RobotTools::FixedZYX2Tr(pos_rpyn.tail(3));
+		_robot->IKSolve(&_pre_trajq, &_pre_trajpose, &_pre_trajq);
 	}
-	else
+		break;
+	case RobotTools::eBSpline:
 	{
-		MatrixXd pos_tmp = RobotTools::CalcSplineTransPos(*_pos_corner[np-3], *_pos_corner[np-2], *_pos_corner[np-1], 0.05, "arc");
-		Vector3d* p1 = new Vector3d(pos_tmp.col(0));
-		Vector3d* p2 = new Vector3d(pos_tmp.col(1));
-		_pos_seg.push_back(p1);
-		_pos_seg.push_back(p2);
-		int nseg = _pos_seg.size();
-		double radius = RobotTools::CalcArcRadius(*_pos_seg[nseg-2], *_pos_corner[np-2], *_pos_seg[nseg-1]);
-		_varc.push_back(sqrt(g_camax*radius));
-		_ntraj += 2;
-	}
-}
-
-void TaskTrajPlanner::AddDiscontiPosRPY(Vector3d* pos, Vector3d* rpy)
-{
-	_pos_corner.push_back(pos);
-	_rpy_corner.push_back(rpy);
-	int np = _pos_corner.size();
-	_ntraj += 1;
-	Vector3d pos0 = *_pos_corner[np-2];
-	Vector3d posn = *_pos_corner[np-1];
-	Vector3d rpy0 = *_rpy_corner[np-2];
-	Vector3d rpyn = *_rpy_corner[np-1];
-	Vector6d pos_rpy0, pos_rpyn;
-	pos_rpy0<<pos0, rpy0;
-	pos_rpyn<<posn, rpyn;
-	double vmax[] = { g_cvmax,0.15 };
-	double amax[] = { g_camax,0.3 };
-	double vel_cons[] = { 0,0,0,0 };
-	char* opt = "none";
-	CalcTrajOption(opt, pos_rpy0, pos_rpyn);
-	BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, opt);
-	_segtraj_planner.push_back(traj_planner);
-}
-
-RobotTools::CAVP TaskTrajPlanner::GenerateMotion()
-{
-	if (_continuity)
-		return GenerateContiMotion();
-	else
-		return GenerateDiscontiMotion();
-}
-
-
-RobotTools::CAVP TaskTrajPlanner::GenerateContiMotion()
-{
-	RobotTools::CAVP cavp;
-	cavp = _segtraj_planner[_traj_idx]->GenerateMotion(_t);
-	if ((_traj_idx==_ntraj-1)&&(fabs(_segtraj_planner[_traj_idx]->GetFinalTime()-_t)<EPS))
-	{
-		_task_completed = true;
-	}
-	else
-	{
-		//make transition between line and arc smooth
-		double tf = _segtraj_planner[_traj_idx]->GetFinalTime();
-		double tf_int = floor(tf/g_cycle_time)*g_cycle_time;
-		if ((_traj_idx%2==0)&&(fabs(_t-tf_int+g_cycle_time)<EPS)&&(_traj_idx!=_ntraj-1))
+		int np = static_cast<int>(via_pos->cols());
+		for (int idx = 0; idx < np; idx++)
 		{
-			//plan the next trajectory: arc segment
-			RobotTools::CAVP cavpn = _segtraj_planner[_traj_idx]->GenerateMotion(tf_int);
-			Vector3d pos1 = cavpn.pos.head(3);
-			Vector3d pos2 = *_pos_corner[_traj_idx/2+1];
-			Vector3d pos3 = UpdateSegPos(pos1, pos2, *_pos_corner[_traj_idx/2+2]);
-			double vcons = cavpn.vel.head(3).norm();
-			Vector3d rpy1 = cavp.pos.tail(3);
-			Vector6d pos_rpy1, pos_rpy3;
-			pos_rpy1<<pos1, rpy1;
-			pos_rpy3<<pos3, rpy1;
-			double vmax[] = { vcons,0.15 };
-			double amax[] = { g_camax,0.3 };
-			double vel_cons[] = { vcons,vcons,0,0 };
-			BaseCTrajPlanner* traj_planner = new ArcTrajPlanner(pos_rpy1, pos2, pos_rpy3, vmax, amax, vel_cons, "pos");
-			_segtraj_planner.push_back(traj_planner);
-			_traj_idx += 1;
-			_t = -g_cycle_time;
+			Vector6d pos_rpy = via_pos->col(idx);
+			CheckCartWorkspace(pos_rpy.head(3));
 		}
-		else if ((_traj_idx%2==1)&&(fabs(_t-tf_int+g_cycle_time)<EPS))
-		{
-			//plan the next trajectory: line segment
-			RobotTools::CAVP cavpn = _segtraj_planner[_traj_idx]->GenerateMotion(tf_int);
-			Vector3d pos0 = cavpn.pos.head(3);
-			Vector3d rpy0 = cavpn.pos.tail(3);
-			Vector3d rpyn = *_rpy_corner[(_traj_idx+1)/2+1];
-			double v0 = cavpn.vel.head(3).norm();
-			Vector3d posn;
-			double vf;
-			if (_traj_idx==_ntraj-2)
-			{
-				posn = *_pos_corner[_pos_corner.size()-1];
-				vf = 0;
-			}
-			else
-			{
-				posn = *_pos_seg[_traj_idx+1];
-				vf = _varc[_traj_idx/2+1];
-			}
-			Vector6d pos_rpy0, pos_rpyn;
-			pos_rpy0<<pos0, rpy0;
-			pos_rpyn<<posn, rpyn;
-			double vmax[] = { g_cvmax,0.15 };
-			double amax[] = { g_camax,0.3 };
-			double vel_cons[] = { v0,vf,0,0 };
-			char* opt = "none";
-			CalcTrajOption(opt, pos_rpy0, pos_rpyn);
-			BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, opt);
-			_segtraj_planner.push_back(traj_planner);
+		Vector3d pos0 = _pre_trajpose.pos;
+		Vector3d rpy0 = RobotTools::Tr2FixedZYX(_pre_trajpose.rot);
+		Vector6d pos_rpy0;
+		pos_rpy0<<pos0, rpy0;
+		MatrixXd viapos_new;
+		viapos_new.setZero(6, via_pos->cols()+1);
+		viapos_new<<pos_rpy0, *via_pos;
+		double tf_uk = CalcBSplineTime(&viapos_new);
+		BaseTrajPlanner* bplanner = new CubicBSplinePlanner(&viapos_new, traj_opt, tf_uk);
+		_segplanner.push_back(bplanner);
+		_ntraj += 1;
+		_traj_type.push_back(eBSpline);
+		Vector6d pos_rpyn = via_pos->rightCols(1);
+		_pre_trajpose.pos = pos_rpyn.head(3);
+		_pre_trajpose.rot = RobotTools::FixedZYX2Tr(pos_rpyn.tail(3));
+		_robot->IKSolve(&_pre_trajq, &_pre_trajpose, &_pre_trajq);
+	}
+		break;
+	default:
+		break;
+	}
+}
+
+
+void TaskTrajPlanner::GenerateJPath(Vector6d& jpos)
+{
+	switch (_traj_type[_traj_idx])
+	{
+	case eJointSpace:
+	{
+		_segplanner[_traj_idx]->GeneratePath(jpos);
+		_pre_q = jpos;
+	}		
+	break;
+	case eCartesianSpace:
+	{
+		Vector6d cpos;
+		_segplanner[_traj_idx]->GeneratePath(cpos);
+		Pose cmd_pose;
+		cmd_pose.pos = cpos.head(3);
+		cmd_pose.rot = RobotTools::FixedZYX2Tr(cpos.tail(3));
+		_robot->IKSolve(&jpos, &cmd_pose, &_pre_q);
+		_pre_q = jpos;
+	}
+	break;
+	case eBSpline:
+	{
+		Vector6d cpos;
+		_segplanner[_traj_idx]->GeneratePath(cpos);
+		Pose cmd_pose;
+		cmd_pose.pos = cpos.head(3);
+		cmd_pose.rot = RobotTools::FixedZYX2Tr(cpos.tail(3));
+		_robot->IKSolve(&jpos, &cmd_pose, &_pre_q);
+		_pre_q = jpos;
+	}
+	break;
+	case eCartesianArc:
+	{
+		Vector6d cpos;
+		_segplanner[_traj_idx]->GeneratePath(cpos);
+		Pose cmd_pose;
+		cmd_pose.pos = cpos.head(3);
+		cmd_pose.rot = RobotTools::FixedZYX2Tr(cpos.tail(3));
+		_robot->IKSolve(&jpos, &cmd_pose, &_pre_q);
+		_pre_q = jpos;
+	}
+	break;
+	default:
+		break;
+	}
+	if (_segplanner[_traj_idx]->_plan_completed)
+	{
+		if (_traj_idx==_ntraj-1)
+			_task_completed = true;
+		else
 			_traj_idx += 1;
-			_t = -g_cycle_time;
-		}
-		_t += g_cycle_time;
-		MathTools::LimitMax(_segtraj_planner[_traj_idx]->GetFinalTime(), _t);
 	}
-
-	return cavp;
 }
 
-RobotTools::CAVP TaskTrajPlanner::GenerateDiscontiMotion()
+void TaskTrajPlanner::GenerateCPath(Vector6d& cpos)
 {
-	RobotTools::CAVP cavp;
-	cavp = _segtraj_planner[_traj_idx]->GenerateMotion(_t);
-	_t += g_cycle_time;
-	MathTools::LimitMax(_segtraj_planner[_traj_idx]->GetFinalTime(), _t);
-	if ((_traj_idx==_ntraj-1)&&(fabs(_segtraj_planner[_traj_idx]->GetFinalTime()-_t)<EPS))
+	switch (_traj_type[_traj_idx])
 	{
-		_task_completed = true;
+	case eJointSpace:
+	{
+		Vector6d jpos;
+		_segplanner[_traj_idx]->GeneratePath(jpos);
+		Pose cpose = _robot->FKSolveTool(jpos);
+		cpos.head(3) = cpose.pos;
+		cpos.tail(3) = RobotTools::Tr2FixedZYX(cpose.rot);
+		break;
 	}
-	else
+	case eCartesianSpace:
 	{
-		if (fabs(_t-_segtraj_planner[_traj_idx]->GetFinalTime())<EPS)
-		{
+		_segplanner[_traj_idx]->GeneratePath(cpos);
+		break;
+	}
+	case eBSpline:
+	{
+		_segplanner[_traj_idx]->GeneratePath(cpos);
+		break;
+	}
+	case eCartesianArc:
+	{
+		_segplanner[_traj_idx]->GeneratePath(cpos);
+		break;
+	}
+	default:
+		break;
+	}
+	if (_segplanner[_traj_idx]->_plan_completed)
+	{
+		if (_traj_idx==_ntraj-1)
+			_task_completed = true;
+		else
 			_traj_idx += 1;
-			_t = 0;
-		}
 	}
-
-	return cavp;
 }
 
-void TaskTrajPlanner::Reset(bool conti_type)
+void TaskTrajPlanner::GenerateBothPath(Vector6d& jpos, Vector6d& cpos)
 {
-	_ntraj = 0;
-	_t = 0;
-	_traj_idx = 0;
-	_task_completed = false;
-	_continuity = conti_type;
-	ClearTemp();
-}
-
-void TaskTrajPlanner::Reset(Vector3d* pos0, Vector3d* rpy0, bool conti_type)
-{
-	_ntraj = 0;
-	_t = 0;
-	_traj_idx = 0;
-	_task_completed = false;
-	ClearTemp();
-	_pos_corner.push_back(pos0);
-	_rpy_corner.push_back(rpy0);
-	_continuity = conti_type;
-}
-
-
-void TaskTrajPlanner::AddPosRPY(Vector3d *pos, Vector3d *rpy, Vector3d &seg_opt)
-{
-	char* opt = (char*)"both";
-	if (seg_opt[0] > EPS)
-		opt = (char*)"pos";
-	else if (seg_opt[1] > EPS)
-		opt = (char*)"rot";
-	else
-		opt = (char*)"both";
-
-	AddPosRPY(pos, rpy);
-}
-
-Vector6d TaskTrajPlanner::GeneratePoint()
-{
-	Vector6d pos_rpy;
-	if (_traj_idx!=_ntraj)
+	switch (_traj_type[_traj_idx])
 	{
-		pos_rpy = _segtraj_planner[_traj_idx]->GeneratePoint(_t);
-		_t += g_cycle_time;
-		MathTools::LimitMax(_segtraj_planner[_traj_idx]->GetFinalTime(), _t);
-		if (fabs(_t-_segtraj_planner[_traj_idx]->GetFinalTime())<g_cycle_time)
-		{			
+	case eJointSpace:
+	{
+		_segplanner[_traj_idx]->GeneratePath(jpos);
+		Pose cpose = _robot->FKSolveTool(jpos);
+		cpos.head(3) = cpose.pos;
+		cpos.tail(3) = RobotTools::Tr2FixedZYX(cpose.rot);
+		_pre_q = jpos;
+		break;
+	}
+	case eCartesianSpace:
+	{
+		_segplanner[_traj_idx]->GeneratePath(cpos);
+		Pose cmd_pose;
+		cmd_pose.pos = cpos.head(3);
+		cmd_pose.rot = RobotTools::FixedZYX2Tr(cpos.tail(3));
+		_robot->IKSolve(&jpos, &cmd_pose, &_pre_q);
+		_pre_q = jpos;
+		break;
+	}
+	case eBSpline:
+	{
+		_segplanner[_traj_idx]->GeneratePath(cpos);
+		Pose cmd_pose;
+		cmd_pose.pos = cpos.head(3);
+		cmd_pose.rot = RobotTools::FixedZYX2Tr(cpos.tail(3));
+		_robot->IKSolve(&jpos, &cmd_pose, &_pre_q);
+		_pre_q = jpos;
+		break;
+	}
+	case eCartesianArc:
+	{
+		_segplanner[_traj_idx]->GeneratePath(cpos);
+		Pose cmd_pose;
+		cmd_pose.pos = cpos.head(3);
+		cmd_pose.rot = RobotTools::FixedZYX2Tr(cpos.tail(3));
+		_robot->IKSolve(&jpos, &cmd_pose, &_pre_q);
+		_pre_q = jpos;
+		break;
+	}
+	default:
+		break;
+	}
+	if (_segplanner[_traj_idx]->_plan_completed)
+	{
+		if (_traj_idx==_ntraj-1)
+			_task_completed = true;
+		else
 			_traj_idx += 1;
-			_t = 0;
-
-			//delete _segtraj_planner;
-			if (_traj_idx==_ntraj)
-			{
-				for (vector<BaseCTrajPlanner*>::iterator it = _segtraj_planner.begin(); it!=_segtraj_planner.end(); it++)
-				{
-					if (*it!=NULL)
-					{
-						delete *it;
-						*it = NULL;
-					}
-				}
-				_segtraj_planner.clear();
-				_pos_corner.clear();
-				_rpy_corner.clear();
-			}
-
-		}
 	}
-	else
+}
+
+void TaskTrajPlanner::Reset(Vector6d q0)
+{
+	_pre_q = q0;
+	_pre_trajq = q0;
+	_pre_trajpose = _robot->FKSolveTool(q0);
+	for (int idx = 0; idx<_ntraj; idx++)
 	{
-		double t = _segtraj_planner[_ntraj-1]->GetFinalTime();
-		pos_rpy = _segtraj_planner[_ntraj-1]->GeneratePoint(t);
+		_segplanner[idx]->Reset(q0, false);
 	}
-
-	return pos_rpy;
-}
-
-void TaskTrajPlanner::ReInitSegTrajPlanner(Vector3d &pos0, Vector3d &rpy0)
-{
-    if(_continuity)
-    {
-        //temporary variable : cache segment pos
-        vector<Vector3d> posn;
-        vector<Vector3d> rpyn;
-        int length = (int)_pos_corner.size();
-        int trajindex = 0;
-
-        if(_traj_idx%2 == 0)
-            trajindex = _traj_idx/2;
-        else if(_traj_idx%2 == 1)
-            trajindex = (_traj_idx-1)/2;
-
-        for(int i = 0; i < length- trajindex - 1; ++i)
-        {
-            posn.push_back(*_pos_corner[trajindex+1 +i]);
-            rpyn.push_back(*_rpy_corner[trajindex+1 +i]);
-        }
-
-        Reset(&pos0, &rpy0, false);
-        for(int i = 0; i < (int)posn.size(); ++i)
-        {
-            AddPosRPY(&posn[i], &rpyn[i]);
-        }
-
-        posn.clear();
-        rpyn.clear();
-        return;
-    }
-    else
-    {
-        Vector3d posn = *_pos_corner[_traj_idx+1];
-        Vector3d rpyn = *_rpy_corner[_traj_idx+1];
-
-        Vector6d pos_rpy0, pos_rpyn;
-        pos_rpy0<<pos0, rpy0;
-        pos_rpyn<<posn, rpyn;
-
-        double vmax[] = { g_cvmax,0.15 };
-        double amax[] = { g_camax,0.3 };
-        double vel_cons[] = { 0,0,0,0 };
-
-
-        vector<BaseCTrajPlanner*>::iterator iter_segtraj = _segtraj_planner.begin()+_traj_idx;
-        _segtraj_planner.erase(iter_segtraj);
-
-        char* opt = "none";
-        CalcTrajOption(opt, pos_rpy0, pos_rpyn);
-
-        BaseCTrajPlanner* traj_planner = new LineTrajPlanner(pos_rpy0, pos_rpyn, vmax, amax, vel_cons, opt);
-        _segtraj_planner.insert(_segtraj_planner.begin()+_traj_idx, traj_planner);
-
-        _t = 0;
-    }
-}
-
-bool TaskTrajPlanner::GetSegTrajPlannerDone()
-{
-    return _task_completed;//_traj_idx==_ntraj;
-}
-
-Vector3d TaskTrajPlanner::UpdateSegPos(Vector3d p1, Vector3d p2, Vector3d p3_corner)
-{
-	Vector3d pos3;
-	double line_len = MathTools::Norm(p2-p1);
-	Vector3d dir_p2p3 = (p3_corner-p2)/MathTools::Norm(p3_corner-p2);
-	pos3 = p2+line_len*dir_p2p3;
-
-	return pos3;
-}
-
-void TaskTrajPlanner::ClearTemp()
-{
-	for (vector<BaseCTrajPlanner*>::iterator it = _segtraj_planner.begin(); it!=_segtraj_planner.end(); it++)
+	for (auto it = _segplanner.begin(); it!=_segplanner.end(); it++)
 	{
 		if (*it!=nullptr)
 		{
@@ -368,35 +274,42 @@ void TaskTrajPlanner::ClearTemp()
 			*it = nullptr;
 		}
 	}
-	for (vector<Vector3d*>::iterator it = _pos_seg.begin(); it!=_pos_seg.end(); it++)
-	{
-		if (*it!=nullptr)
-		{
-			delete *it;
-			*it = nullptr;
-		}
-	}
-	_segtraj_planner.clear();
-	_pos_seg.clear();
-	_pos_corner.clear();
-	_rpy_corner.clear();
-	_rpy_seg.clear();
-	_varc.clear();
+	_segplanner.clear();
+	_traj_type.clear();
+	_traj_idx = 0;
+	_ntraj = 0;
+	_task_completed = false;
 }
 
-void TaskTrajPlanner::CalcTrajOption(char* &opt, Vector6d pos_rpy1, Vector6d pos_rpy2)
+
+double TaskTrajPlanner::CalcBSplineTime(MatrixXd* via_pos)
 {
-	double pos_len = MathTools::Norm(pos_rpy1.head(3) - pos_rpy2.head(3));
-	Vector4d angleaxis = RobotTools::CalcAngleAxis(pos_rpy1.tail(3), pos_rpy2.tail(3));
-	double rpy_len = angleaxis(3);
-	//char* opt;
-	if ((pos_len>EPS) && (rpy_len>EPS))
-		opt = "both";
-	else if ((pos_len>EPS) && (rpy_len <= EPS))
-		opt = "pos";
-	else if ((pos_len <= EPS) && (rpy_len>EPS))
-		opt = "rot";
-	else
-		opt = "none";
+	double pos_len = 0;
+	double rot_len = 0;
+	int np = static_cast<int>(via_pos->cols());
+	MatrixXd pos_bspline = via_pos->topRows(3);
+	MatrixXd rpy_bspline = via_pos->bottomRows(3);
+	for (int idx = 0; idx<np-1; idx++)
+	{
+		pos_len += MathTools::Norm(pos_bspline.col(idx+1)-pos_bspline.col(idx));
+		rot_len += RobotTools::CalcAngleAxis(rpy_bspline.col(idx), rpy_bspline.col(idx+1))(3);
+	}
+	double coef = 1.5;
+	double tf_pos = pos_len/g_cvmax[0]*coef;
+	double tf_rot = rot_len/g_cvmax[1]*coef;
+	Vector2d tf(tf_pos, tf_rot);
+	
+	return tf.maxCoeff();
 }
 
+void TaskTrajPlanner::CheckCartWorkspace(Vector3d cpos)
+{
+	double radius_ws = 1.1;
+	double ratio_ws = 0.9;//0.8
+	double zmin = -0.6;
+	double len_tool = _robot->GetToolLength();
+	Vector3d center(0, 0, 0);
+	if ((MathTools::Norm(cpos - center) > radius_ws*ratio_ws + len_tool)
+		|| (cpos(2)<zmin - len_tool))
+		throw eErrJointOutOfRange;
+}
