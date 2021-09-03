@@ -6,7 +6,7 @@ addpath('classes');
 addpath('tools');
 dt = 0.005;
 %% analyse test data
-td = csvread('./data/test_data_0818_1720.csv');
+td = load('./data/test_data_0902_1000.csv');
 t = 0:dt:dt*(size(td,1)-1);
 
 figure
