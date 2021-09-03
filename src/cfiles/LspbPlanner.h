@@ -1,5 +1,5 @@
 /**
-* @file		LspbTrajPlanner.h
+* @file		LspbPlanner.h
 * @brief	Linear segment with parabolic blend(trapezoid velocity profile)
 * @version	1.0.0
 * @author	zxliao
@@ -13,7 +13,7 @@
 using namespace std;
 using namespace Eigen;
 
-class LspbTrajPlanner
+class LspbPlanner
 {
 public:
 	double _vmax;
@@ -32,15 +32,15 @@ private:
 	int _dir;
 
 public:
-	LspbTrajPlanner() {}
+	LspbPlanner() {}
 
-	LspbTrajPlanner(Vector2d pos, double max_vel, double max_acc);
+	LspbPlanner(Vector2d pos, double max_vel, double max_acc);
 
-	LspbTrajPlanner(Vector2d pos, double max_vel, double max_acc, double tf);
+	LspbPlanner(Vector2d pos, double max_vel, double max_acc, double tf);
 
-	LspbTrajPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration);
+	LspbPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration);
 
-	LspbTrajPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration, Vector2d vel_con);
+	LspbPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration, Vector2d vel_con);
 
 	void InitPlanner(Vector2d pos, double max_vel, double max_acc);
 
@@ -48,9 +48,9 @@ public:
 
 	void InitPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration);
 
-	void InitPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration, Vector2d vel_con);
+    void InitPlanner(Vector2d pos, double max_vel, double max_acc, Vector2d duration, Vector2d vel_con);
 
-	~LspbTrajPlanner() {}
+	~LspbPlanner() {}
 
 	/**
 	* @brief	generate motion data
@@ -113,6 +113,6 @@ private:
 	* @param	h	position distance
 	* @param	tf	final time
 	**/
-	void SetVelConstraint(double h, double tf);
+    void SetVelConstraint(double h, double tf);
 };
 

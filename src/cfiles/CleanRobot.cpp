@@ -4,7 +4,7 @@
 CleanRobot::CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorXd offset):
 	_mdh_table(mdh_table),_type(type),_offset(offset)
 {
-	_nlinks = type.size();
+	_nlinks = static_cast<int>(type.size());
 	_tool.pos = Vector3d::Zero();
 	_tool.rot = Matrix3d::Identity();
 	for (int idx = 0; idx<_nlinks; idx++)
@@ -28,7 +28,7 @@ CleanRobot::CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorX
 CleanRobot::CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorXd offset, Pose tool):
 	_mdh_table(mdh_table),_type(type),_offset(offset),_tool(tool)
 {
-	_nlinks = type.size();
+	_nlinks = static_cast<int>(type.size());
 	for (int idx = 0; idx<_nlinks; idx++)
 	{
 		double theta = mdh_table(idx, 0);
@@ -50,7 +50,7 @@ CleanRobot::CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorX
 CleanRobot::CleanRobot(MatrixXd mdh_table, Matrix<int, Dynamic, 1> type, VectorXd offset, double tool_pitch, Vector3d tool_pos):
 	_mdh_table(mdh_table),_type(type),_offset(offset),_tool_pitch(tool_pitch)
 {
-	_nlinks = type.size();
+	_nlinks = static_cast<int>(type.size());
 	_tool.pos = tool_pos;
 	_tool.rot = RotX(tool_pitch);
 	for (int idx = 0; idx<_nlinks; idx++)

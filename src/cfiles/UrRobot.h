@@ -5,9 +5,9 @@
 using namespace Eigen;
 using namespace RobotTools;
 
-#define arm_singularity 1
-#define wrist_singularity 2
-#define outside_reach 3
+//#define arm_singularity 1
+//#define wrist_singularity 2
+//#define outside_reach 3
 
 class UrRobot
 {
@@ -47,6 +47,10 @@ public:
 	VectorXd HoldJntPos();
 
     void UpdateTool(Vector3d tool_pos, Vector3d tool_rpy);
+
+	double GetToolLength();
+
+	Vector6d CalcJacodot(Vector6d q, Vector6d qd);
 
 	~UrRobot() {}
 

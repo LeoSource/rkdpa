@@ -7,24 +7,22 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
-#include "PolyTrajPlanner.h"
-#include "MirrorTask.h"
-#include "InitialTask.h"
-#include "HoldTask.h"
-#include "SurfaceTask.h"
-#include "RotXPlaneTask.h"
-#include "TableTask.h"
-#include "ShowerRoomTask.h"
 #include <time.h>
-#include "TaskTrajPlanner.h"
+#include <map>
 
+#include "TaskTrajPlanner.h"
+#include "RobotDynIdenTest.h"
 #include "InterruptStop/InterruptStop.h"
 #include "RobotParameter/RobotParameter.h"
+#include "RobotControl.h"
+
+static RobotControl g_robot;
+
 #pragma warning(disable : 4996)
-//#define lzx
-#define wyc
+#define lzx
+//#define wyc
 //#define xnd
-#define urrobot
+//#define urrobot
 using namespace std;
 using namespace Eigen;
 
@@ -44,6 +42,13 @@ enum ID_test
 	bspline = 9,
 	other = 10,
 	simulation = 11
+};
+
+typedef void(*PtrTest)();
+struct TestInfo
+{
+	ID_test testID;
+	PtrTest testfunc;
 };
 
 CleanRobot CreatRobot()
@@ -71,7 +76,7 @@ UrRobot CreatUrRobot()
 	Matrix<double, 6, 1> offset(&g_offset_ur[0]);
 	RobotTools::Pose pose_tool;
 	pose_tool.rot.setIdentity();
-	pose_tool.pos << 0, 0, 0.116;
+	pose_tool.pos << 0, 0, 0.29;
 	Matrix<double, 6, 2, RowMajor> qlimit(&g_qlimit_ur[0]);
 	UrRobot rbt(mdh_table, jnt_type, offset, pose_tool);
 	rbt.SetJntLimit(qlimit);
@@ -90,6 +95,7 @@ void Testdhmodel()
 	cout<<pose.rot<<endl<<endl;
 }
 
+#ifdef DEBUG
 void Testjtrajpoly()
 {
 	Vector3d pos;
@@ -108,7 +114,7 @@ void Testjtrajlspb()
 	Vector2d pos;
 	pos << 20, 10;
 	Vector2d duration(0, 3);
-	LspbTrajPlanner planner(pos, 16, 10, duration);
+	LspbPlanner planner(pos, 16, 10, duration);
 	RobotTools::JAVP avp = planner.GenerateMotion(2.2);
 	cout << avp.pos << endl;
 	cout << avp.vel << endl;
@@ -129,13 +135,15 @@ void Testctrajarctrans()
 	MatrixXd via_pos = RobotTools::CalcRectanglePath(&corner_pos,"s", interval);
 	ArcTransPathPlanner cpath(via_pos, 0);
 	Vector2d via_path(0, cpath._distance);
-	LspbTrajPlanner planner(via_path, 0.5, 2);
+	LspbPlanner planner(via_path, 0.5, 2);
 	RobotTools::JAVP javp = planner.GenerateMotion(10);
 	RobotTools::CLineAVP avp = cpath.GenerateMotion(javp.pos, javp.vel, javp.acc);
 	cout<<avp.pos<<endl;
 	cout<<avp.vel<<endl;
 	cout<<avp.acc<<endl;
 }
+
+#endif
 
 void Testiksolver()
 {
@@ -167,7 +175,7 @@ void TestBSpline()
 {
 	double tf = 60;
 	double dt = 0.01;
-	int np = tf/dt+1;
+	int np = (int)(tf/dt)+1;
 	int npts[] = { 15,12,10,8,6,4 };
 	double center[] = { 0,0,0,0,0,0, 0,0,0,0,0,0, 0,-0.06,-0.12,-0.18,-0.24,-0.3 };
 	double elli_params[] = { 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05 };
@@ -196,8 +204,6 @@ void TestBSpline()
 	//via_pos.setZero(3, 5);
 	//via_pos<<1, 2, 3, 4, 5, 2, 3, -3, 4, 5, 0, 0, 0, 0, 0;
 	CubicBSplinePlanner bspline(&via_pos, "approximation", 60);
-	Vector2d via_u(bspline._uknot_vec(0), bspline._uknot_vec(bspline._uknot_vec.size()-1));
-	LspbTrajPlanner uplanner(via_u, 2, 1, bspline._uknot_vec(bspline._uknot_vec.size()-1));
 	//cout<<bspline.CalcBSplineCoeff(3,5,0.8)<<endl;
 	//CLineAVP avp = bspline.GenerateMotion(0.1, 0.5, 0.1);
 	//cout<<avp.pos<<endl;
@@ -214,17 +220,15 @@ void TestBSpline()
 	{
 		for (int idx = 0; idx<np; idx++)
 		{
-			double t = idx*dt;
-			JAVP uavp = uplanner.GenerateMotion(t);
-			CLineAVP avp = bspline.GenerateMotion(uavp.pos, uavp.vel, uavp.acc);
+			Vector6d cpos;
+			bspline.GeneratePath(cpos);
 
-			ofile<<avp.acc<<endl;
+			ofile<<cpos<<endl;
 		}
 	}
 	cout<<"succeed to save the data"<<endl;
 
 }
-
 
 void Testother()
 {
@@ -240,7 +244,6 @@ void Testother()
 	cout<<q<<endl;
 	MathTools::LimitVector(qmin, &q, qmax);
 	cout<<q<<endl;
-
 
 	int a[2][3] = { 1,2,3,4,5,6 };
 	ofstream ofile;
@@ -281,7 +284,8 @@ void Simulation()
 	Vector3d rpy0 = RobotTools::Tr2FixedZYX(pose0.rot);
 	//Vector3d rpy0 = pose0.rot.eulerAngles(0,1,2);
 	//Quaterniond quat0(pose0.rot);
-	TaskTrajPlanner tasktraj_planner;
+	TaskTrajPlanner tasktraj_planner(&urrbt, q_fdb);
+	MatrixXd via_pos;
 	urrbt.UpdateJntHoldPos(q_fdb);
 
 	fstream ofile;
@@ -311,71 +315,48 @@ void Simulation()
 				{
 					Pose pose0 = urrbt.FKSolveTool(q_fdb);
 					Vector3d rpy0 = RobotTools::Tr2FixedZYX(pose0.rot);
-					tasktraj_planner.Reset(&pose0.pos, &rpy0, true);
-					Vector3d pos1, pos2, pos3;
-					pos1 << 0.5, 0, 1;
-					pos2 << 0.65, 0, 1;
-					pos3 << 0.65, 0, 0.6;
-					Vector3d rpy1, rpy2, rpy3;
-					rpy1 << pi/2, pi/2, 0;
-					rpy2 << pi / 2, pi / 2, 0;
-					rpy3 << pi / 2, pi / 2, 0;
-					tasktraj_planner.AddPosRPY(&pos1, &rpy1);
-					tasktraj_planner.AddPosRPY(&pos2, &rpy2);
-					tasktraj_planner.AddPosRPY(&pos3, &rpy3);
+					tasktraj_planner.Reset(q_fdb);
+					Vector6d pos_rpy1, pos_rpy2, pos_rpy3;
+					pos_rpy1 << 0.5, 0, 1, pi/2, pi/2, 0;
+					pos_rpy2 << 0.65, 0, 1, pi/2, pi/2, 0;
+					pos_rpy3 << 0.65, 0, 0.6, pi/2, pi/2, 0;
+					via_pos.resize(6, 3);
+					via_pos<<pos_rpy1, pos_rpy2, pos_rpy3;
+					tasktraj_planner.AddTraj(&via_pos, eCartesianSpace, true);
 					*operation = {};
 				}
 				else if (strcmp(operation, "table") == 0)
 				{
-
+		
 					Pose pose0 = urrbt.FKSolveTool(q_fdb);
 					Vector3d rpy0 = RobotTools::Tr2FixedZYX(pose0.rot);
-					tasktraj_planner.Reset(&pose0.pos, &rpy0, false);
-					Vector3d pos1, pos2, pos3, pos4;
-					pos1 << 0.8, 0, 0.23;
-					pos2 << 0.8, 0.4, 0.23;
-					pos3 << 0.4, 0.4, 0.23;
-					pos4 << 0.4, 0, 0.23;
-					Vector3d rpy1, rpy2, rpy3, rpy4;
-					rpy1 << -pi, pi / 6, 0;
-					rpy2 << -5*pi/6, 0, 0;
-					rpy3 << -pi, -pi / 6, 0;
-					rpy4 << -7*pi/6, 0, 0;
-					tasktraj_planner.AddPosRPY(&pos1, &rpy1);
-					tasktraj_planner.AddPosRPY(&pos2, &rpy2);
-					tasktraj_planner.AddPosRPY(&pos3, &rpy3);
-					tasktraj_planner.AddPosRPY(&pos4, &rpy4);
-					tasktraj_planner.AddPosRPY(&pos1, &rpy1);
+					tasktraj_planner.Reset(q_fdb);
+					Vector3d pos_rpy1, pos_rpy2, pos_rpy3, pos_rpy4;
+					pos_rpy1 << 0.8, 0, 0.23, -pi, pi/6, 0;
+					pos_rpy2 << 0.8, 0.4, 0.23, -5*pi/6, 0, 0;
+					pos_rpy3 << 0.4, 0.4, 0.23, -pi, -pi/6, 0;
+					pos_rpy4 << 0.4, 0, 0.23, -7*pi/6, 0, 0;
+					via_pos.resize(6, 4);
+					tasktraj_planner.AddTraj(&via_pos,eCartesianSpace, true);
 					*operation = {};
 				}
 				else if (strcmp(operation, "washbasin") == 0)
 				{
 					Pose pose0 = urrbt.FKSolveTool(q_fdb);
 					Vector3d rpy0 = RobotTools::Tr2FixedZYX(pose0.rot);
-					tasktraj_planner.Reset(&pose0.pos, &rpy0, false);
-					Vector3d pos1, pos2, pos3, pos4;
-					pos1 << 0.8, 0, 0.23;
-					pos2 << 0.8, 0.4, 0.23;
-					pos3 << 0.4, 0.4, 0.23;
-					pos4 << 0.4, 0, 0.23;
-					Vector3d rpy1, rpy2, rpy3, rpy4;
-					rpy1 << pi / 2, pi / 2, 0;
-					rpy2 << -pi/2, 0, -pi;
-					rpy3 << pi / 2, -pi / 2, 0;
-					rpy4 <<  pi / 2, 0, 0;
-					tasktraj_planner.AddPosRPY(&pos1, &rpy1);
-					tasktraj_planner.AddPosRPY(&pos2, &rpy2);
-					tasktraj_planner.AddPosRPY(&pos3, &rpy3);
-					tasktraj_planner.AddPosRPY(&pos4, &rpy4);
-					tasktraj_planner.AddPosRPY(&pos1, &rpy1);
+					tasktraj_planner.Reset(q_fdb);
+					Vector3d pos_rpy1, pos_rpy2, pos_rpy3, pos_rpy4;
+					pos_rpy1 << 0.8, 0, 0.23, pi/2, pi/2, 0;
+					pos_rpy2 << 0.8, 0.4, 0.23, -pi/2, 0, -pi;
+					pos_rpy3 << 0.4, 0.4, 0.23, pi/2, -pi/2, 0;
+					pos_rpy4 << 0.4, 0, 0.23, pi/2, 0, 0;
+					via_pos.resize(6, 4);
+					tasktraj_planner.AddTraj(&via_pos, eCartesianSpace, true);
 					*operation = {};
 				}
-				CAVP cavp = tasktraj_planner.GenerateMotion();
-				Pose pose;
-				pose.pos = cavp.pos.head(3);
-				pose.rot = FixedZYX2Tr(cavp.pos.tail(3));
+				tasktraj_planner.GenerateJPath(q_cmd);
 				int error = 0;
-				error = urrbt.IKSolve(&q_cmd,&pose, &q_fdb);
+				//error = urrbt.IKSolve(&q_cmd,&pose, &q_fdb);
 				ofile << "iksolve_status: " <<error <<"\t" <<endl;
 				//todo check error
 				urrbt.UpdateJntHoldPos(q_cmd);
@@ -398,172 +379,88 @@ void Simulation()
 
 void SimulationLZX()
 {
-	//initialize all the task data
-	CleanRobot rbt = CreatRobot();
-	InitialTask initial_task(&rbt);
-	HoldTask hold_task(&rbt);
-	char* mirror_type = "scrape";
-	//MirrorTask mirror_task(&rbt, mirror_type);
-	RotXPlaneTask mirror_task(&rbt);
-	SurfaceTask surface_task(&rbt);
-	TableTask table_task(&rbt);
-	ShowerRoomTask showerroom_task(&rbt);
-	vector<BaseTask*> task_data;
-	task_data.push_back(&initial_task);
-	task_data.push_back(&hold_task);
-	task_data.push_back(&mirror_task);
-	task_data.push_back(&surface_task);
-	task_data.push_back(&table_task);
-	task_data.push_back(&showerroom_task);
-	int num_section[] = { 1,1,1,4,1,1 };
-
-	//initialize robot joint position and running state
-	MatrixXd via_pos;
-	Vector5d q_fdb;
-	q_fdb<<0.2, 0.5, 0.7, 0.2, 0.5;//initial joint position
-	int running_state = 0, pre_state = 0;
-
-	const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos1.csv";
-	ofstream ofile;
-	ofile.open(file_name, ios::out|ios::trunc);
-	HANDLE thread = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
-
-	if (!ofile.is_open())
-	{
-		cout<<"failed to open the file"<<endl;
-	}
-	else
-	{
-		cout<<"start to simulation"<<endl;
-		while (true)
-		{
-			running_state = task_data[running_state]->RunLogicOperation(running_state, pre_state, operation);
-			if (running_state!=pre_state)
-			{
-				if (running_state==2)
-				{
-					//preparation for clean mirror task
-					if (strcmp(mirror_type, "rectangle")==0)
-					{
-						Vector3d pos1, pos2, pos3, pos4;
-						pos1<<0.4, 0.7, 0.7; pos2<<-0.4, 0.7, 0.7; pos3<<-0.4, 0.7, 1; pos4<<0.4, 0.7, 1;
-						via_pos.setZero(3, 4);
-						via_pos<<pos1, pos2, pos3, pos4;
-					}
-					else if (strcmp(mirror_type, "circle")==0)
-					{
-						Vector3d center(0, 0.7, 1);
-						Vector3d norm_vec(0.03, 2, 0);
-						double radius = 0.6;
-						double interval = 0.1;
-						via_pos.setZero(3, 3);
-						via_pos.col(0) = center;
-						via_pos.col(1) = norm_vec;
-						via_pos(0, 2) = radius;
-						via_pos(1, 2) = interval;
-					}
-					else
-					{
-						double pitch_x = 90*pi/180;
-						Vector3d pos1, pos2, pos3;
-						pos1<<g_yaw0_x0, 0.8, 1.62;
-						pos2<<g_yaw0_x0, 0.8, 0.84;
-						pos3<<pitch_x, 0, 0;
-						via_pos.setZero(3, 3);
-						via_pos<<pos1, pos2, pos3;
-					}
-
-					*operation = {};
-					cout<<"start to clean the mirror"<<endl;
-				}
-				else if (running_state==3)
-				{
-					//preparation for clean washbasin task
-					double npts[] = { 15,10,8,6 };
-					double center[] = { 0, 0, 0, 0, 0.7, 0.7, 0.7, 0.7, 0.6-0, 0.6-0.1, 0.6-0.2, 0.6-0.3 };
-					double radius[] = { 0.4, 0.3, 0.2, 0.1 };
-					Matrix<double, 3, 4, RowMajor> origin(center);
-					via_pos.setZero(3, 43);
-					vector<Vector3d> vp;
-					for (int midx = 0; midx<sizeof(npts)/sizeof(npts[0]); midx++)
-					{
-						VectorXd theta;
-						theta.setLinSpaced(npts[midx]+1, 0, 2*pi);
-						for (int nidx = 0; nidx<theta.size(); nidx++)
-						{
-							Vector3d tmp_pos;
-							tmp_pos<<radius[midx]*cos(theta(nidx)), radius[midx]*sin(theta(nidx)), 0;
-							tmp_pos += origin.col(midx);
-							vp.push_back(tmp_pos);
-						}
-					}
-					for (int idx = 0; idx<vp.size(); idx++)
-					{
-						via_pos.col(idx) = vp[idx];
-					}
-
-					*operation = {};
-					cout<<"start to clean the surface"<<endl;
-				}
-				else if (running_state==4)
-				{
-					Vector3d pos1, pos2, pos3, pos4;
-					pos1<<-0.3, 1, 0.86; pos2<<0.3, 1, 0.86; pos3<<0.3, 0.8, 0.86; pos4<<-0.3, 0.8, 0.86;
-					via_pos.setZero(3, 4);
-					via_pos<<pos1, pos2, pos3, pos4;
-
-					*operation = {};
-					cout<<"start to clean the table"<<endl;
-				}
-				else if (running_state==5)
-				{
-					Vector3d pos1, pos2, pos3, pos4;
-					pos1<<-0.4, 0.6, 0.8; pos2<<0.4, 0.6, 0.8; pos3<<0.4, 0.6, 0.4; pos4<<-0.4, 0.6, 0.4;
-					via_pos.setZero(3, 4);
-					via_pos<<pos1, pos2, pos3, pos4;
-
-					*operation = {};
-					cout<<"start to clean the showerroom"<<endl;
-				}
-
-				task_data[running_state]->SetTrajPos(&via_pos, num_section[running_state], q_fdb);
-				cout<<"running state: "<<running_state<<endl;
-			}
-			VectorXd q_cmd = task_data[running_state]->RunTask(q_fdb);
-			q_fdb = q_cmd;
-			ofile<<q_cmd<<endl;
-
-			pre_state = running_state;
-			Sleep(1);
-		}
-
-	}
-	cout<<"succeed to simulation and save the data"<<endl;
-	CloseHandle(thread);
-	ofile.close();
-}
-
-void SimulationLZX1()
-{
-	CleanRobot rbt = CreatRobot();
-	Vector5d q_fdb;
-	q_fdb<<0.2, 0.5, 0.7, 0.2, 0.5;//initial joint position
-	double pitch_x = 90*pi/180;
-	double inc_angle[] = { 20*pi/180, 50*pi/180 };
-	double pitch_high = pitch_x-inc_angle[0];
-	double pitch_low = pitch_x-inc_angle[1];
-	rbt.SetPitchRange(pitch_high, pitch_low);
-	Vector3d pos0 = rbt.FKSolveTool(q_fdb).pos;
-	double pitch0 = q_fdb(2)+rbt._tool_pitch;
-	double yaw0 = q_fdb(0)+q_fdb(4);
-	Vector3d rpy0(0, pitch0, yaw0);
-	TaskTrajPlanner tasktraj_planner;
+	UrRobot rbt = CreatUrRobot();
+	Vector6d q_fdb;
+	q_fdb<<0,-35,50,-100,-90,0;//initial joint position
+	q_fdb = q_fdb*pi/180;
+	TaskTrajPlanner task_planner(&rbt, q_fdb);
 	rbt.UpdateJntHoldPos(q_fdb);
 
-	const char* file_name = "C:/00Work/01projects/XProject/src/data/mirrortask_jpos1.csv";
+	string file_name = "D:/00Work/01projects/XProject/src/data/mirrortask_jpos1.csv";
 	ofstream ofile;
 	ofile.open(file_name, ios::out|ios::trunc);
 	HANDLE thread = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
+	//***toilet_lid task plan***//
+	Vector3d a, b, c;
+	a<<0.815, 0.431, -0.2876;
+	b<<0.7674, 0.1089, -0.3071;
+	c<<0.6015, 0.1089, -0.3071;
+	MatrixXd vi_pos;
+	vi_pos.resize(3, 3);
+	vi_pos<<a, b, c;
+	MatrixXd vp;
+	PlanTools::CalcToiletlidPath(vp, &vi_pos, pi/2);
+	//task_planner.AddTraj(&vp, eCartesianArc, false);
+	//***joint plan for grasp&interim***//
+	Vector6d q1, q2;
+	q1<<0, 145, -240, 90, -90, 0;
+	q2<<0, -35, 50, -100, -90, 0;
+	q1 *= pi/180;
+	q2 *= pi/180;
+	MatrixXd via_pos;
+	via_pos.setZero(6, 2);
+	via_pos<<q1, q2;
+	//task_planner.AddTraj(&via_pos, eJointSpace, true);
+	//***mirror task plan***//
+	Vector3d pos1, pos2, pos3, pos4;
+	pos1<<0.8, -0.1, 0.45;
+	pos2<<0.8, 0.4, 0.45;
+	pos3<<0.8, 0.4, 0.81;
+	pos4<<0.8, -0.1, 0.81;
+	via_pos.resize(3, 4);
+	via_pos<<pos1, pos2, pos3, pos4;
+	MatrixXd via_posrpy;
+	//PlanTools::CalcMirrorPath_Normal(via_posrpy, &via_pos, 0.15, 60*pi/180, 0.08);
+	PlanTools::CalcMirrorPath(via_posrpy, &via_pos, 0.15, 10*pi/180, 50*pi/180);
+	cout<<via_posrpy<<endl;
+	task_planner.AddTraj(&via_posrpy, eCartesianSpace, false);
+	//***table task plan***//
+	via_pos.resize(6, 1);
+	via_pos<<0, -35, 50, -105, -90, 0;
+	via_pos *= pi/180;
+	//task_planner.AddTraj(&via_pos, eJointSpace, true);
+	Vector6d pos_rpy1, pos_rpy2, pos_rpy3;
+	pos_rpy1<<0.8, 0, 0.23, -pi, pi/6, 0;
+	pos_rpy2<<0.8, 0.4, 0.23, -5*pi/6, 0, 0;
+	pos_rpy3<<0.4, 0.4, 0.23, -pi, -pi/6, 0;
+	Vector6d pos_rpy4;
+	pos_rpy4<<0.4, 0, 0.23, -7*pi/6, 0, 0;
+	via_pos.resize(6, 4);
+	via_pos<<pos_rpy1, pos_rpy2, pos_rpy3, pos_rpy4;
+	//task_planner.AddTraj(&via_pos, eCartesianSpace, true);
+	//***toilet task plan***//
+	q1<<0, -35, 50, -105, -90, 0;
+	q2<<0.35, 0.52, 0.52, -1.1, -1.4, 0.52;
+	q1 *= pi/180;
+	via_pos.resize(6, 2);
+	via_pos<<q1, q2;
+	//task_planner.AddTraj(&via_pos, eJointSpace, true);
+	Vector6d pos_rpy5;
+	pos_rpy1<<0.5297, 0.2516, -0.4929, -175*pi/180, 0.3*pi/180, -106*pi/180;
+	pos_rpy2<<0.5208, 0.2905, -0.5424, -170*pi/180, -0.8*pi/180, -104.7*pi/180;
+	pos_rpy3<<0.6039, 0.4115, -0.544, -168*pi/180, 3.7*pi/180, -114.8*pi/180;
+	pos_rpy4<<0.7013, 0.3362, -0.5544, -177.7*pi/180, 8.6*pi/180, -113*pi/180;
+	pos_rpy5<<0.6396, 0.2582, -0.567, -179.4*pi/180, 4.4*pi/180, -109.2*pi/180;
+	via_pos.resize(6, 5);
+	via_pos<<pos_rpy1, pos_rpy2, pos_rpy3, pos_rpy4, pos_rpy5;
+	//task_planner.AddTraj(&via_pos, eBSpline, true);
+
+	Vector6d q_traj;
+	while (!task_planner._task_completed)
+	{
+		task_planner.GenerateJPath(q_traj);
+		ofile<<q_traj<<endl;
+	}
 
 	if (!ofile.is_open())
 	{
@@ -572,95 +469,174 @@ void SimulationLZX1()
 	else
 	{
 		cout<<"start to simulation"<<endl;
-		while (true)
-		{
-			Vector5d q_cmd;
-			if (!tasktraj_planner._task_completed)
-			{
-				//Vector6d pos_rpy = tasktraj_planner.GeneratePoint();
-				if (strcmp(operation, "mirror")==0)
-				{
-					pos0 = rbt.FKSolveTool(q_fdb).pos;
-					pitch0 = q_fdb(2)+rbt._tool_pitch;
-					yaw0 = q_fdb(0)+q_fdb(4);
-					rpy0<<0, pitch0, yaw0;
-					tasktraj_planner.Reset(&pos0, &rpy0, true);
-					Vector3d pos1, pos2, pos3;
-					pos1<<g_yaw0_x0, 0.8, 1.62;
-					pos2<<g_yaw0_x0, 0.8, 0.84;
-					pos3<<g_yaw0_x0, 0.8-0.1, 0.84;
-					tasktraj_planner.AddPosRPY(&pos1, &Vector3d(0, rbt._pitch_high, 0));
-					tasktraj_planner.AddPosRPY(&pos2, &Vector3d(0, rbt._pitch_low, 0));
-					tasktraj_planner.AddPosRPY(&pos3, &Vector3d(0, rbt._pitch_low, 0));
-					*operation = {};
-				}
-				else if (strcmp(operation, "table")==0)
-				{
-					pos0 = rbt.FKSolveTool(q_fdb).pos;
-					pitch0 = q_fdb(2)+rbt._tool_pitch;
-					yaw0 = q_fdb(0)+q_fdb(4);
-					rpy0<<0, pitch0, yaw0;
-					tasktraj_planner.Reset(&pos0, &rpy0, true);
-					Vector3d pos1(0.5, 0.6, 0.5);
-					Vector3d pos2(-0.5, 0.6, 0.5);
-					Vector3d pos3(-0.5, 0.9, 0.5);
-					Vector3d pos4(0.5, 0.9, 0.5);
-					tasktraj_planner.AddPosRPY(&pos1, &Vector3d(0, 0, 0));
-					tasktraj_planner.AddPosRPY(&pos2, &Vector3d(0, 0, 0));
-					tasktraj_planner.AddPosRPY(&pos3, &Vector3d(0, 0, 0));
-					tasktraj_planner.AddPosRPY(&pos4, &Vector3d(0, 0, 0));
-					*operation = {};
-				}
-				CAVP cavp = tasktraj_planner.GenerateMotion();
-				q_cmd = rbt.IKSolvePitchYaw(cavp.pos.head(3), cavp.pos(4), cavp.pos(5), q_fdb);
-				rbt.UpdateJntHoldPos(q_cmd);
-				//ofile<<cavp.pos<<endl;
-			}
-			else
-			{
-				if ((strcmp(operation, "mirror")==0)||(strcmp(operation, "table")==0))
-					tasktraj_planner._task_completed = false;
-				q_cmd = rbt.HoldJntPos();
-				Sleep(1);
-			}
-			q_fdb = q_cmd;
-			ofile<<q_cmd<<endl;
-		}
+		//while (true)
+		//{
+		//	Vector6d q_cmd;
+		//	if (!tasktraj_planner._task_completed)
+		//	{
+		//		if (strcmp(operation, "mirror")==0)
+		//		{
+		//			Pose pose0 = rbt.FKSolveTool(q_fdb);
+		//			Vector3d rpy0 = RobotTools::Tr2FixedZYX(pose0.rot);
+		//			tasktraj_planner.Reset(&pose0.pos, &rpy0, true);
+		//			Vector3d pos1, pos2, pos3;
+		//			pos1<<0.5, 0, 1;
+		//			pos2<<0.65, 0, 1;
+		//			pos3<<0.65, 0, 0.6;
+		//			Vector3d rpy1, rpy2, rpy3;
+		//			rpy1<<pi/2, pi/2, 0;
+		//			rpy2<<pi/2, pi/2, 0;
+		//			rpy3<<pi/2, pi/2, 0;
+		//			//vector<Vector3d*> pos_corner, rpy_corner;
+		//			//pos_corner.push_back(&pos1);
+		//			//pos_corner.push_back(&pos2);
+		//			//pos_corner.push_back(&pos3);
+		//			//rpy_corner.push_back(&rpy1);
+		//			//rpy_corner.push_back(&rpy2);
+		//			//rpy_corner.push_back(&rpy3);
+		//			//tasktraj_planner.AddPosRPY(&pos_corner, &rpy_corner);
+		//			tasktraj_planner.AddPosRPY(&pos1, &rpy1);
+		//			tasktraj_planner.AddPosRPY(&pos2, &rpy2);
+		//			tasktraj_planner.AddPosRPY(&pos3, &rpy3);
+		//			*operation = {};
+		//		}
+		//		else if (strcmp(operation, "table")==0)
+		//		{
+		//			Pose pose0 = rbt.FKSolveTool(q_fdb);
+		//			Vector3d rpy0 = RobotTools::Tr2FixedZYX(pose0.rot);
+		//			tasktraj_planner.Reset(&pose0.pos, &rpy0, false);
+		//			Vector3d pos1, pos2, pos3, pos4;
+		//			pos1<<0.8, 0, 0.23;
+		//			pos2<<0.8, 0.4, 0.23;
+		//			pos3<<0.4, 0.4, 0.23;
+		//			pos4<<0.4, 0, 0.23;
+		//			Vector3d rpy1, rpy2, rpy3, rpy4;
+		//			rpy1<<-pi, pi/6, 0;
+		//			rpy2<<-5*pi/6, 0, 0;
+		//			rpy3<<-pi, -pi/6, 0;
+		//			rpy4<<-7*pi/6, 0, 0;
+		//			tasktraj_planner.AddPosRPY(&pos1, &rpy1);
+		//			tasktraj_planner.AddPosRPY(&pos2, &rpy2);
+		//			tasktraj_planner.AddPosRPY(&pos3, &rpy3);
+		//			tasktraj_planner.AddPosRPY(&pos4, &rpy4);
+		//			tasktraj_planner.AddPosRPY(&pos1, &rpy1);
+		//			*operation = {};
+		//		}
+		//		else if (strcmp(operation, "arc")==0)
+		//		{
+		//			Vector6d pos_ryp1, pos_rpy3;
+		//			Vector3d pos2;
+		//			pos_ryp1<<0.3, 1.2, -0.1, 0, 0, 0;
+		//			pos_rpy3<<-0.4, 0, 0.8, 0, 0, 0;
+		//			pos2<<0, 0.4, 0.2;
+		//			tasktraj_planner.Reset(&pos_ryp1, &pos2, &pos_rpy3);
+		//			*operation = {};
+		//		}
+		//		else if(strcmp(operation,"toilet")==0)
+		//		{
+		//			tasktraj_planner.Reset(RobotTools::eBSpline);
+		//			Pose pose0 = rbt.FKSolveTool(q_fdb);
+		//			Vector3d rpy0 = RobotTools::Tr2FixedZYX(pose0.rot);
+		//			Vector3d pos1, pos2, pos3, pos4, pos5;
+		//			Vector3d rpy1, rpy2, rpy3, rpy4, rpy5;
+		//			pos1<<0.5297, 0.2516, -0.4929;
+		//			rpy1<<-175.34*pi/180, 0.3123*pi/180, -106.302*pi/180;
+		//			pos2<<0.5208, 0.2905, -0.5424;
+		//			rpy2<<-169.71*pi/180, -0.7918*pi/180, -104.718*pi/180;
+		//			pos3<<0.6039, 0.4115, -0.544;
+		//			rpy3<<-167.95*pi/180, 3.7387*pi/180, -114.773*pi/180;
+		//			pos4<<0.7013, 0.3362, -0.5544;
+		//			rpy4<<-177.72*pi/180, 8.613*pi/180, -113*pi/180;
+		//			pos5<<0.6396, 0.2582, -0.567;
+		//			rpy5<<-179.4*pi/180, 4.39*pi/180, -109.2*pi/180;
+		//			vector<Vector3d*> pos_corner, rpy_corner;
+		//			pos_corner.push_back(&pose0.pos);
+		//			pos_corner.push_back(&pos1);
+		//			pos_corner.push_back(&pos2);
+		//			pos_corner.push_back(&pos3);
+		//			pos_corner.push_back(&pos4);
+		//			pos_corner.push_back(&pos5);
+		//			rpy_corner.push_back(&rpy0);
+		//			rpy_corner.push_back(&rpy1);
+		//			rpy_corner.push_back(&rpy2);
+		//			rpy_corner.push_back(&rpy3);
+		//			rpy_corner.push_back(&rpy4);
+		//			rpy_corner.push_back(&rpy5);
+		//			tasktraj_planner.AddPosRPY(&pos_corner, &rpy_corner);
+		//			*operation = {};
+		//		}
+		//		//CAVP cavp = tasktraj_planner.GenerateMotion();
+		//		//Pose pose;
+		//		//pose.pos = cavp.pos.head(3);
+		//		//pose.rot = FixedZYX2Tr(cavp.pos.tail(3));
+		//		//rbt.IKSolve(&q_cmd, &pose, &q_fdb);
+		//		////q_cmd = rbt.IKSolvePitchYaw(cavp.pos.head(3), cavp.pos(4), cavp.pos(5), q_fdb);
+		//		//rbt.UpdateJntHoldPos(q_cmd);
+		//		//ofile<<cavp.pos<<endl;
+		//	}
+		//	else
+		//	{
+		//		if ((strcmp(operation, "mirror")==0)||(strcmp(operation, "table")==0)
+		//			||(strcmp(operation, "arc")==0)||(strcmp(operation, "toilet")==0))
+		//			tasktraj_planner._task_completed = false;
+		//		q_cmd = rbt.HoldJntPos();
+		//		Sleep(1);
+		//	}
+		//	q_fdb = q_cmd;
+		//	ofile<<q_cmd<<endl;
+		//}
 	}
-
-
 }
 
-#include "InterruptStop/InterruptStop.h"
-#include "RobotControl.h"
-static RobotControl g_robot;
+void RunDynIdenTraj()
+{
+	Vector6d q_fdb;
+	q_fdb<<0.0, -0.0, 0.0, -0.0, 0.0, 0;
+	cout<<"start to simulation"<<endl;
+	string freq[2] = { "0.5","1" };
+	for (int idx = 0; idx<2; idx++)
+	{
+		string file_read = "../data/traj_"+freq[idx]+"hz.csv";
+		RobotDynIdenTest dyniden_test(5*(idx+1), q_fdb, file_read);
+		//Vector6d q_cmd;
+		//while (!dyniden_test._traj_completed)
+		//{
+		//	q_cmd = dyniden_test.GenerateTraj();
+		//	q_fdb = q_cmd;
+		//}
+	}
+}
+
 
 void Simulation_TestRobotControl()
 {
 	int jointnum = g_robot.CreatRobot();
+	const double D2R = pi / 180.0;
+	cout << "current robot:" << jointnum << endl;
 	Vector6d q_fdb, q_cmd;
-	q_fdb << 0.2, 0.5, 0.7, 0.2, 0.5, 0;//initial joint position
+	q_fdb << 14 * D2R, -33.0* D2R, 33.5*D2R, -30 * D2R, -90 * D2R, 0;
 
 	time_t timer = time(NULL);
 	char time_format[1024];
 	strftime(time_format, 1024, "%Y-%m-%d_%H.%M.%S", localtime(&timer));
 	string timestring(time_format);
-	string file_name = "/mnt/hgfs/VMShare/traj_pos" + timestring + ".txt";
+	string file_name = "/mnt/hgfs/VMShare/kinematics_mdh/kinematics_mdh/traj_pos_ur" + timestring + ".txt";
 
 	ofstream ofile;
 	ofile.open(file_name, ios::out | ios::trunc);
 
+	//测试时用的状态量，实际时由外部给信号
+	static int counttest_num = 0; int pause = 0;  //test
 	int mainstate = 0;  //主状态
 	int runstate = 0;   //子状态
 
-	//测试时用的状态量，实际时由外部给信号
-	static int counttest_num = 0; int pause = 0;  //test
+	TaskTrajPlanner tasktraj_planner;
+	Vector3d posn[50], rpyn[50];
+	Vector6d jntpos[50];
 
 	//暂停处理
 	double joint_vel[6];
 	InterruptStop interrupt_data(g_cycle_time);
-	//规划处理
-	TaskTrajPlanner tasktraj_planner;
 
 	g_robot.UpdateJointHoldPos(q_fdb);
 
@@ -671,107 +647,32 @@ void Simulation_TestRobotControl()
 		case 0: //standby
 		{
 			q_cmd = q_fdb;
-			//根据不同的任务，计算点位，添加路径
-			int tasknum = 2; //test
 
-			int change_toolflag = (tasknum == 1);//test  测试修改工具
-			if (change_toolflag)
+			//test 转化相机数据
+			Vector3d camer_pos[4], camer_rpy[4];
+			//toilet
+			camer_pos[0] << -0.60848, -0.706677, 0.53975; //pos_right_top
+			camer_pos[1] << 0.1528, 0.3145, 0.6677;;    //lt
+			camer_pos[2] << 0.1485, 0.0604, 0.5774; //pos_left_bot
+			camer_pos[3] << -0.3372, 0.05521, 0.577; //pos_right_bottom													
+			camer_rpy[0] << 0, 0, 0;
+			camer_rpy[3] = camer_rpy[2] = camer_rpy[1] = camer_rpy[0];
+
+			for (int i = 0; i < 4; i++)
+				g_robot.TranCamerPosToRobotBase(q_fdb, camer_pos[i], camer_rpy[i], posn[i], rpyn[i]);				
+
+			Vector3d temp;
+			temp << rpyn[0][0] * 180 / pi, rpyn[0][1] * 180 / pi, rpyn[0][2] * 180 / pi;
+
+			//对相机给的转为base后位置，做保护限制
+			Vector3d max_xyz(1.0, 0.5, 1.05), min_xyz(0.4, -0.5, -0.05);
+			for (int i = 0; i < 4; i++)
 			{
-				Vector3d toolpos, toolrpy;
-				toolpos << g_tool_mirror[0], g_tool_mirror[1], g_tool_mirror[2];
-				toolrpy << g_tool_mirror[3], g_tool_mirror[4], g_tool_mirror[5];
-
-				g_robot.UpdateTool(toolpos, toolrpy);
+				VectorXd temp_q_pos = posn[i];
+				MathTools::LimitVector(min_xyz, &temp_q_pos, max_xyz);
+				posn[i] = temp_q_pos;
 			}
-
-			MatrixXd via_pos;
-			Vector3d posn[50], rpyn[50], seg_optn[50];
-
-			if (tasknum == 1) //擦玻璃数据
-			{
-				//preparation for clean mirror task
-				Vector3d pos1, pos2, pos3, pos4;
-				pos1 << g_yaw0_x0, 0.7, 1.52;
-				pos2 << g_yaw0_x0, 0.92, 1.52;
-				pos3 << g_yaw0_x0, 0.92, 0.84;
-				pos4 << g_yaw0_x0, 0.7, 0.84;
-				int posnum = 4;
-				via_pos.setZero(3, posnum);
-				via_pos << pos1, pos2, pos3, pos4;
-
-				//上面都是测试数据
-
-				//via_pos由相机提供，然后内部做一层转化处理，转为cal_via_pos
-				MatrixXd cal_via_pos = g_robot.CalTrajViaPos(&via_pos, q_fdb);
-
-				Vector3d pos0 = cal_via_pos.col(0), rpy0 = cal_via_pos.col(1);
-				bool conti_type = cal_via_pos.col(2)(0) > 0; //path smooth flag
-
-				tasktraj_planner.Reset(&pos0, &rpy0, conti_type);  //add startpos
-
-				for (int i = 0; i < cal_via_pos.cols() / 3 - 1; i++)
-				{
-					posn[i] = cal_via_pos.col((i + 1) * 3), rpyn[i] = cal_via_pos.col((i + 1) * 3 + 1), seg_optn[i] = cal_via_pos.col((i + 1) * 3 + 2);
-					tasktraj_planner.AddPosRPY(&posn[i], &rpyn[i]);
-				}
-			}
-			else if (tasknum == 2) //擦桌子数据
-			{
-				posn[0] << -0.2, 0.8, 0.65; posn[1] << 0.2, 0.8, 0.65; posn[2] << 0.2, 0.65, 0.65; posn[3] << -0.2, 0.65, 0.65;
-
-				int posnum = 4; //点位个数根据界面设置值进行修改
-				via_pos.setZero(3, posnum);
-
-				for (int i = 0; i < posnum; ++i)
-				{
-					via_pos.col(i) = posn[i];
-				}
-
-				cout << "start to clean the table" << endl;
-				//上面都是测试数据
-
-				MatrixXd cal_via_pos = g_robot.CalTrajViaPos_AbsolatePos(&via_pos, q_fdb);
-
-				Vector3d pos0 = cal_via_pos.col(0), rpy0 = cal_via_pos.col(1);
-				bool conti_type = cal_via_pos.col(2)(0) > 0; //path smooth flag
-
-				tasktraj_planner.Reset(&pos0, &rpy0, conti_type);  //add startpos
-
-				for (int i = 0; i < cal_via_pos.cols() / 3 - 1; i++)
-				{
-					posn[i] = cal_via_pos.col((i + 1) * 3), rpyn[i] = cal_via_pos.col((i + 1) * 3 + 1), seg_optn[i] = cal_via_pos.col((i + 1) * 3 + 2);
-					tasktraj_planner.AddPosRPY(&posn[i], &rpyn[i]);
-				}
-			}
-			else if (tasknum == 3)  //自测擦镜子添加点位数据
-			{
-				//add pos
-				double pitch_x = 90 * pi / 180;
-				double inc_angle[] = { 20 * pi / 180, 50 * pi / 180 };
-				double pitch_high = pitch_x - inc_angle[0];
-				double pitch_low = pitch_x - inc_angle[1];
-				//                rbt.SetPitchRange(pitch_high, pitch_low);
-				Vector3d pos0, rpy0;
-				g_robot.FKSolveTool(q_fdb, pos0, rpy0);
-
-				Vector3d pos1, pos2, pos3, pos4;
-				pos1 << g_yaw0_x0, 0.8 - 0.3, 1.52;  //g_yaw0_x0 = 0.0275;
-				pos2 << g_yaw0_x0, 0.8, 1.52;
-				pos3 << g_yaw0_x0, 0.8, 0.84;
-				pos4 << g_yaw0_x0, 0.8 - 0.3, 0.84;
-
-				Vector3d rpy1, rpy2, rpy3, rpy4;
-				rpy1 << 0, pitch_high, 0;
-				rpy2 << 0, pitch_high, 0;
-				rpy3 << 0, pitch_low, 0;
-				rpy4 << 0, pitch_low, 0;
-
-				tasktraj_planner.Reset(&pos0, &rpy0, false);  //add startpos
-				tasktraj_planner.AddPosRPY(&pos1, &rpy1);
-				tasktraj_planner.AddPosRPY(&pos2, &rpy2);
-				tasktraj_planner.AddPosRPY(&pos3, &rpy3);
-				tasktraj_planner.AddPosRPY(&pos4, &rpy4);
-			}
+			//test 转化相机数据end			
 
 			//跳主状态running.moving
 			mainstate = 1;
@@ -794,18 +695,15 @@ void Simulation_TestRobotControl()
 					g_robot.UpdateJointHoldPos(q_cmd);
 
 					if (interrupt_data.GetInterruptStopPlanState() == eInterruptPlanFinished)
-					{						
+					{
 						//外部触发重新开始
-						int resume = 0;  //test						
-
+						int resume = 0;  //test		
 						if (resume == 1)
 						{
 							//reinit tasktraj_planner and trans to moving
 							Vector3d pos0, rpy0;
 							g_robot.FKSolveTool(q_fdb, pos0, rpy0);
-
-							tasktraj_planner.ReInitSegTrajPlanner(pos0, rpy0);
-
+							//tasktraj_planner.ReInitSegTrajPlanner(pos0, rpy0, posn, rpyn);
 							interrupt_data.InitInterruptData(0);
 
 							runstate = 2; //moving
@@ -813,7 +711,7 @@ void Simulation_TestRobotControl()
 						else if (resume == 2)  //直接放弃该任务，则跳入standby
 						{
 							interrupt_data.InitInterruptData(0);
-							tasktraj_planner.Reset(false);
+							//tasktraj_planner.Reset(false);
 							mainstate = 0;
 						}
 					}
@@ -821,15 +719,16 @@ void Simulation_TestRobotControl()
 
 				break;
 			case 2:  //moving
-				CAVP cavp = tasktraj_planner.GenerateMotion();
-				g_robot.TranCavpToJointPos(cavp, q_fdb, q_cmd);
+				tasktraj_planner.GenerateJPath(q_cmd);					
 
-				cout << q_cmd << endl;				
+				cout << q_cmd << endl;
+
+				counttest_num++;  //test
 
 				//所有路径结束，跳回主状态standby；接着判断是否有任务过来，在standby里去添加路径
-				if (tasktraj_planner.GetSegTrajPlannerDone())
+				if (tasktraj_planner._task_completed)
 				{
-					mainstate = 2;
+					mainstate = 0;
 				}
 				else if (pause)//外部触发pause
 				{
@@ -840,7 +739,7 @@ void Simulation_TestRobotControl()
 			}
 
 			break;
-		case 2: //errorstop
+		case 2: //errorstop				
 			break;
 		default:
 			break;
@@ -850,58 +749,36 @@ void Simulation_TestRobotControl()
 			joint_vel[i] = (q_cmd[i] - q_fdb[i]) / g_cycle_time;
 
 		q_fdb = q_cmd;
-		ofile << q_cmd[0] << "\t" << q_cmd[1] << "\t" << q_cmd[2] << "\t" << q_cmd[3] << "\t" << q_cmd[4] << endl;
+		ofile << q_cmd[0] << "\t" << q_cmd[1] << "\t" << q_cmd[2] << "\t" << q_cmd[3] << "\t" << q_cmd[4] << "\t" << q_cmd[5] << endl;
 	}
 }
 
 
 int main()
 {
-	ID_test test_mode = simulation;
-	switch (test_mode)
+	map<ID_test, PtrTest> test_map;
+	TestInfo config[] = 
 	{
-	case dhmodel:
-		Testdhmodel();
-		break;
+		{dhmodel,	Testdhmodel},
+		{other,		Testother},
+		{iksolver,	Testiksolver},
+		{jacobian,	Testjacobian},
+		{bspline,	TestBSpline}
+	};
+	int test_count = sizeof(config)/sizeof(*config);
+	while (test_count--)
+		test_map[config[test_count].testID] = config[test_count].testfunc;
 
-	case jtrajpoly:
-		Testjtrajpoly();
-		break;
-
-	case jtrajlspb:
-		Testjtrajlspb();
-		break;
-
-	case ctrajarctrans:
-		Testctrajarctrans();
-		break;
-
-	case iksolver:
-		Testiksolver();
-		break;
-
-	case jacobian:
-		Testjacobian();
-		break;
-
-	case bspline:
-		TestBSpline();
-		break;
-
-	case simulation:
 #if defined(lzx)
-		SimulationLZX1();
+	test_map[simulation] = SimulationLZX;
 #elif defined(wyc)
-		Simulation();
+	test_map[simulation] = Simulation;
 #elif defined(xnd)
-		Simulation_TestRobotControl();
-#endif // lzx
-		break;
+	test_map[simulation] = Simulation_TestRobotControl;
+#endif
 
-	case other:
-		Testother();
-		break;
-	}
+	ID_test test_mode = simulation;
+	test_map[test_mode]();
 
     return 0;
 }

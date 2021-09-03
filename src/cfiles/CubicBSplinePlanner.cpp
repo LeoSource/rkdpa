@@ -1,43 +1,99 @@
 #include "CubicBSplinePlanner.h"
 
-
-CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd* via_pos, char* option)
+CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd* via_pos, bool interp)
+	:_interp(interp)
 {
-	_nump = via_pos->cols();
+	_nump = static_cast<int>(via_pos->cols());
+	if ((_nump<4 && interp) || (!interp && _nump<20))
+		throw eErrBSpline;
+
 	_pdegree = 3;
 	_uknot_vec = CalcUKnot(via_pos);
-	CalcBSplineParams(via_pos, option);
+	CalcBSplineParams(via_pos);
+	_uplanner.InitPlanner(Vector2d(0, 1), 2, 1, 1);
 }
 
-CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd* via_pos, char* option, double uk)
+CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd* via_pos, bool interp, double uk)
+	:_interp(interp)
 {
-	_nump = via_pos->cols();
+	_nump = static_cast<int>(via_pos->cols());
+	if ((_nump<4&&interp)||(!interp && _nump<20))
+		throw eErrBSpline;
+
 	_pdegree = 3;
 	_uknot_vec = uk*CalcUKnot(via_pos);
-	CalcBSplineParams(via_pos, option);
+	CalcBSplineParams(via_pos);
+	double qf = _uknot_vec.maxCoeff();
+	_uplanner.InitPlanner(Vector2d(0, qf), 2, 1, qf);
 }
 
-CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd* via_pos, char* option, VectorXd uk)
+CubicBSplinePlanner::CubicBSplinePlanner(MatrixXd* via_pos, bool interp, VectorXd uk)
+	:_interp(interp)
 {
-	_nump = via_pos->cols();
+	_nump = static_cast<int>(via_pos->cols());
+	if ((_nump<4&&interp)||(!interp && _nump<20))
+		throw eErrBSpline;
+
 	_pdegree = 3;
 	_uknot_vec = uk;
-	CalcBSplineParams(via_pos, option);
+	CalcBSplineParams(via_pos);
+	double qf = _uknot_vec.maxCoeff();
+	_uplanner.InitPlanner(Vector2d(0, qf), 2, 1, qf);
 }
 
-void CubicBSplinePlanner::CalcBSplineParams(MatrixXd* via_pos, char* option)
+void CubicBSplinePlanner::GeneratePath(Vector6d& cpos)
 {
-	if (strcmp(option, "interpolation")==0)
-	{
+	RobotTools::JAVP uavp = _uplanner.GenerateMotion(_t);
+	RobotTools::CAVP cavp = GenerateMotion(uavp.pos, uavp.vel, uavp.acc);
+	cpos = cavp.pos;
+	_t += g_cycle_time;
+	double tf = _uplanner.GetFinalTime();
+	MathTools::LimitMax(tf, _t);
+	if (fabs(_t-tf)<EPS3)
+		_plan_completed = true;
+}
+
+void CubicBSplinePlanner::GenerateMotion(Vector6d& cpos, Vector6d& cvel, Vector6d& cacc)
+{
+	RobotTools::JAVP uavp = _uplanner.GenerateMotion(_t);
+	RobotTools::CAVP cavp = GenerateMotion(uavp.pos, uavp.vel, uavp.acc);
+	cpos = cavp.pos;
+	cvel = cavp.vel;
+	cacc = cavp.acc;
+	_t += g_cycle_time;
+	double tf = _uplanner.GetFinalTime();
+	MathTools::LimitMax(tf, _t);
+	if (fabs(_t-tf)<EPS3)
+		_plan_completed = true;
+}
+
+void CubicBSplinePlanner::Reset(Vector6d pos_rpy, bool interp)
+{
+	_t = 0;
+	_interp = interp;
+}
+
+
+
+void CubicBSplinePlanner::CalcBSplineParams(MatrixXd* via_pos)
+{
+	if (_interp)
+	{	//interpolation method
 		_num_ctrlp = _nump+2;
 		_knot_vec = CalcKnotVec();
-		_ctrl_pos = CalcCtrlPos(via_pos);
+		MatrixXd pos = via_pos->topRows(3);
+		MatrixXd rpy = via_pos->bottomRows(3);
+		_ctrl_pos = CalcCtrlPos(&pos);
+		_ctrl_rot = CalcCtrlPos(&rpy);
 	}
-	else if (strcmp(option, "approximation")==0)
-	{
+	else
+	{	//approximation method
 		_num_ctrlp = 20;
 		_knot_vec = CalcApproKnotVec();
-		_ctrl_pos = CalcApproCtrlPos(via_pos);
+		MatrixXd pos = via_pos->topRows(3);
+		MatrixXd rpy = via_pos->bottomRows(3);
+		_ctrl_pos = CalcApproCtrlPos(&pos);
+		_ctrl_rot = CalcApproCtrlPos(&rpy);
 	}
 }
 
@@ -46,7 +102,7 @@ MatrixXd CubicBSplinePlanner::CalcCtrlPos(MatrixXd* q)
 	int n = _nump;
 	int m = _num_ctrlp;
 	VectorXd u_hat = _uknot_vec;
-	int dim = q->rows();
+	int dim = static_cast<int>(q->rows());
 	MatrixXd p;
 	p.setZero(dim, m);
 	VectorXd t1 = (q->col(1)-q->col(0))/(u_hat(1)-u_hat(0));
@@ -91,7 +147,7 @@ MatrixXd CubicBSplinePlanner::CalcApproCtrlPos(MatrixXd* q)
 	int n = _nump;
 	int m = _num_ctrlp;
 	VectorXd u_hat = _uknot_vec;
-	int dim = q->rows();
+	int dim = static_cast<int>(q->rows());
 	MatrixXd p;
 	p.setZero(dim, m);
 	p.col(0) = q->col(0);
@@ -136,19 +192,21 @@ VectorXd CubicBSplinePlanner::CalcKnotVec()
 	return knot_vec;
 }
 
-VectorXd CubicBSplinePlanner::CalcUKnot(MatrixXd* q)
+VectorXd CubicBSplinePlanner::CalcUKnot(MatrixXd* pos_rpy)
 {
+	//only use position to define uniform knot vector
+	MatrixXd q = pos_rpy->topRows(3);
 	VectorXd uk;
 	uk.setZero(_nump);
 	uk(uk.size()-1) = 1;
 	double d = 0;
 	for (int idx = 1; idx<_nump; idx++)
 	{
-		d += MathTools::Norm(q->col(idx)-q->col(idx-1));
+		d += MathTools::Norm(q.col(idx)-q.col(idx-1));
 	}
 	for (int idx = 1; idx<_nump-1; idx++)
 	{
-		uk(idx) = uk(idx-1)+MathTools::Norm(q->col(idx)-q->col(idx-1))/d;
+		uk(idx) = uk(idx-1)+MathTools::Norm(q.col(idx)-q.col(idx-1))/d;
 	}
 
 	return uk;
@@ -165,7 +223,7 @@ VectorXd CubicBSplinePlanner::CalcApproKnotVec()
 	knot_vec.setZero(m+p+1);
 	for (int jidx = 1; jidx<m-p; jidx++)
 	{
-		int idx = floor((jidx)*d);
+		int idx = static_cast<int>(floor((jidx)*d));
 		double alph = (jidx)*d-idx;
 		knot_vec(jidx+p) = (1-alph)*uk(idx-1)+alph*uk(idx);
 	}
@@ -246,17 +304,47 @@ double CubicBSplinePlanner::CalcDiffCoeff(int k, int idx, int jidx)
 }
 
 
-RobotTools::CLineAVP CubicBSplinePlanner::GenerateMotion(double u, double du, double ddu)
+RobotTools::CAVP CubicBSplinePlanner::GenerateMotion(double u, double du, double ddu)
 {
-	RobotTools::CLineAVP cavp;
-	cavp.pos = GeneratePos(u);
-	cavp.vel = GenerateVel(u, du);
-	cavp.acc = GenerateAcc(u, du, ddu);
+	RobotTools::CAVP cavp;
+	int m = _num_ctrlp;
+	VectorXd b_coeff, diff_bcoeff, diff2_bcoeff;
+	b_coeff.setZero(m);
+	diff_bcoeff.setZero(m);
+	diff2_bcoeff.setZero(m);
+	if (fabs(u-_knot_vec.maxCoeff())<EPS)
+		b_coeff(m-1) = 1;
+	else
+	{
+		for (int idx = 0; idx<m; idx++)
+		{
+			b_coeff(idx) = CalcBSplineCoeff(3, idx, u);
+		}
+	}
+	for (int idx = 0; idx<m; idx++)
+	{
+		diff_bcoeff(idx) = DiffBSplineCoeff(3, idx, u, 1);
+		diff2_bcoeff(idx) = DiffBSplineCoeff(3, idx, u, 2);
+	}
+	Vector3d pos = _ctrl_pos*b_coeff;
+	Vector3d rpy = _ctrl_rot*b_coeff;
+	Vector3d vel_pos = _ctrl_pos*diff_bcoeff*du;
+	Vector3d vel_rpy = _ctrl_rot*diff_bcoeff*du;
+	Vector3d acc_pos = _ctrl_pos*diff2_bcoeff*pow(du, 2)
+		+_ctrl_pos*diff_bcoeff*ddu;
+	Vector3d acc_rpy = _ctrl_rot*diff2_bcoeff*pow(du, 2)
+		+_ctrl_rot*diff_bcoeff*ddu;
+	Matrix3d rpy_map = RobotTools::RPY2Jaco(rpy);
+	Vector3d vel_rot = rpy_map*vel_rpy;
+	Vector3d acc_rot = rpy_map*acc_rpy;
+	cavp.pos<<pos, rpy;
+	cavp.vel<<vel_pos, vel_rot;
+	cavp.acc<<acc_pos, acc_rot;
 
 	return cavp;
 }
 
-Vector3d CubicBSplinePlanner::GeneratePos(double u)
+Vector6d CubicBSplinePlanner::GeneratePos(double u)
 {
 	int m = _num_ctrlp;
 	VectorXd b_coeff;
@@ -271,10 +359,13 @@ Vector3d CubicBSplinePlanner::GeneratePos(double u)
 		}
 	}
 	Vector3d pos = _ctrl_pos*b_coeff;
-	return pos;
+	Vector3d rpy = _ctrl_rot*b_coeff;
+	Vector6d pos_rpy;
+	pos_rpy<<pos, rpy;
+	return pos_rpy;
 }
 
-Vector3d CubicBSplinePlanner::GenerateVel(double u, double du)
+Vector6d CubicBSplinePlanner::GenerateVel(double u, double du)
 {
 	int m = _num_ctrlp;
 	VectorXd diff_bcoeff;
@@ -284,12 +375,16 @@ Vector3d CubicBSplinePlanner::GenerateVel(double u, double du)
 		diff_bcoeff(idx) = DiffBSplineCoeff(3, idx, u, 1);
 	}
 	//dp/dt=(dp/du)*(du/dt)
-	Vector3d vel = _ctrl_pos*diff_bcoeff*du;
+	Vector3d vel_pos = _ctrl_pos*diff_bcoeff*du;
+	Vector3d vel_rpy = _ctrl_rot*diff_bcoeff*du;
+	Vector6d pos_rpy = GeneratePos(u);
+	Vector3d vel_rot = RobotTools::RPY2Jaco(pos_rpy.tail(3))*vel_rpy;
+	Vector6d vel;
+	vel<<vel_pos, vel_rot;
 	return vel;
 }
 
-
-Vector3d CubicBSplinePlanner::GenerateAcc(double u, double du, double ddu)
+Vector6d CubicBSplinePlanner::GenerateAcc(double u, double du, double ddu)
 {
 	int m = _num_ctrlp;
 	VectorXd diff_bcoeff, diff2_bcoeff;
@@ -301,8 +396,14 @@ Vector3d CubicBSplinePlanner::GenerateAcc(double u, double du, double ddu)
 		diff2_bcoeff(idx) = DiffBSplineCoeff(3, idx, u, 2);
 	}
 	//ddp/ddt = (dp/du)*ddu+(ddp/ddu)*du^2
-	Vector3d acc = _ctrl_pos*diff2_bcoeff*pow(du, 2)
-					+_ctrl_pos*diff_bcoeff*ddu;
+	Vector3d acc_pos = _ctrl_pos*diff2_bcoeff*pow(du, 2)
+						+_ctrl_pos*diff_bcoeff*ddu;
+	Vector3d acc_rpy = _ctrl_rot*diff2_bcoeff*pow(du, 2)
+						+_ctrl_rot*diff_bcoeff*ddu;
+	Vector6d pos_rpy;
+	Vector3d acc_rot = RobotTools::RPY2Jaco(pos_rpy.tail(3))*acc_rpy;
+	Vector6d acc;
+	acc<<acc_pos, acc_rot;
 	return acc;
 }
 

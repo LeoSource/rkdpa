@@ -147,23 +147,21 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ArcTrajPlanner.h" />
-    <ClInclude Include="ArcTransPathPlanner.h" />
-    <ClInclude Include="BaseCTrajPlanner.h" />
-    <ClInclude Include="BaseTask.h" />
+    <ClInclude Include="ArcPlanner.h" />
+    <ClInclude Include="BaseCartesianPlanner.h" />
+    <ClInclude Include="BaseTrajPlanner.h" />
     <ClInclude Include="CubicBSplinePlanner.h" />
+    <ClInclude Include="ErrorID.h" />
     <ClInclude Include="GlobalParams.h" />
-    <ClInclude Include="HoldTask.h" />
-    <ClInclude Include="InitialTask.h" />
     <ClInclude Include="InterruptStop\InterruptStop.h" />
     <ClInclude Include="InterruptStop\InterruptStopPlanner.h" />
-    <ClInclude Include="LineTrajPlanner.h" />
-    <ClInclude Include="LspbTrajPlanner.h" />
+    <ClInclude Include="JointPlanner.h" />
+    <ClInclude Include="LinePlanner.h" />
+    <ClInclude Include="LspbPlanner.h" />
     <ClInclude Include="MDHLink.h" />
-    <ClInclude Include="MirrorTask.h" />
     <ClInclude Include="RobotControl.h" />
+    <ClInclude Include="RobotDynIdenTest.h" />
     <ClInclude Include="RobotMath.h" />
-    <ClInclude Include="PolyTrajPlanner.h" />
     <ClInclude Include="CleanRobot.h" />
     <ClInclude Include="RobotParameter\json\autolink.h" />
     <ClInclude Include="RobotParameter\json\config.h" />
@@ -175,41 +173,33 @@
     <ClInclude Include="RobotParameter\json\writer.h" />
     <ClInclude Include="RobotParameter\lib_json\json_batchallocator.h" />
     <ClInclude Include="RobotParameter\RobotParameter.h" />
-    <ClInclude Include="RotXPlaneTask.h" />
-    <ClInclude Include="ShowerRoomTask.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="SurfaceTask.h" />
-    <ClInclude Include="TableTask.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="CartesianPlanner.h" />
     <ClInclude Include="TaskTrajPlanner.h" />
     <ClInclude Include="UrRobot.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ArcTransPathPlanner.cpp" />
     <ClCompile Include="CubicBSplinePlanner.cpp" />
     <ClCompile Include="InterruptStop\InterruptStop.cpp" />
     <ClCompile Include="InterruptStop\InterruptStopPlanner.cpp" />
-    <ClCompile Include="LspbTrajPlanner.cpp" />
-    <ClCompile Include="MDHLink.cpp" />
-    <ClCompile Include="MirrorTask.cpp" />
+    <ClCompile Include="JointPlanner.cpp" />
+    <ClCompile Include="LspbPlanner.cpp" />
     <ClCompile Include="RobotControl.cpp" />
+    <ClCompile Include="RobotDynIdenTest.cpp" />
     <ClCompile Include="RobotMath.cpp" />
-    <ClCompile Include="PolyTrajPlanner.cpp" />
     <ClCompile Include="CleanRobot.cpp" />
     <ClCompile Include="RobotParameter\lib_json\json_reader.cpp" />
     <ClCompile Include="RobotParameter\lib_json\json_value.cpp" />
     <ClCompile Include="RobotParameter\lib_json\json_writer.cpp" />
     <ClCompile Include="RobotParameter\RobotParameter.cpp" />
-    <ClCompile Include="RotXPlaneTask.cpp" />
-    <ClCompile Include="ShowerRoomTask.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="SurfaceTask.cpp" />
-    <ClCompile Include="TableTask.cpp" />
+    <ClCompile Include="CartesianPlanner.cpp" />
     <ClCompile Include="TaskTrajPlanner.cpp" />
     <ClCompile Include="test.cpp" />
     <ClCompile Include="UrRobot.cpp" />

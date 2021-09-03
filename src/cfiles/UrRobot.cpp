@@ -85,11 +85,12 @@ int UrRobot::IKSolve(Vector6d * q_out, Pose * pose, Vector6d * q_old)
 	double a1 = d6 * mi.rot(0, 2) - mi.pos(0);
 	double b1 = mi.pos(1) - d6 * mi.rot(1, 2);
 	double cc1 = -d4;
+	double temp1 = a1*a1 + b1*b1 - cc1*cc1;
 	int n;
 	n = MathTools::CalcSinCosEqua(&q1_1, &q1_2, a1, b1, cc1);
-	if (n <= 0)
+	if ((n <= 0)|| (temp1 <	EPS5))
 	{
-		error = arm_singularity;
+        error = eArmSingularity;
 		q(0) = q_in(0);
 	}
 	else
@@ -116,13 +117,20 @@ int UrRobot::IKSolve(Vector6d * q_out, Pose * pose, Vector6d * q_old)
 	if (abs(s5) < EPS3)
 	{
 		q(5) = q_in(5);
-		error = wrist_singularity;
+        error = eWristSingularity;
 	}
 	else
 	{
 		double b6 = mi.rot(0, 0)*s1 - mi.rot(1, 0)*c1;
 		double a6 = mi.rot(1, 1)*c1 - mi.rot(0, 1)*s1;
-		n = MathTools::CalcSinCosEqua(&q6_1, &q6_2, a6, b6, -s5);
+		//n = MathTools::CalcSinCosEqua(&q6_1, &q6_2, a6, b6, -s5);
+		double temp_6 = b6*b6 + a6*a6 - s5*s5;
+		if (fabs(temp_6)<EPS5)
+		{
+			temp_6 = 0.;
+		}
+		q6_1 = atan2(b6, -a6) - atan2(s5, sqrt(temp_6));
+		q6_2 = atan2(b6, -a6) - atan2(s5, -sqrt(temp_6));
 		double q6_temp[4];
 		if (q6_1 > 0)
 			q6_temp[2] = q6_1 - 2 * pi;
@@ -164,7 +172,7 @@ int UrRobot::IKSolve(Vector6d * q_out, Pose * pose, Vector6d * q_old)
 	else
 	{
 		q(2) = q_in(2);
-		error = outside_reach;
+        error = eErrCalOutsideReach;
 	}
 	s3 = sin(q(2)); c3 = cos(q(2));
 	(*q_out)(2) = q(2);
@@ -248,8 +256,81 @@ void UrRobot::UpdateTool(Vector3d tool_pos, Vector3d tool_rpy)
 {
     RobotTools::Pose pose_tool;
     pose_tool.rot.setIdentity();
-    pose_tool.rot = RotZ(tool_rpy(2)) * RotY(tool_rpy(1)) * RotX(tool_rpy(0));
+    pose_tool.rot = RotX(tool_rpy(0)) * RotY(tool_rpy(1)) * RotZ(tool_rpy(2));
     pose_tool.pos = tool_pos;
 
     _tool = pose_tool;
+}
+
+double UrRobot::GetToolLength()
+{
+	return _tool.pos.norm();
+}
+
+Vector6d UrRobot::CalcJacodot(Vector6d q, Vector6d qd)
+{
+	Vector3d z0(0, 0, 1);
+	//reference:robotics toolbox
+	vector<Matrix3d> Q(_nlinks);
+	vector<Vector3d> a(_nlinks);
+	for (int idx = 0; idx < _nlinks; idx++)
+	{
+		_links[idx].Transform(q(idx));
+		Q[idx] = _links[idx]._pose.rot;
+		a[idx] = _links[idx]._pose.pos;
+	}
+	vector<Matrix3d> P(_nlinks);
+	vector<Vector3d> e(_nlinks);
+	P[0] = Q[0];
+	e[0] = z0;
+	for (int idx = 1; idx < _nlinks; idx++)
+	{
+		P[idx] = P[idx - 1] * Q[idx];
+		Vector3d tmp_e = P[idx].col(2);
+		e[idx] = tmp_e;
+	}
+
+	vector<Vector3d> w(_nlinks);
+	w[0] = qd(0)*e[0];
+	for (int idx = 0; idx<_nlinks - 1; idx++)
+		w[idx+1] = Q[idx].transpose()*w[idx] + qd(idx + 1)*z0;
+
+	vector<Vector3d> ed(_nlinks);
+	ed[0] = Vector3d(0, 0, 0);
+	for (int idx = 1; idx<_nlinks; idx++)
+		ed[idx] = w[idx].cross(e[idx]);
+
+	vector<Vector3d> rd(_nlinks);
+	rd[_nlinks-1] = w[_nlinks-1].cross(a[_nlinks-1]);
+	for (int idx = _nlinks-2; idx>=0; idx--)
+		rd[idx] = w[idx].cross(a[idx])+Q[idx]*rd[idx+1];
+
+	vector<Vector3d> r(_nlinks);
+	r[_nlinks-1] = a[_nlinks-1];
+	for (int idx = _nlinks-2; idx>=0; idx--)
+		r[idx] = a[idx]+Q[idx]*r[idx+1];
+
+	vector<Vector3d> ud(_nlinks);
+	ud[0] = e[0].cross(rd[0]);
+	for (int idx = 1; idx<_nlinks; idx++)
+		ud[idx] = ed[idx].cross(r[idx])+e[idx].cross(rd[idx]);
+
+	vector<Vector6d> v(_nlinks);
+	Vector3d v1_tmp = qd(_nlinks-1)*ud.back();
+	Vector3d v2_tmp = qd(_nlinks-1)*ed.back();
+	v.back()<<v1_tmp, v2_tmp;
+	for (int idx = _nlinks-2; idx>=0; idx--)
+	{
+		Matrix<double, 6, 6> Ui;
+		Ui.setZero();
+		Ui.topLeftCorner(3, 3) = Q[idx];
+		Ui.bottomRightCorner(3, 3) = Q[idx];
+		v1_tmp = qd(idx)*ud[idx];
+		v2_tmp = qd(idx)*ed[idx];
+		Vector6d v_tmp;
+		v_tmp<<v1_tmp, v2_tmp;
+		v[idx] = v_tmp+Ui*v[idx+1];
+	}
+
+	return v[0];
 }

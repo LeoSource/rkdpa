@@ -45,16 +45,7 @@
     <ClInclude Include="targetver.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="PolyTrajPlanner.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="LspbTrajPlanner.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="RobotMath.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="ArcTransPathPlanner.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="MDHLink.h">
@@ -64,45 +55,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="CleanRobot.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="MirrorTask.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="BaseTask.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="InitialTask.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="HoldTask.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="CubicBSplinePlanner.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="SurfaceTask.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="TableTask.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="ShowerRoomTask.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="RotXPlaneTask.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="BaseCTrajPlanner.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="LineTrajPlanner.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="TaskTrajPlanner.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="ArcTrajPlanner.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="InterruptStop\InterruptStop.h">
@@ -147,6 +99,39 @@
     <ClInclude Include="RobotControl.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ErrorID.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="RobotDynIdenTest.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="CubicBSplinePlanner.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="LspbPlanner.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="LinePlanner.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ArcPlanner.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="JointPlanner.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="BaseCartesianPlanner.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="CartesianPlanner.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="TaskTrajPlanner.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="BaseTrajPlanner.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -155,43 +140,10 @@
     <ClCompile Include="test.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="PolyTrajPlanner.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="LspbTrajPlanner.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="RobotMath.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="ArcTransPathPlanner.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="MDHLink.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="CleanRobot.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="MirrorTask.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="CubicBSplinePlanner.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="SurfaceTask.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="TableTask.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="ShowerRoomTask.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="RotXPlaneTask.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="TaskTrajPlanner.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="InterruptStop\InterruptStop.cpp">
@@ -216,6 +168,24 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="RobotControl.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="RobotDynIdenTest.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="CubicBSplinePlanner.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="LspbPlanner.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="JointPlanner.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="CartesianPlanner.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TaskTrajPlanner.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

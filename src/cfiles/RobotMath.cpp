@@ -11,7 +11,7 @@ namespace MathTools
 		else
 		{
 			auto upper_value = upper_bound(arr, arr + len, value);
-			idx = upper_value - arr - 1;
+			idx = static_cast<int>(upper_value - arr - 1);
 		}
 
 		return idx;
@@ -144,35 +144,42 @@ namespace MathTools
 			return 1;
 	}
 
-	void LimitNum(double min_value, double& value, double max_value)
+    int LimitNum(double min_value, double& value, double max_value)
 	{
-		if (value > max_value)
-			value = max_value;
-		else if (value < min_value)
-			value = min_value;
-		
+        if (value > max_value)
+        {
+            value = max_value;
+            return -1;
+        }
+        else if (value < min_value)
+        {
+            value = min_value;
+            return -1;
+        }
+
+        return 0;
 	}
 
 	void LimitMin(double min_value, double& value)
 	{
 		if (value < min_value)
 			value = min_value;
-
 	}
 
 	void LimitMax(double max_value, double &value)
 	{
 		if (value > max_value)
 			value = max_value;
-
 	}
 
-	void LimitVector(VectorXd min_vec, VectorXd* value, VectorXd max_vec)
+    int LimitVector(VectorXd min_vec, VectorXd* value, VectorXd max_vec)
 	{
+        int err = 0;
 		for (int idx = 0; idx<value->size(); idx++)
 		{
-			LimitNum(min_vec(idx), (*value)(idx), max_vec(idx));
+            err |= LimitNum(min_vec(idx), (*value)(idx), max_vec(idx));
 		}
+        return err;
 	}
 
 	bool Any(VectorXd vec)
@@ -210,111 +217,11 @@ namespace MathTools
 			return n*Factorial(n-1);
 	}
 
-
-
 }
 
 
 namespace RobotTools
 {
-	MatrixXd CalcRectanglePath(MatrixXd* corner_pos, char* option, double interval)
-	{
-		Vector3d step_vec1, step_vec2, start_pos1, start_pos2;
-		if (strcmp(option, "s") == 0)
-		{
-			step_vec1 = corner_pos->col(3) - corner_pos->col(0);
-			step_vec2 = corner_pos->col(2) - corner_pos->col(1);
-			start_pos1 = corner_pos->col(0);
-			start_pos2 = corner_pos->col(1);
-		}
-		else if (strcmp(option, "m") == 0)
-		{
-			step_vec1 = corner_pos->col(1) - corner_pos->col(0);
-			step_vec2 = corner_pos->col(2) - corner_pos->col(3);
-			start_pos1 = corner_pos->col(0);
-			start_pos2 = corner_pos->col(3);
-		}
-		int cycle_num = round(step_vec1.norm()/interval)+1;
-		int numvp = 2*cycle_num;
-		double step = step_vec1.norm() / (cycle_num-1);
-		step_vec1.normalize();
-		step_vec2.normalize();
-		MatrixXd via_pos;
-		via_pos.setZero(3, numvp);
-		for (int idx = 0; idx < cycle_num; idx++)
-		{
-			if (idx%2 == 0)
-			{
-				via_pos.col(2 * idx) = start_pos1 + step_vec1*step*idx;
-				via_pos.col(2 * idx+1) = start_pos2 + step_vec2*step*idx;
-			}
-			else
-			{
-				via_pos.col(2 * idx) = start_pos2 + step_vec2*step*idx;
-				via_pos.col(2 * idx+1) = start_pos1 + step_vec1*step*idx;
-			}
-		}
-
-		return via_pos;
-	}
-
-
-
-	Matrix3d CalcPlaneRot(Vector3d center, Vector3d norm_vec)
-	{
-		//plane function:Ax+By+Cz+D=0
-		double D = -norm_vec.dot(center);
-		Vector3d p1;
-		p1(2) = center(2);
-		p1(0) = center(0)+1;
-		p1(1) = (-norm_vec(0)*p1(0)-norm_vec(2)*p1(2)-D)/norm_vec(1);
-		Vector3d n, o, a;
-		a = norm_vec.normalized();
-		n = p1-center;
-		n.normalize();
-		o = a.cross(n);
-		Matrix3d rot;
-		rot<<n, o, a;
-
-		return rot;
-	}
-
-	MatrixXd CalcSplineTransPos(Vector3d pos1, Vector3d pos2, Vector3d pos3, double r, char* opt)
-	{
-		MatrixXd ctrlpos;
-		if (strcmp(opt, "spline")==0)
-		{
-			ctrlpos.setZero(3, 5);
-			ctrlpos.col(2) = pos2;
-			double line1_len = MathTools::Norm(pos2-pos1);
-			double line2_len = MathTools::Norm(pos3-pos2);
-			ctrlpos.col(0) = pos2+r/line1_len*(pos1-pos2);
-			ctrlpos.col(4) = pos2+r/line2_len*(pos3-pos2);
-			double ratio = 0.5;
-			ctrlpos.col(1) = ctrlpos.col(2)+ratio*(ctrlpos.col(0)-ctrlpos.col(2));
-			ctrlpos.col(3) = ctrlpos.col(2)+ratio*(ctrlpos.col(4)-ctrlpos.col(2));
-		}
-		else if(strcmp(opt,"arc")==0)
-		{
-			ctrlpos.setZero(3, 2);
-			double line1_len = MathTools::Norm(pos2-pos1);
-			double line2_len = MathTools::Norm(pos3-pos2);
-			ctrlpos.col(0) = pos2+r/line1_len*(pos1-pos2);
-			ctrlpos.col(1) = pos2+r/line2_len*(pos3-pos2);
-		}
-		return ctrlpos;
-	}
-
-	double CalcArcRadius(Vector3d pos1, Vector3d pos2, Vector3d pos3)
-	{
-		Vector3d p2p1 = pos1-pos2;
-		Vector3d p2p3 = pos3-pos2;
-		double inc_angle = acos(p2p1.dot(p2p3)/p2p1.norm()/p2p3.norm());
-		double radius = p2p1.norm()*tan(0.5*inc_angle);
-
-		return radius;
-	}
-
 	Pose PoseProduct(Pose p1, Pose p2)
 	{
 		Pose res;
@@ -398,6 +305,19 @@ namespace RobotTools
 		cavp.acc.segment(3, 3) = ang_avp->acc;
 
 		return cavp;
+	}
+
+	Matrix3d RPY2Jaco(Vector3d rpy)
+	{
+		Matrix3d res;
+		res.setIdentity();
+		res(0, 2) = sin(rpy(1));
+		res(1, 1) = cos(rpy(0));
+		res(1, 2) = -sin(rpy(0))*cos(rpy(1));
+		res(2, 1) = sin(rpy(0));
+		res(2, 2) = cos(rpy(0))*cos(rpy(1));
+
+		return res;
 	}
 
 	Vector4d Tr2Quat1(Matrix3d r)
@@ -518,6 +438,7 @@ namespace RobotTools
 		res << u0, u1, u2, u3;
 		return res;
 	}
+
 	Vector4d Tr2AngleAxis(Matrix3d r)
 	{
 		Vector4d res;
@@ -619,6 +540,7 @@ namespace RobotTools
 		res << x, y, z;
 		return res;
 	}
+
 	Matrix3d FixedZYX2Tr(Vector3d rpy)
 	{
 		Matrix3d res;
@@ -637,6 +559,7 @@ namespace RobotTools
 		res(2, 2) = cos(X)*cos(Y);
 		return res;
 	}
+
 	Vector4d CalcAngleAxis(Vector3d rpy0, Vector3d rpyn)
 	{
 		Vector4d res;
@@ -648,4 +571,336 @@ namespace RobotTools
 		return res;
 	}
 
+}
+
+
+namespace PlanTools
+{
+    MatrixXd CalcMirrorPath(MatrixXd* corner_pos, double interval)
+    {
+        Vector3d step_vec1, step_vec2, start_pos1, start_pos2;
+
+        step_vec1 = corner_pos->col(2) - corner_pos->col(3);
+        step_vec2 = corner_pos->col(1) - corner_pos->col(0);
+        start_pos1 = corner_pos->col(3);
+        start_pos2 = corner_pos->col(0);
+
+        int cycle_num = (int)round(step_vec1.norm()/interval)+1;
+        int numvp = 4*cycle_num;
+        double step = step_vec1.norm() / (cycle_num-1);
+        step_vec1.normalize();
+        step_vec2.normalize();
+        MatrixXd via_pos;
+        via_pos.setZero(3, numvp);
+        for (int idx = 0; idx < cycle_num; idx++)
+        {
+            via_pos.col(4 * idx) = start_pos1 + step_vec1*step*idx + Vector3d(-0.05, 0, 0);
+            via_pos.col(4 * idx+1) = start_pos1 + step_vec1*step*idx;
+            via_pos.col(4 * idx+2) = start_pos2 + step_vec2*step*idx;
+            via_pos.col(4 * idx+3) = start_pos2 + step_vec2*step*idx + Vector3d(-0.05, 0, 0);
+        }
+
+        return via_pos;
+    }
+
+	MatrixXd CalcRectanglePath(MatrixXd* corner_pos, string option, double interval)
+	{
+		Vector3d step_vec1, step_vec2, start_pos1, start_pos2;
+		if (option == "s")
+		{
+			step_vec1 = corner_pos->col(3)-corner_pos->col(0);
+			step_vec2 = corner_pos->col(2)-corner_pos->col(1);
+			start_pos1 = corner_pos->col(0);
+			start_pos2 = corner_pos->col(1);
+		}
+		else if (option == "m")
+		{
+			step_vec1 = corner_pos->col(1)-corner_pos->col(0);
+			step_vec2 = corner_pos->col(2)-corner_pos->col(3);
+			start_pos1 = corner_pos->col(0);
+			start_pos2 = corner_pos->col(3);
+		}
+		int cycle_num = static_cast<int>(round(step_vec1.norm()/interval)+1);
+		int numvp = 2*cycle_num;
+		double step = step_vec1.norm()/(cycle_num-1);
+		step_vec1.normalize();
+		step_vec2.normalize();
+		MatrixXd via_pos;
+		via_pos.setZero(3, numvp);
+		for (int idx = 0; idx < cycle_num; idx++)
+		{
+			if (idx%2==0)
+			{
+				via_pos.col(2*idx) = start_pos1+step_vec1*step*idx;
+				via_pos.col(2*idx+1) = start_pos2+step_vec2*step*idx;
+			}
+			else
+			{
+				via_pos.col(2*idx) = start_pos2+step_vec2*step*idx;
+				via_pos.col(2*idx+1) = start_pos1+step_vec1*step*idx;
+			}
+		}
+
+		return via_pos;
+	}
+
+	Matrix3d CalcPlaneRot(Vector3d center, Vector3d norm_vec)
+	{
+		//plane function:Ax+By+Cz+D=0
+		double D = -norm_vec.dot(center);
+		Vector3d p1;
+		p1(2) = center(2);
+		p1(0) = center(0)+1;
+		p1(1) = (-norm_vec(0)*p1(0)-norm_vec(2)*p1(2)-D)/norm_vec(1);
+		Vector3d n, o, a;
+		a = norm_vec.normalized();
+		n = p1-center;
+		n.normalize();
+		o = a.cross(n);
+		Matrix3d rot;
+		rot<<n, o, a;
+
+		return rot;
+	}
+
+	MatrixXd CalcSplineTransPos(Vector3d pos1, Vector3d pos2, Vector3d pos3, double r, string opt)
+	{
+		MatrixXd ctrlpos;
+		if (opt == "spline")
+		{
+			ctrlpos.setZero(3, 5);
+			ctrlpos.col(2) = pos2;
+			double line1_len = MathTools::Norm(pos2-pos1);
+			double line2_len = MathTools::Norm(pos3-pos2);
+			ctrlpos.col(0) = pos2+r/line1_len*(pos1-pos2);
+			ctrlpos.col(4) = pos2+r/line2_len*(pos3-pos2);
+			double ratio = 0.5;
+			ctrlpos.col(1) = ctrlpos.col(2)+ratio*(ctrlpos.col(0)-ctrlpos.col(2));
+			ctrlpos.col(3) = ctrlpos.col(2)+ratio*(ctrlpos.col(4)-ctrlpos.col(2));
+		}
+		else if (opt == "arc")
+		{
+			ctrlpos.setZero(3, 2);
+			double line1_len = MathTools::Norm(pos2-pos1);
+			double line2_len = MathTools::Norm(pos3-pos2);
+			ctrlpos.col(0) = pos2+r/line1_len*(pos1-pos2);
+			ctrlpos.col(1) = pos2+r/line2_len*(pos3-pos2);
+		}
+		return ctrlpos;
+	}
+
+	void CalcToiletPath(MatrixXd& via_posrpy, MatrixXd* vision_pos, double theta)
+	{
+		int npos = static_cast<int>(vision_pos->cols());
+		via_posrpy.resize(6, npos+1);
+		Vector3d center;
+		center(0) = vision_pos->row(0).mean();
+		center(1) = vision_pos->row(1).mean();
+		center(2) = vision_pos->row(2).mean();
+		Vector3d x0, y0, z0;
+		Matrix3d rot_mat;
+		x0<<0, 1, 0;
+		y0<<1, 0, 0;
+		z0<<0, 0, -1;
+		rot_mat<<x0, y0, z0;
+		Vector3d rpy = RobotTools::Tr2FixedZYX(rot_mat);
+		via_posrpy.col(0)<<center, rpy;
+		//double theta = 20*pi/180;//angle of vertical plane
+		for (int idx = 0; idx<npos; idx++)
+		{
+			Vector3d pos_tmp = vision_pos->col(idx);
+			double len = MathTools::Norm(center-pos_tmp);
+			Vector3d pos_high = center;
+			pos_high(2) = center(2)+len/tan(theta);
+			z0 = pos_tmp-pos_high;
+			z0.normalize();
+			Vector3d vec_high_center = center-pos_high;
+			x0 = vec_high_center.cross(z0);
+			x0.normalize();
+			y0 = z0.cross(x0);
+			rot_mat<<x0, y0, z0;
+			rpy = RobotTools::Tr2FixedZYX(rot_mat);
+			via_posrpy.col(idx+1)<<pos_tmp, rpy;
+		}
+	}
+
+	void CalcTablePath(MatrixXd& via_posrpy, MatrixXd* vision_pos, double theta, double interval)
+	{
+		//double theta = 40*pi/180;//angle of horizontal plane
+		Vector3d origin = 0.5*(vision_pos->col(0)+vision_pos->col(1));
+		double len = MathTools::Norm(origin-vision_pos->col(2));
+		origin(2) = origin(2)+len*tan(theta);
+		//double interval = 0.02;
+		Vector3d step_vec1 = vision_pos->col(2)-vision_pos->col(3);
+		Vector3d step_vec2 = vision_pos->col(1)-vision_pos->col(0);
+		Vector3d start_pos1 = vision_pos->col(3);
+		Vector3d start_pos2 = vision_pos->col(0);
+		int cycle_num = static_cast<int>(round(step_vec1.norm()/interval))+1;
+		double step_size = step_vec1.norm()/(cycle_num-1);
+		step_vec1.normalize();
+		step_vec2.normalize();
+		via_posrpy.resize(6, 2*cycle_num);
+		for (int idx = 0; idx<cycle_num; idx++)
+		{
+			Vector3d pos1 = start_pos1+idx*step_size*step_vec1;
+			Vector3d pos2 = start_pos2+idx*step_size*step_vec2;
+			Vector3d z0 = pos1-origin;
+			Vector3d vec1 = -z0;
+			Vector3d vec2 = 0.5*(vision_pos->col(0)+vision_pos->col(1))-pos1;
+			Vector3d x0 = vec1.cross(vec2);
+			Vector3d y0 = z0.cross(x0);
+			Matrix3d rot_mat;
+			rot_mat<<x0.normalized(), y0.normalized(), z0.normalized();
+			Vector3d rpy = RobotTools::Tr2FixedZYX(rot_mat);
+			via_posrpy.col(2*idx)<<pos1, rpy;
+			via_posrpy.col(2*idx+1)<<pos2, rpy;
+		}
+	}
+
+	void CalcToiletlidPath(MatrixXd& via_posrpy, MatrixXd* vision_pos, double theta)
+	{
+		//the 3rd point is the mark point: posC
+		//rotation axis is the 2nd point to 1st: posB->posA
+		Vector3d posA = vision_pos->col(0);
+		Vector3d posB = vision_pos->col(1);
+		Vector3d posC = vision_pos->col(2);
+		Vector3d z0 = posA-posB;
+		z0.normalize();
+		double radius = MathTools::Cross(z0, posC-posB).norm();
+		double scale = posC.dot(z0)-posB.dot(z0);
+		Vector3d center = posB+scale*z0;
+
+		Vector3d x0 = posC-center;
+		x0.normalize();
+		Vector3d y0 = z0.cross(x0);
+		Matrix3d rot_mat;
+		rot_mat<<x0, y0, z0;
+		via_posrpy.resize(6, 3);
+		via_posrpy.col(0).head(3) = posC;
+		Vector3d pos_tmp;
+		pos_tmp(0) = radius*cos(theta/2);
+		pos_tmp(1) = radius*sin(theta/2);
+		pos_tmp(2) = 0;
+		via_posrpy.col(1).head(3) = center+rot_mat*pos_tmp;
+		pos_tmp(0) = radius*cos(theta);
+		pos_tmp(1) = radius*sin(theta);
+		via_posrpy.col(2).head(3) = center+rot_mat*pos_tmp;
+
+		Vector3d rpy_z0 = (posB-posC);
+		rpy_z0.normalize();
+		Vector3d rpy_y0 = Vector3d(0, 0, 1);
+		Vector3d rpy_x0 = rpy_y0.cross(rpy_z0);
+		Matrix3d rpy_mat;
+		rpy_mat<<rpy_x0, rpy_y0, rpy_z0;
+		Vector3d rpy = RobotTools::Tr2FixedZYX(rpy_mat);
+		via_posrpy.col(0).tail(3) = rpy;
+		via_posrpy.col(1).tail(3) = rpy;
+		via_posrpy.col(2).tail(3) = rpy;
+	}
+
+	void CalcMirrorPath_Line(MatrixXd& via_posrpy, MatrixXd* corner_pos, double lenscraper, double inc_ang, double dis_trans)
+	{
+		Vector3d x0_mirror = corner_pos->col(3)-corner_pos->col(0);
+		Vector3d y0_mirror = corner_pos->col(1)-corner_pos->col(0);
+		x0_mirror.normalize();
+		y0_mirror.normalize();
+		Vector3d z0_mirror = x0_mirror.cross(y0_mirror);
+		z0_mirror.normalize();
+		Matrix3d rot_mirror;
+		rot_mirror<<x0_mirror, y0_mirror, z0_mirror;
+		
+		MatrixXd corner_pos_new;
+		corner_pos_new.resize(3, 4);
+		corner_pos_new.col(0) = corner_pos->col(0)+lenscraper/2*y0_mirror;
+		corner_pos_new.col(1) = corner_pos->col(1)-lenscraper/2*y0_mirror;
+		corner_pos_new.col(2) = corner_pos->col(2)-lenscraper/2*y0_mirror;
+		corner_pos_new.col(3) = corner_pos->col(3)+lenscraper/2*y0_mirror;
+
+		double width_target = MathTools::Norm(corner_pos_new.col(0)-corner_pos_new.col(1));
+		int cycle_num = (int)ceil(width_target/lenscraper)+1;
+		double step_size = width_target/(cycle_num-1);
+		Vector3d start_pos1 = corner_pos_new.col(3);
+		Vector3d start_pos2 = corner_pos_new.col(0);
+		Vector3d trans_vec = z0_mirror*dis_trans;
+		Matrix3d rot_transform;
+		rot_transform<< 0, 0, 1,
+						1, 0, 0,
+						0, 1, 0;
+		via_posrpy.resize(6, 4*cycle_num);
+		for (int idx = 0; idx<cycle_num; idx++)
+		{
+			Vector3d pos2 = start_pos1+idx*step_size*y0_mirror;
+			Vector3d pos1 = pos2+trans_vec;
+			Vector3d pos3 = start_pos2+idx*step_size*y0_mirror;
+			Vector3d pos4 = pos3+trans_vec;
+			Matrix3d rot_tool = rot_mirror*RobotTools::RotY(inc_ang)*rot_transform;
+			Vector3d rpy = RobotTools::Tr2FixedZYX(rot_tool);
+			via_posrpy.col(4*idx)<<pos1, rpy;
+			via_posrpy.col(4*idx+1)<<pos2, rpy;
+			via_posrpy.col(4*idx+2)<<pos3, rpy;
+			via_posrpy.col(4*idx+3)<<pos4, rpy;
+		}
+	}
+
+	void CalcMirrorPath(MatrixXd& via_posrpy, MatrixXd* corner_pos, double lenscraper, double slant_ang, double inc_ang)
+	{
+		Vector3d x0_mirror = corner_pos->col(3)-corner_pos->col(0);
+		Vector3d y0_mirror = corner_pos->col(1)-corner_pos->col(0);
+		x0_mirror.normalize();
+		y0_mirror.normalize();
+		Vector3d z0_mirror = x0_mirror.cross(y0_mirror);
+		z0_mirror.normalize();
+		Matrix3d rot_mirror;
+		rot_mirror<<x0_mirror, y0_mirror, z0_mirror;
+
+		MatrixXd corner_pos_new;
+		corner_pos_new.resize(3, 4);
+		corner_pos_new.col(0) = corner_pos->col(0)+lenscraper/2*x0_mirror+lenscraper/2*y0_mirror;
+		corner_pos_new.col(1) = corner_pos->col(1)+lenscraper/2*x0_mirror-lenscraper/2*y0_mirror;
+		corner_pos_new.col(2) = corner_pos->col(2)-lenscraper/2*x0_mirror-lenscraper/2*y0_mirror;
+		corner_pos_new.col(3) = corner_pos->col(3)-lenscraper/2*x0_mirror+lenscraper/2*y0_mirror;
+
+		double height_target = MathTools::Norm(corner_pos_new.col(1)-corner_pos_new.col(2));
+		int cycle_num = (int)ceil(height_target/lenscraper)+1;
+		double step_size = height_target/(cycle_num-1);
+		Vector3d start_pos1 = corner_pos_new.col(2);
+		Vector3d start_pos2 = corner_pos_new.col(3);
+		Matrix3d rot_transform;
+		rot_transform<< 1, 0, 0,
+						0, -1, 0,
+						0, 0, -1;
+		via_posrpy.resize(6, 2*cycle_num);
+		for (int idx = 0; idx<cycle_num; idx++)
+		{
+			Vector3d pos1, pos2;
+			Matrix3d rot_tool;
+			if (idx%2==0)
+			{
+				pos1 = start_pos1+idx*step_size*(-x0_mirror);
+				pos2 = start_pos2+idx*step_size*(-x0_mirror);
+				rot_tool = rot_mirror*RobotTools::RotZ(pi-slant_ang)
+					*RobotTools::RotX(-inc_ang)*rot_transform;
+			}
+			else
+			{
+				pos1 = start_pos2+idx*step_size*(-x0_mirror);
+				pos2 = start_pos1+idx*step_size*(-x0_mirror);
+				rot_tool = rot_mirror*RobotTools::RotZ(slant_ang)
+					*RobotTools::RotX(-inc_ang)*rot_transform;
+			}
+			Vector3d rpy = RobotTools::Tr2FixedZYX(rot_tool);
+			via_posrpy.col(2*idx)<<pos1, rpy;
+			via_posrpy.col(2*idx+1)<<pos2, rpy;
+		}
+	}
+
+	double CalcArcRadius(Vector3d pos1, Vector3d pos2, Vector3d pos3)
+	{
+		Vector3d p2p1 = pos1-pos2;
+		Vector3d p2p3 = pos3-pos2;
+		double inc_angle = acos(p2p1.dot(p2p3)/p2p1.norm()/p2p3.norm());
+		double radius = p2p1.norm()*tan(0.5*inc_angle);
+
+		return radius;
+	}
 }
