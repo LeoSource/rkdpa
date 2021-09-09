@@ -6,7 +6,7 @@ function via_posrpy = CalcViapos(vision_pos, type)
         rot_center = [0, 1, 0; 1, 0, 0; 0, 0, -1];
         rpy = tr2rpy(rot_center, 'xyz');
         via_posrpy(:,1) = [center; rpy'];
-        theta = 20*pi/180;%angle of vertical plane
+        theta = 10*pi/180;%angle of vertical plane
         for idx=1:npos
             pos_tmp = vision_pos(:,idx);
             len = norm(center-pos_tmp);
@@ -14,10 +14,13 @@ function via_posrpy = CalcViapos(vision_pos, type)
             pos_high(3) = center(3)+len*cot(theta);
             z0 = pos_tmp-pos_high;
             z0 = z0/norm(z0);
-            vec_high_center = center-pos_high;
-            x0 = cross(vec_high_center, z0);
-            x0 = x0/norm(x0);
-            y0 = cross(z0,x0);
+            y0 = CalcPlaneIntersection(z0,pos_high);
+            y0 = y0/norm(y0);
+            x0 = cross(y0,z0);
+%             vec_high_center = center-pos_high;
+%             x0 = cross(vec_high_center, z0);  
+%             x0 = x0/norm(x0);
+%             y0 = cross(z0,x0);
             rot_mat = [x0, y0, z0];
             rpy = tr2rpy(rot_mat, 'xyz');
             via_posrpy(:,idx+1) = [pos_tmp; rpy'];
@@ -73,7 +76,8 @@ function via_posrpy = CalcViapos(vision_pos, type)
         tmp_pos(2,1) = radius*sin(theta);
         tmp_pos(3,1) = 0;
         via_posrpy(1:3,3) = posM+rot_mat*tmp_pos;
-        rpy_z0 = z0;
+        rpy_z0 = (posB-posC)/norm(posB-posC);
+%         rpy_z0 = z0;
         rpy_y0 = [0;0;1];
         rpy_x0 = cross(rpy_y0,rpy_z0);
         rpy_mat = [rpy_x0, rpy_y0, rpy_z0];
@@ -83,4 +87,12 @@ function via_posrpy = CalcViapos(vision_pos, type)
         via_posrpy(4:6,3) = rpy;
     end
 
+end
+
+function vec = CalcPlaneIntersection(norm_vec, via_point)
+    d = -dot(norm_vec,via_point);
+    y = 0;
+    x = via_point(1)+1;
+    z = -(norm_vec(1)*x+d)/norm_vec(3);
+    vec = [x;y;z]-via_point;
 end
