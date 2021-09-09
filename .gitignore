@@ -25,4 +25,4 @@ src/data/
 others/
 
 # 暂时忽略md文件
-*.md
+#*.md
