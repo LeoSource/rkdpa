@@ -25,7 +25,7 @@ pose_tool = SE3(rotx(0), [0,0,0.29]);
 qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
-simu_mode = 'common';
+simu_mode = 'mirror';
 switch simu_mode
     case 'workspace'
 %% plot workspace
@@ -103,8 +103,8 @@ q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 p1 = [0.8,-0.1,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.1,0.81]';
 vision_pos = [p1,p2,p3,p4];
-via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
-% via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.08);
+% via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
+via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.08, 'down');
 taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
 
 if compare_plan

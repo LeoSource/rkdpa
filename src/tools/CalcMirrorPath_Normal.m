@@ -1,4 +1,4 @@
-function via_posrpy = CalcMirrorPath_Normal(corner_pos,lenscraper,inc_ang,dis_trans)
+function via_posrpy = CalcMirrorPath_Normal(corner_pos,lenscraper,inc_ang,dis_trans,camera_ori)
 % the sequence of corner position is like this
 % 3--------4
 % |        |
@@ -6,6 +6,7 @@ function via_posrpy = CalcMirrorPath_Normal(corner_pos,lenscraper,inc_ang,dis_tr
 % 2--------1
 % lenscraper: length of scraper
 % inc_ang: included angle between mirror and tool axis
+% the tool is straight up when inc_ang is 0
 % dis_trans: transition distance in z-axis before scrape mirror
 x0_mirror = corner_pos(:,4)-corner_pos(:,1);
 x0_mirror = x0_mirror/norm(x0_mirror);
@@ -25,7 +26,16 @@ step_size = width_target/(cycle_num-1);
 start_pos1 = corner_pos_new(:,4);
 start_pos2 = corner_pos_new(:,1);
 trans_vec = z0_mirror*dis_trans;
-rot_transform = [0,0,1; 1,0,0; 0,1,0];
+switch camera_ori
+    case 'top'
+        rot_transform = [0,0,1; 1,0,0; 0,1,0];
+    case 'left'
+        rot_transform = [0,0,1; 0,1,0; -1,0,0];
+    case 'down'
+        rot_transform = [0,0,1; -1,0,0; 0,-1,0];
+    case 'right'
+        rot_transform = [0,0,1; 0,-1,0; 1,0,0];
+end
 for idx=1:cycle_num
     pos2 = start_pos1+(idx-1)*step_size*y0_mirror;
     pos1 = pos2 + trans_vec;
