@@ -10,6 +10,7 @@ classdef CartesianPlanner < handle
         rpy_seg
         
         varc
+        trans_radius
         continuity
     end
 
@@ -23,6 +24,7 @@ classdef CartesianPlanner < handle
         
         function AddPosRPY(obj,pos_rpy)
             if obj.continuity
+                obj.trans_radius = CalcAdaptiveRadius([obj.pos_corner, pos_rpy(1:3,:)]);
                 for idx=1:size(pos_rpy,2)
                     obj.AddContiPosRPY(pos_rpy(:,idx));
                 end
@@ -46,7 +48,7 @@ classdef CartesianPlanner < handle
                                                         rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
                 obj.ntraj = 1;
             elseif size(obj.pos_corner,2)==3
-                pos_tmp = CalcSplineTransPos(obj.pos_corner(:,1:3),0.05,'arc');
+                pos_tmp = CalcSplineTransPos(obj.pos_corner(:,1:3),obj.trans_radius,'arc');
                 obj.pos_seg = [obj.pos_seg, pos_tmp];
                 [~,radius,~] = CalcArcInfo(obj.pos_seg(:,1),obj.pos_corner(:,2),obj.pos_seg(:,2));
                 obj.varc(1) = sqrt(g_camax(1)*radius);
@@ -59,7 +61,7 @@ classdef CartesianPlanner < handle
                 obj.ntraj = 3;
             else
                 np = size(obj.pos_corner,2);
-                pos_tmp = CalcSplineTransPos(obj.pos_corner(:,np-2:np),0.05,'arc');
+                pos_tmp = CalcSplineTransPos(obj.pos_corner(:,np-2:np),obj.trans_radius,'arc');
                 obj.pos_seg = [obj.pos_seg, pos_tmp];
                 [~,radius,~] = CalcArcInfo(obj.pos_seg(:,end-1),obj.pos_corner(:,np-1),obj.pos_seg(:,end));
                 obj.varc = [obj.varc,sqrt(g_camax(1)*radius)];
@@ -151,3 +153,13 @@ classdef CartesianPlanner < handle
 
 
 end
+
+function radius = CalcAdaptiveRadius(pos)
+    np = size(pos,2);
+    for idx=1:np-1
+        len(idx) = norm(pos(:,idx+1)-pos(:,idx));
+    end
+    scalar = 0.3;
+    radius = scalar*min(len)/2;
+end
+
