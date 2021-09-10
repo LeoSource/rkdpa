@@ -11,6 +11,7 @@ classdef CartesianPlanner < handle
         
         varc
         trans_radius
+        trans_ratio
         continuity
     end
 
@@ -20,13 +21,24 @@ classdef CartesianPlanner < handle
             obj.rpy_corner = pos_rpy0(4:6);
             obj.ntraj = 0;
             obj.continuity = conti_type;
+            obj.trans_ratio = 0.5;
         end
         
         function AddPosRPY(obj,pos_rpy)
             if obj.continuity
-                obj.trans_radius = CalcAdaptiveRadius([obj.pos_corner, pos_rpy(1:3,:)]);
-                for idx=1:size(pos_rpy,2)
-                    obj.AddContiPosRPY(pos_rpy(:,idx));
+                while 1
+                    if obj.trans_ratio<0
+                        error('can not transition between two lines');
+                    end
+                    obj.trans_radius = obj.CalcAdaptiveRadius([obj.pos_corner, pos_rpy(1:3,:)]);
+                    try
+                        for idx=1:size(pos_rpy,2)
+                            obj.AddContiPosRPY(pos_rpy(:,idx));
+                        end
+                        break;
+                    catch
+                        obj.trans_ratio = obj.trans_ratio-0.05;
+                    end
                 end
             else
                 for idx=1:size(pos_rpy,2)
@@ -148,18 +160,18 @@ classdef CartesianPlanner < handle
             pos = p2+line_len*dir_p2p3;
         end
         
+        function radius = CalcAdaptiveRadius(obj,pos)
+            np = size(pos,2);
+            for idx=1:np-1
+                len(idx) = norm(pos(:,idx+1)-pos(:,idx));
+            end
+            radius = obj.trans_ratio*min(len)/2;
+        end
 
     end
 
 
 end
 
-function radius = CalcAdaptiveRadius(pos)
-    np = size(pos,2);
-    for idx=1:np-1
-        len(idx) = norm(pos(:,idx+1)-pos(:,idx));
-    end
-    scalar = 0.3;
-    radius = scalar*min(len)/2;
-end
+
 
