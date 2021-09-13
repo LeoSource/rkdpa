@@ -1,3 +1,17 @@
+%   Cartesian Trajectory Planner Class:
+%   A specific class that plans and generates line, arc and their hybrid trajectory
+%   You can set the conti_type to define Cartesian trajectory:
+%   false means that trajectory is consisits of only lines, trajectory will
+%   go through all the via-points
+%   true means that trajectory is consists of lines and arcs, trajectory
+%   uses arc transition between two lines
+%   conti_type means nothing when you only define an arc trajectory
+%   TO DO: make the transition radius adaptive
+%   Referance: 
+%   trajectory planning for automatic machines and robots
+%   Author:
+%   liao zhixiang, zhixiangleo@163.com
+
 classdef CartesianPlanner < handle
 
     properties
@@ -21,7 +35,7 @@ classdef CartesianPlanner < handle
             obj.rpy_corner = pos_rpy0(4:6);
             obj.ntraj = 0;
             obj.continuity = conti_type;
-            obj.trans_ratio = 0.5;
+            obj.trans_ratio = 0.3;
         end
         
         function AddPosRPY(obj,pos_rpy)
