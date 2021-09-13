@@ -49,10 +49,15 @@ classdef TaskTrajPlanner < handle
                 rpy0 = tr2rpy(obj.pre_trajpose, 'xyz')';
                 pos_rpy0 = [pos0;rpy0];
                 tf_uk = CalcBSplineTime([pos_rpy0,via_pos]);
-                posplanner = CubicBSplinePlanner([pos0,via_pos(1:3,:)], traj_opt, tf_uk);
-                rotplanner = CubicBSplinePlanner([rpy0,via_pos(4:6,:)], traj_opt, tf_uk);
+                posplanner = CubicBSplinePlanner([pos_rpy0,via_pos], traj_opt, tf_uk);
+%                 rot_data = RPY2AxisAngle([rpy0,via_pos(4:6,:)]);
+%                 rotplanner = CubicBSplinePlanner(rot_data, traj_opt, tf_uk);
+%                 rotplanner = CubicBSplinePlanner([rpy0,via_pos(4:6,:)], traj_opt, tf_uk);
+%                 obj.test_rpy = [rpy0,via_pos(4:6,:)];
+%                 obj.test_tf = tf_uk;
                 obj.ntraj = obj.ntraj+1;
-                obj.segplanner{obj.ntraj} = {posplanner, rotplanner};
+%                 obj.segplanner{obj.ntraj} = {posplanner, rotplanner};
+                obj.segplanner{obj.ntraj} = posplanner;
                 obj.traj_type{obj.ntraj} = 'bspline';
                 obj.pre_trajpose = SE3.rpy(180/pi*via_pos(4:6,end)', 'xyz');
                 obj.pre_trajpose.t = via_pos(1:3,end);
@@ -133,12 +138,31 @@ classdef TaskTrajPlanner < handle
                 case 'joint'
                     [jp,jv,ja] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     [p,v,a] = obj.Transform2Cart(jp,jv,ja);
-                    cpos = [cpos, p]; cvel = [cvel, v]; cacc = [acc, a];
+                    cpos = [cpos, p]; cvel = [cvel, v]; cacc = [cacc, a];
                 case 'bspline'
-                    [p,vp,ap] = obj.segplanner{traj_idx}{1}.GenerateTraj(dt);
-                    [r,vr,ar] = obj.segplanner{traj_idx}{2}.GenerateTraj(dt);
-                    pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
-                    cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
+                    [p,vp,ap] = obj.segplanner{traj_idx}.GenerateTraj(dt);                    
+%                     uplanner = LspbPlanner([0,obj.test_tf],2,1,obj.test_tf);
+%                     for idx=1:size(obj.test_rpy,2)
+%                         rot_mat = rpy2r(180/pi*obj.test_rpy(:,idx)', 'xyz');
+%                         quat(:,idx) = dcm2quat(rot_mat)';
+%                     end
+%                     r = [];
+%                     for t=0:dt:obj.test_tf
+%                         [u,du,ddu] = uplanner.GenerateMotion(t);
+%                         s = u/obj.test_tf;
+%                         qu = quat_squad(quat, s);
+%                         quat_save(:,idx) = qu';
+%                         rot_mat = quat2dcm(qu);
+%                         r = [r, tr2rpy(rot_mat, 'xyz')'];
+%                     end
+
+%                     [r,vr,ar] = obj.segplanner{traj_idx}{2}.GenerateTraj(dt);
+%                     r = AxisAngle2RPY(r_tmp);
+%                     vr = zeros(size(r));
+%                     ar = zeros(size(r));
+%                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
+%                     cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
+                    [cpos] = [cpos,p]; cvel = [cvel,vp]; cacc = [cacc, ap];
                 case 'arc'
                     [p,vp,ap,r,vr,ar] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
@@ -198,6 +222,9 @@ classdef TaskTrajPlanner < handle
                 cmd_pose = SE3.rpy(180/pi*cp(4:6,idx)','xyz');
                 cmd_pose.t = cp(1:3,idx);
                 q = obj.robot.ikine(cmd_pose,'q0',obj.pre_q','tol',1e-5)';
+                if size(q)~=6
+                    a = 1;
+                end
                 jaco = obj.robot.jacob0(q);
                 qd = jaco\cv(:,idx);
                 jaco_dot = obj.robot.jacob_dot(q',qd');
@@ -236,3 +263,6 @@ function tf = CalcBSplineTime(pos_rpy)
     tf_rot = rot_len/g_cvmax(2)*tscale;
     tf = max([tf_pos,tf_rot]);
 end
+
+
+
