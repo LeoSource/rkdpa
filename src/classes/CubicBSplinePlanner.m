@@ -21,19 +21,23 @@ classdef CubicBSplinePlanner < handle
         knot_vec
         uknot_vec
         ctrl_pos
+        ctrl_rpy
 
         option
     end
 
     methods
         %% Constructor of Class and Other Settings
-        function obj = CubicBSplinePlanner(via_pos, option, uk)
+        function obj = CubicBSplinePlanner(via_posrpy, option, uk)
             %%%usually, uk is the final time of of planner
             obj.pdegree = 3;
             obj.option = option;
+            via_pos = via_posrpy(1:3,:);
             %%%input position is the control position%%%
             if strcmp(option, 'ctrlpos')
                 obj.ctrl_pos = via_pos;
+                axis_angle = RPY2AxisAngle(via_posrpy(4:6,:));
+                obj.ctrl_rpy = axis_angle;
                 obj.num_ctrlp = size(via_pos,2);
                 obj.nump = obj.num_ctrlp-2;
                 if nargin>2
@@ -61,10 +65,15 @@ classdef CubicBSplinePlanner < handle
                     obj.num_ctrlp = obj.nump+2;
                     obj.knot_vec = obj.CalcKnotVec();
                     obj.ctrl_pos = obj.CalcCtrlPos(via_pos);
+%                     axis_angle = via_posrpy(4:6,:);
+                    axis_angle = RPY2AxisAngle(via_posrpy(4:6,:));
+                    obj.ctrl_rpy = obj.CalcCtrlRot(axis_angle);
                 elseif strcmp(option, 'approximation')
                     obj.num_ctrlp = 20;
                     obj.knot_vec = obj.CalcApproKnotVec();
                     obj.ctrl_pos = obj.CalcApproCtrlPos(via_pos);
+                    axis_angle = RPY2AxisAngle(via_posrpy(4:6,:));
+                    obj.ctrl_rpy = obj.CalcApproCtrlPos(axis_angle);
                 else
                     error('error option')
                 end
@@ -81,6 +90,41 @@ classdef CubicBSplinePlanner < handle
             p(:,1) = q(:,1);
             p(:,2) = q(:,1)+(u_hat(2)-u_hat(1))/3*t1;
             p(:,n+1) = q(:,n)-(u_hat(n)-u_hat(n-1))/3*tn;
+            p(:,n+2) = q(:,n);
+            B = zeros(n-2,n-2); R = zeros(n-2, dim);
+            for idx=1:n-2
+                if idx==1
+                    R(idx,:) = q(:,2)'-obj.CalcBSplineCoeff(3,2,u_hat(2))*p(:,2)';
+                    B(1,1) = obj.CalcBSplineCoeff(3, 3, u_hat(2));
+                    B(1,2) = obj.CalcBSplineCoeff(3, 4, u_hat(2));
+                elseif idx==n-2
+                    R(idx,:) = q(:,n-1)'-obj.CalcBSplineCoeff(3, n+1, u_hat(n-1))*p(:,n+1)';
+                    B(n-2, n-3) = obj.CalcBSplineCoeff(3, n-1, u_hat(n-1));
+                    B(n-2, n-2) = obj.CalcBSplineCoeff(3, n, u_hat(n-1));
+                else
+                    R(idx,:) = q(:,idx+1)';
+                    B(idx, idx-1) = obj.CalcBSplineCoeff(3, idx+1, u_hat(idx+1));
+                    B(idx, idx) = obj.CalcBSplineCoeff(3, idx+2, u_hat(idx+1));
+                    B(idx, idx+1) = obj.CalcBSplineCoeff(3, idx+3, u_hat(idx+1));
+                end
+            end
+            p_tmp = B\R;
+            p(:,3:n) = p_tmp';
+        end
+
+        function p = CalcCtrlRot(obj, q)
+            n = obj.nump; m = obj.num_ctrlp; u_hat = obj.uknot_vec;
+            dim = size(q,1);
+            p = zeros(dim, m);
+            p(:,1) = q(:,1);
+            quat1 = AxisAngle2Quat(q(:,1));
+            quat2 = AxisAngle2Quat(q(:,2));
+            qi = quatinterp(quat1',quat2',0.333,'slerp')';
+            p(:,2) = Quat2AxisAngle(qi);
+            quat1 = AxisAngle2Quat(q(:,n-1));
+            quat2 = AxisAngle2Quat(q(:,n));
+            qi = quatinterp(quat1',quat2',0.333,'slerp')';
+            p(:,n+1) = Quat2AxisAngle(qi);
             p(:,n+2) = q(:,n);
             B = zeros(n-2,n-2); R = zeros(n-2, dim);
             for idx=1:n-2
@@ -218,6 +262,8 @@ classdef CubicBSplinePlanner < handle
                 [p, v, a] = obj.GenerateMotion(u, du, ddu);
                 pos = [pos,p]; vel = [vel,v]; acc = [acc,a];
             end
+            rpy = AxisAngle2RPY(pos(4:6,:));
+            pos = [pos(1:3,:); rpy];
         end
         
         function [p, v, a] = GenerateMotion(obj, u, du, ddu)
@@ -238,6 +284,8 @@ classdef CubicBSplinePlanner < handle
                 end
             end
             pos = obj.ctrl_pos*b_coeff;
+            rpy = obj.ctrl_rpy*b_coeff;
+            pos = [pos;rpy];
         end
 
         function vel = GenerateVel(obj, u, du)
@@ -248,6 +296,7 @@ classdef CubicBSplinePlanner < handle
             end
             % dp/dt=(dp/du)*(du/dt);
             vel = obj.ctrl_pos*diff_bcoeff*du;
+            vel = [vel;zeros(3,1)];
         end
 
         function acc = GenerateAcc(obj, u, du, ddu)
@@ -260,6 +309,7 @@ classdef CubicBSplinePlanner < handle
             end
             % ddp/ddt = (dp/du)*ddu+(ddp/ddu)*du^2
             acc = obj.ctrl_pos*diff2_bcoeff*du^2+obj.ctrl_pos*diff_bcoeff*ddu;
+            acc = [acc;zeros(3,1)];
         end
 
         function curve = GenerateBSpline(obj, du)
@@ -321,5 +371,50 @@ function res = Divide(num, den)
         res = num/den;
     else
         res = num/den;
+    end
+end
+
+function axis_angle = RPY2AxisAngle(rpy)
+    for idx=1:size(rpy,2)
+        rot_mat = rpy2r(180/pi*rpy(:,idx)', 'xyz');
+        [theta, k] = tr2angvec(rot_mat);
+        axis_angle(:,idx) = theta*k'/2;
+    end
+end
+
+
+function rpy = AxisAngle2RPY(axis_angle)
+    for idx=1:size(axis_angle,2)
+        theta = 2*norm(axis_angle(:,idx));
+        k = 2*axis_angle(:,idx)/theta;
+        rot_mat = angvec2r(theta, k);
+        rpy(:,idx) = tr2rpy(rot_mat, 'xyz')';
+    end
+end
+
+function quat = AxisAngle2Quat(axis_angle)
+    n = size(axis_angle,2);
+    quat = zeros(4,n);
+    for idx=1:n
+        theta = 2*norm(axis_angle(:,idx));
+        if abs(theta)<1e-5
+            rot_mat = eye(3);
+        else
+            dir_vec = 2*axis_angle(:,idx)/theta;
+            rot_mat = angvec2r(theta, dir_vec);
+        end
+        q = dcm2quat(rot_mat);
+        quat(:,idx) = q';
+    end
+end
+
+
+function axis_angle = Quat2AxisAngle(quat)
+    n = size(quat,2);
+    axis_angle = zeros(3,n);
+    for idx=1:n
+        half_theta = acos(quat(1,idx));
+        dir_vec = quat(2:end,idx)/sin(half_theta);
+        axis_angle(:,idx) = half_theta*dir_vec;
     end
 end
