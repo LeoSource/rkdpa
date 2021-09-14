@@ -1,4 +1,5 @@
-function via_posrpy = PlanUniversalRectPath(vertices, clean_tool, pitch_angle, yaw_angle, dis_trans, camera_ori)
+function via_posrpy = PlanUniversalRectPath(vertices, clean_tool, pitch_angle, ...
+                                                                    yaw_angle, dis_trans, camera_ori, path_type)
 % the sequence of vertices is like this
 % 3！！！！！！！4
 % |       x^
@@ -26,12 +27,22 @@ vertices_new(:,1) = vertices(:,1)+w/2*x0_plane+l/2*y0_plane;
 vertices_new(:,2) = vertices(:,2)+w/2*x0_plane-l/2*y0_plane;
 vertices_new(:,3) = vertices(:,3)-w/2*x0_plane-l/2*y0_plane;
 vertices_new(:,4) = vertices(:,4)-w/2*x0_plane+l/2*y0_plane;
-% TO DO: add 's' pathtype
-width_target = norm(vertices_new(:,2)-vertices_new(:,1));
-cycle_num = ceil(width_target/l)+1;
-step_size = width_target/(cycle_num-1);
-start_pos1 = vertices_new(:,4);
-start_pos2 = vertices_new(:,1);
+
+if path_type=='n'
+    width_target = norm(vertices_new(:,2)-vertices_new(:,1));
+    cycle_num = ceil(width_target/l)+1;
+    step_size = width_target/(cycle_num-1);
+    step_vec = y0_plane;
+    start_pos1 = vertices_new(:,4);
+    start_pos2 = vertices_new(:,1);
+elseif path_type=='s'
+    width_target = norm(vertices_new(:,2)-vertices_new(:,3));
+    cycle_num = ceil(width_target/w)+1;
+    step_size = width_target/(cycle_num-1);
+    step_vec = -x0_plane;
+    start_pos1 = vertices_new(:,4);
+    start_pos2 = vertices_new(:,3);
+end
 switch camera_ori
     case 'top'
         rot_transform = [0,0,1; 1,0,0; 0,1,0];
@@ -45,15 +56,23 @@ end
 if dis_trans>0
     trans_vec = z0_plane*dis_trans;
     for idx=1:cycle_num
-        pos2 = start_pos1+(idx-1)*step_size*y0_plane;
+        pos2 = start_pos1+(idx-1)*step_size*step_vec;
         pos1 = pos2+trans_vec;
-        pos3 = start_pos2+(idx-1)*step_size*y0_plane;
+        pos3 = start_pos2+(idx-1)*step_size*step_vec;
         pos4 = pos3+trans_vec;
-        pitch1 = pitch_angle(1);
-        pitch2 = pitch_angle(2);
-        origin = 0.5*(vertices_new(:,1)+vertices_new(:,2));
-        yaw1 = CalcRectYaw(origin, pos2, rot_plane, yaw_angle(1), cycle_num, idx);
-        yaw2 = CalcRectYaw(origin, pos3, rot_plane, yaw_angle(2), cycle_num, idx);
+        if path_type=='n'
+            pitch1 = pitch_angle(1);
+            pitch2 = pitch_angle(2);
+            origin = 0.5*(vertices_new(:,1)+vertices_new(:,2));
+            yaw1 = CalcNPathYaw(origin, pos2, rot_plane, yaw_angle(1), cycle_num, idx);
+            yaw2 = CalcNPathYaw(origin, pos3, rot_plane, yaw_angle(2), cycle_num, idx);
+        elseif path_type=='s'
+            pitch1 = CalcSPathPitch(pitch_angle, cycle_num, idx);
+            pitch2 = pitch1;
+            origin = 0.5*(vertices_new(:,1)+vertices_new(:,2));
+            yaw1 = CalcSPathYaw(origin, pos2, rot_plane, yaw_angle, cycle_num, idx);
+            yaw2 = -yaw1;
+        end
         rot_tool1 = rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*rot_transform;
         rot_tool2 = rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*rot_transform;
         rpy1 = tr2rpy(rot_tool1, 'xyz');
@@ -65,13 +84,21 @@ if dis_trans>0
     end
 else
     for idx=1:cycle_num
-        pos1 = start_pos1+(idx-1)*step_size*y0_plane;
-        pos2 = start_pos2+(idx-1)*step_size*y0_plane;
-        pitch1 = pitch_angle(1);
-        pitch2 = pitch_angle(2);
-        origin = 0.5*(vertices_new(:,1)+vertices_new(:,2));
-        yaw1 = CalcRectYaw(origin, pos1, rot_plane, yaw_angle(1), cycle_num, idx);
-        yaw2 = CalcRectYaw(origin, pos2, rot_plane, yaw_angle(2), cycle_num, idx);
+        pos1 = start_pos1+(idx-1)*step_size*step_vec;
+        pos2 = start_pos2+(idx-1)*step_size*step_vec;
+        if path_type=='n'
+            pitch1 = pitch_angle(1);
+            pitch2 = pitch_angle(2);
+            origin = 0.5*(vertices_new(:,1)+vertices_new(:,2));
+            yaw1 = CalcNPathYaw(origin, pos1, rot_plane, yaw_angle(1), cycle_num, idx);
+            yaw2 = CalcNPathYaw(origin, pos2, rot_plane, yaw_angle(2), cycle_num, idx);
+        elseif path_type=='s'
+            pitch1 = CalcSPathPitch(pitch_angle, cycle_num, idx);
+            pitch2 = pitch1;
+            origin = 0.5*(vertices_new(:,1)+vertices_new(:,2));
+            yaw1 = CalcSPathYaw(origin, pos1, rot_plane, yaw_angle, cycle_num, idx);
+            yaw2 = -yaw1;
+        end
         rot_tool1 = rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*rot_transform;
         rot_tool2 = rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*rot_transform;
         rpy1 = tr2rpy(rot_tool1, 'xyz');
@@ -84,13 +111,27 @@ end
 
 end
 
-function yaw = CalcRectYaw(origin, pos, rot_plane, yaw_angle, ncycle, index)
+function yaw = CalcNPathYaw(origin, pos, rot_plane, yaw_angle, ncycle, index)
     if yaw_angle>pi || yaw_angle<-pi
         yaw = CalcAdaptiveYaw(origin, pos, rot_plane);
     else
-        step_yaw1 = 2*yaw_angle(1)/(ncycle-1);
-        yaw = yaw_angle(1)-(index-1)*step_yaw1;
+        step_yaw1 = 2*yaw_angle/(ncycle-1);
+        yaw = yaw_angle-(index-1)*step_yaw1;
     end
+end
+
+function yaw = CalcSPathYaw(origin, pos, rot_plane, yaw_range, ncycle, index)
+    if yaw_range(1)>pi || yaw_range(1)<-pi
+        yaw = CalcAdaptiveYaw(origin, pos, rot_plane);
+    else
+        step_yaw = abs(yaw_range(2)-yaw_range(1))/(ncycle-1);
+        yaw = yaw_range(1)-(index-1)*step_yaw;
+    end
+end
+
+function pitch = CalcSPathPitch(pitch_range, ncycle, index)
+    step_pitch = (pitch_range(2)-pitch_range(1))/(ncycle-1);
+    pitch = pitch_range(1)+(index-1)*step_pitch;
 end
 
 function yaw = CalcAdaptiveYaw(origin, pos, rot_plane)
