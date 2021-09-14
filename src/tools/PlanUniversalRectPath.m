@@ -66,10 +66,10 @@ if dis_trans>0
             yaw2 = acos(dot(tmp_vec2,-x0_plane)/norm(tmp_vec2));
         end
         pitch1 = pitch_angle(1);
-        if pitch_angle(2)<=0
+        if pitch_angle(2)<0
             pitch2 = pitch1;
         else
-            pitch1 = pitch_angle(2);
+            pitch2 = pitch_angle(2);
         end
         rot_tool1 = rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*rot_transform;
         rot_tool2 = rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*rot_transform;
@@ -96,16 +96,24 @@ else
         else
             mid_len = 0.5*(vertices_new(:,1)+vertices_new(:,2));
             tmp_vec1 = mid_len-pos1;
-            yaw1 = acos(dot(tmp_vec1,-x0_plane)/norm(tmp_vec1));
+            if norm(tmp_vec1)<1e-6
+                cos_theta = 1;
+            else
+                cos_theta = dot(tmp_vec1,-x0_plane)/norm(tmp_vec1);
+            end
+            dir = cross(tmp_vec1,-x0_plane)./z0_plane;
+            yaw1 = sign(dir(3))*acos(cos_theta);
             tmp_vec2 = mid_len-pos2;
-            yaw2 = acos(dot(tmp_vec2,-x0_plane)/norm(tmp_vec2));
+            if norm(tmp_vec2)<1e-6
+                cos_theta = 1;
+            else
+                cos_theta = dot(tmp_vec2,-x0_plane)/norm(tmp_vec2);
+            end
+            dir = cross(tmp_vec2,-x0_plane)./z0_plane;
+            yaw2 = sign(dir(3))*acos(cos_theta);
         end
         pitch1 = pitch_angle(1);
-        if pitch_angle(2)<=0
-            pitch2 = pitch1;
-        else
-            pitch1 = pitch_angle(2);
-        end
+        pitch2 = pitch_angle(2);
         rot_tool1 = rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*rot_transform;
         rot_tool2 = rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*rot_transform;
         rpy1 = tr2rpy(rot_tool1, 'xyz');
