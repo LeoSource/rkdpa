@@ -25,7 +25,7 @@ pose_tool = SE3(rotx(0), [0,0,0.29]);
 qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
-simu_mode = 'common';
+simu_mode = 'mirror';
 switch simu_mode
     case 'workspace'
 %% plot workspace
@@ -109,7 +109,34 @@ taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 p1 = [0.8,-0.1,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.1,0.81]';
 vision_pos = [p1,p2,p3,p4];
 % via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
-via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.08, 'right');
+% via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.08, 'right');
+via_posrpy = PlanUniversalRectPath(vision_pos, [0.15,0], [60*pi/180, 60*pi/180], [0, 0], 0.08, 'left');
+taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
+
+if compare_plan
+    [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+else
+    [cpos,cvel,cacc] = taskplanner.GenerateCartTraj(dt);
+end
+
+figure
+plot2(cpos(1:3,:)', 'r--');hold on;
+plot2(via_posrpy(1:3,:)', 'bo'); plot2(vision_pos', 'r*'); axis equal;
+PlotRPY(cpos, 60);
+grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+
+    case 'table'
+%% simulate rectangle table or ground zones
+joint_plot = 0;
+compare_cpp = 0;
+compare_plan = 0;
+dt = 0.01;
+q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
+taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
+p1 = [0.1,-0.5,-0.6]'; p2 = [0.1,0.5,-0.6]'; p3 = [0.6,0.5,-0.6]'; p4 = [0.6,-0.5,-0.6]';
+vision_pos = [p1,p2,p3,p4];
+% via_posrpy = CalcViapos(vision_pos, 'table');
+via_posrpy = PlanUniversalRectPath(vision_pos, [0.2,0.1], [50*pi/180, pi-50*pi/180], [-10, 0], -1, 'top');
 taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
 
 if compare_plan
