@@ -49,7 +49,7 @@ if dis_trans>0
         pos1 = pos2+trans_vec;
         pos3 = start_pos2+(idx-1)*step_size*y0_plane;
         pos4 = pos3+trans_vec;
-        if yaw_angle(1)>0
+        if yaw_angle(1)>=0
             step_yaw1 = 2*yaw_angle(1)/(cycle_num-1);
             yaw1 = yaw_angle(1)-(idx-1)*step_yaw1;
             if yaw_angle(2)>0
@@ -71,8 +71,8 @@ if dis_trans>0
         else
             pitch1 = pitch_angle(2);
         end
-        rot_tool1 = rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1);
-        rot_tool2 = rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2);
+        rot_tool1 = rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*rot_transform;
+        rot_tool2 = rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*rot_transform;
         rpy1 = tr2rpy(rot_tool1, 'xyz');
         rpy2 = tr2rpy(rot_tool2, 'xyz');
         via_posrpy(:,4*idx-3) = [pos1; rpy1'];
@@ -84,7 +84,7 @@ else
     for idx=1:cycle_num
         pos1 = start_pos1+(idx-1)*step_size*y0_plane;
         pos2 = start_pos2+(idx-1)*step_size*y0_plane;
-        if yaw_angle(1)>0
+        if yaw_angle(1)>=0
             step_yaw1 = 2*yaw_angle(1)/(cycle_num-1);
             yaw1 = yaw_angle(1)-(idx-1)*step_yaw1;
             if yaw_angle(2)>0
@@ -106,8 +106,8 @@ else
         else
             pitch1 = pitch_angle(2);
         end
-        rot_tool1 = rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1);
-        rot_tool2 = rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2);
+        rot_tool1 = rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*rot_transform;
+        rot_tool2 = rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*rot_transform;
         rpy1 = tr2rpy(rot_tool1, 'xyz');
         rpy2 = tr2rpy(rot_tool2, 'xyz');
         via_posrpy(:,2*idx-1) = [pos1; rpy1'];
