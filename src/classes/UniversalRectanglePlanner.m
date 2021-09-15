@@ -21,6 +21,7 @@
 classdef UniversalRectanglePlanner < handle
     properties
         rot_plane
+        rot_transform
         vertices_new
     end
 
@@ -29,20 +30,19 @@ classdef UniversalRectanglePlanner < handle
 
         end
 
-        function via_posrpy = UniversalPlan(vertices,clean_tool,pitch_angle,...
+        function via_posrpy = UniversalPlan(obj, vertices,clean_tool,pitch_angle,...
                                             yaw_angle,dis_trans,camera_ori,path_type)
 
             x0_plane = vertices(:,4)-vertices(:,1);
+            x0_plane = x0_plane/norm(x0_plane);
             y0_plane = vertices(:,2)-vertices(:,1);
+            y0_plane = y0_plane/norm(y0_plane);
             z0_plane = cross(x0_plane,y0_plane);
-            obj.rot_plane = [x0_plane/norm(x0_plane),y0_plane/norm(y0_plane),z0_plane/norm(z0_plane)];
-            % simplify the clean area model
-            l = clean_tool; w = clean_tool(2);
-            obj.vertices_new(:,1) = vertices(:,1)+w/2*x0_plane+l/2*y0_plane;
-            obj.vertices_new(:,2) = vertices(:,2)+w/2*x0_plane-l/2*y0_plane;
-            obj.vertices_new(:,3) = vertices(:,3)-w/2*x0_plane-l/2*y0_plane;
-            obj.vertices_new(:,4) = vertices(:,4)-w/2*x0_plane+l/2*y0_plane;
+            obj.rot_plane = [x0_plane, y0_plane, z0_plane];
+            obj.CalcCleanAreaVertices(vertices,clean_tool);
+            obj.SetRotTransformation(camera_ori);
 
+            l = clean_tool(1); w = clean_tool(2);
             if path_type=='n'
                 width_target = norm(obj.vertices_new(:,2)-obj.vertices_new(:,1));
                 cycle_num = ceil(width_target/l)+1;
@@ -58,16 +58,6 @@ classdef UniversalRectanglePlanner < handle
                 start_pos1 = obj.vertices_new(:,4);
                 start_pos2 = obj.vertices_new(:,3);
             end
-            switch camera_ori
-            case 'top'
-                rot_transform = [0,0,1; 1,0,0; 0,1,0];
-            case 'left'
-                rot_transform = [0,0,1; 0,1,0; -1,0,0];
-            case 'down'
-                rot_transform = [0,0,1; -1,0,0; 0,-1,0];
-            case 'right'
-                rot_transform = [0,0,1; 0,-1,0; 1,0,0];
-            end
             if dis_trans>0
                 trans_vec = z0_plane*dis_trans;
                 for idx=1:cycle_num
@@ -78,16 +68,16 @@ classdef UniversalRectanglePlanner < handle
                     if path_type=='n'
                         pitch1 = pitch_angle(1);
                         pitch2 = pitch_angle(2);
-                        yaw1 = CalcNPathYaw(pos2, yaw_angle(1), cycle_num, idx);
-                        yaw2 = CalcNPathYaw(pos3, yaw_angle(2), cycle_num, idx);
+                        yaw1 = obj.CalcNPathYaw(pos2, yaw_angle(1), cycle_num, idx);
+                        yaw2 = obj.CalcNPathYaw(pos3, yaw_angle(2), cycle_num, idx);
                     elseif path_type=='s'
-                        pitch1 = CalcSPathPitch(pitch_angle, cycle_num, idx);
+                        pitch1 = obj.CalcSPathPitch(pitch_angle, cycle_num, idx);
                         pitch2 = pitch1;
-                        yaw1 = CalcSPathYaw(pos2, yaw_angle, cycle_num, idx);
+                        yaw1 = obj.CalcSPathYaw(pos2, yaw_angle, cycle_num, idx);
                         yaw2 = -yaw1;
                     end
-                    rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*rot_transform;
-                    rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*rot_transform;
+                    rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
+                    rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
                     rpy1 = tr2rpy(rot_tool1, 'xyz');
                     rpy2 = tr2rpy(rot_tool2, 'xyz');
                     via_posrpy(:,4*idx-3) = [pos1; rpy1'];
@@ -102,16 +92,16 @@ classdef UniversalRectanglePlanner < handle
                     if path_type=='n'
                         pitch1 = pitch_angle(1);
                         pitch2 = pitch_angle(2);
-                        yaw1 = CalcNPathYaw(pos1, yaw_angle(1), cycle_num, idx);
-                        yaw2 = CalcNPathYaw(pos2, yaw_angle(2), cycle_num, idx);
+                        yaw1 = obj.CalcNPathYaw(pos1, yaw_angle(1), cycle_num, idx);
+                        yaw2 = obj.CalcNPathYaw(pos2, yaw_angle(2), cycle_num, idx);
                     elseif path_type=='s'
-                        pitch1 = CalcSPathPitch(pitch_angle, cycle_num, idx);
+                        pitch1 = obj.CalcSPathPitch(pitch_angle, cycle_num, idx);
                         pitch2 = pitch1;
-                        yaw1 = CalcSPathYaw(pos1, yaw_angle, cycle_num, idx);
+                        yaw1 = obj.CalcSPathYaw(pos1, yaw_angle, cycle_num, idx);
                         yaw2 = -yaw1;
                     end
-                    rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*rot_transform;
-                    rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*rot_transform;
+                    rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
+                    rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
                     rpy1 = tr2rpy(rot_tool1, 'xyz');
                     rpy2 = tr2rpy(rot_tool2, 'xyz');
                     via_posrpy(:,2*idx-1) = [pos1; rpy1'];
@@ -154,22 +144,59 @@ classdef UniversalRectanglePlanner < handle
             yaw = sign(dir(3))*acos(cos_theta);
         end
 
-        function pitch = CalcSPathPitch(pitch_range, ncycle, index)
+        function pitch = CalcSPathPitch(obj, pitch_range, ncycle, index)
             step_pitch = (pitch_range(2)-pitch_range(1))/(ncycle-1);
             pitch = pitch_range(1)+(index-1)*step_pitch;
         end
 
-        function via_posrpy = PlanMirror()
+        function CalcCleanAreaVertices(obj, vertices, clean_tool)
+            % simplify the clean area model
+            l = clean_tool(1); w = clean_tool(2);
+            x0_plane = obj.rot_plane(:,1);
+            y0_plane = obj.rot_plane(:,2);
+            obj.vertices_new(:,1) = vertices(:,1)+w/2*x0_plane+l/2*y0_plane;
+            obj.vertices_new(:,2) = vertices(:,2)+w/2*x0_plane-l/2*y0_plane;
+            obj.vertices_new(:,3) = vertices(:,3)-w/2*x0_plane-l/2*y0_plane;
+            obj.vertices_new(:,4) = vertices(:,4)-w/2*x0_plane+l/2*y0_plane;
+        end
 
+        function SetRotTransformation(obj, camera_ori)
+            switch camera_ori
+            case 'top'
+                obj.rot_transform = [0,0,1; 1,0,0; 0,1,0];
+            case 'left'
+                obj.rot_transform = [0,0,1; 0,1,0; -1,0,0];
+            case 'down'
+                obj.rot_transform = [0,0,1; -1,0,0; 0,-1,0];
+            case 'right'
+                obj.rot_transform = [0,0,1; 0,-1,0; 1,0,0];
+            end
+        end
+
+        function via_posrpy = PlanMirror(obj, vertices)
+            path_type = 'n';
+            camera_ori = 'top';
+            dis_trans = 0.08;
+            pitch_angle = [60*pi/180, 60*pi/180];
+            yaw_angle = [0, 0];
+            clean_tool = [0.15, 0];
+            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
+                                        yaw_angle,dis_trans,camera_ori,path_type);
+        end
+
+        function via_posrpy = PlanTable(obj, vertices)
 
         end
 
-        function via_posrpy = PlanTable()
-
-        end
-
-        function via_posrpy = PlanGround()
-
+        function via_posrpy = PlanGround(obj, vertices)
+            path_type = 's';
+            camera_ori = 'top';
+            dis_trans = -1;
+            pitch_angle = [50*pi/180, pi-50*pi/180];
+            yaw_angle = [70*pi/180, 10*pi/180];
+            clean_tool = [0.2, 0.15];
+            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
+                                        yaw_angle,dis_trans,camera_ori,path_type);
         end
 
     end
