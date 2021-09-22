@@ -18,11 +18,17 @@
 %   Author:
 %   Liao Zhixiang, zhixiangleo@163.com
 
-classdef UniversalRectanglePlanner < handle
+classdef QuadranglePlanner < handle
     properties
         rot_plane
         rot_transform
         vertices_new
+
+        cycle_num
+        step_size1
+        step_size2
+        step_vec1
+        step_vec2
     end
 
     methods
@@ -32,50 +38,30 @@ classdef UniversalRectanglePlanner < handle
 
         function via_posrpy = UniversalPlan(obj, vertices,clean_tool,pitch_angle,...
                                             yaw_angle,dis_trans,camera_ori,path_type)
-
-            x0_plane = vertices(:,4)-vertices(:,1);
-            x0_plane = x0_plane/norm(x0_plane);
-            y0_plane = vertices(:,2)-vertices(:,1);
-            y0_plane = y0_plane/norm(y0_plane);
-            z0_plane = cross(x0_plane,y0_plane);
-            obj.rot_plane = [x0_plane, y0_plane, z0_plane];
+            obj.CalcPlaneRot(vertices);
             obj.CalcCleanAreaVertices(vertices,clean_tool);
             obj.SetRotTransformation(camera_ori);
-
-            l = clean_tool(1); w = clean_tool(2);
             if path_type=='n'
-                width_target = norm(obj.vertices_new(:,2)-obj.vertices_new(:,1));
-                cycle_num = ceil(width_target/l)+1;
-                step_size = width_target/(cycle_num-1);
-                step_vec = y0_plane;
-                start_pos1 = obj.vertices_new(:,4);
-                start_pos2 = obj.vertices_new(:,1);
+                via_posrpy = obj.PlanNPath(clean_tool, pitch_angle, yaw_angle, dis_trans);
             elseif path_type=='s'
-                width_target = norm(obj.vertices_new(:,2)-obj.vertices_new(:,3));
-                cycle_num = ceil(width_target/w)+1;
-                step_size = width_target/(cycle_num-1);
-                step_vec = -x0_plane;
-                start_pos1 = obj.vertices_new(:,4);
-                start_pos2 = obj.vertices_new(:,3);
+                via_posrpy = obj.PlanSPath(clean_tool, pitch_angle, yaw_angle, dis_trans);
             end
+
+        end
+
+        function via_posrpy = PlanNPath(obj, clean_tool, pitch_angle, yaw_angle, dis_trans)
+            obj.CalcCycleInfo(clean_tool(1), obj.vertices_new(:,3)-obj.vertices_new(:,4), ...
+                                            obj.vertices_new(:,2)-obj.vertices_new(:,1));
+            start_pos1 = obj.vertices_new(:,4);
+            start_pos2 = obj.vertices_new(:,1);
             if dis_trans>0
-                trans_vec = z0_plane*dis_trans;
-                for idx=1:cycle_num
-                    pos2 = start_pos1+(idx-1)*step_size*step_vec;
+                trans_vec = dis_trans*obj.rot_plane(:,3);
+                for idx=1:obj.cycle_num
+                    pos2 = start_pos1+(idx-1)*obj.step_size1*obj.step_vec1;
                     pos1 = pos2+trans_vec;
-                    pos3 = start_pos2+(idx-1)*step_size*step_vec;
+                    pos3 = start_pos2+(idx-1)*obj.step_size2*obj.step_vec2;
                     pos4 = pos3+trans_vec;
-                    if path_type=='n'
-                        pitch1 = pitch_angle(1);
-                        pitch2 = pitch_angle(2);
-                        yaw1 = obj.CalcNPathYaw(pos2, yaw_angle(1), cycle_num, idx);
-                        yaw2 = obj.CalcNPathYaw(pos3, yaw_angle(2), cycle_num, idx);
-                    elseif path_type=='s'
-                        pitch1 = obj.CalcSPathPitch(pitch_angle, cycle_num, idx);
-                        pitch2 = pitch1;
-                        yaw1 = obj.CalcSPathYaw(pos2, yaw_angle, cycle_num, idx);
-                        yaw2 = -yaw1;
-                    end
+                    [pitch1,pitch2,yaw1,yaw2] = obj.CalcNPathRot(pitch_angle,yaw_angle,pos2,pos3,idx);
                     rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
                     rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
                     rpy1 = tr2rpy(rot_tool1, 'xyz');
@@ -86,20 +72,10 @@ classdef UniversalRectanglePlanner < handle
                     via_posrpy(:,4*idx) = [pos4; rpy2'];
                 end
             else
-                for idx=1:cycle_num
-                    pos1 = start_pos1+(idx-1)*step_size*step_vec;
-                    pos2 = start_pos2+(idx-1)*step_size*step_vec;
-                    if path_type=='n'
-                        pitch1 = pitch_angle(1);
-                        pitch2 = pitch_angle(2);
-                        yaw1 = obj.CalcNPathYaw(pos1, yaw_angle(1), cycle_num, idx);
-                        yaw2 = obj.CalcNPathYaw(pos2, yaw_angle(2), cycle_num, idx);
-                    elseif path_type=='s'
-                        pitch1 = obj.CalcSPathPitch(pitch_angle, cycle_num, idx);
-                        pitch2 = pitch1;
-                        yaw1 = obj.CalcSPathYaw(pos1, yaw_angle, cycle_num, idx);
-                        yaw2 = -yaw1;
-                    end
+                for idx=1:obj.cycle_num
+                    pos1 = start_pos1+(idx-1)*obj.step_size1*obj.step_vec1;
+                    pos2 = start_pos2+(idx-1)*obj.step_size2*obj.step_vec2;
+                    [pitch1,pitch2,yaw1,yaw2] = obj.CalcNPathRot(pitch_angle,yaw_angle,pos1,pos2,idx);
                     rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
                     rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
                     rpy1 = tr2rpy(rot_tool1, 'xyz');
@@ -107,27 +83,95 @@ classdef UniversalRectanglePlanner < handle
                     via_posrpy(:,2*idx-1) = [pos1; rpy1'];
                     via_posrpy(:,2*idx) = [pos2; rpy2'];
                 end
-                
             end
-
         end
 
-        function yaw = CalcNPathYaw(obj, pos, yaw_angle, ncycle, index)
+        function via_posrpy = PlanSPath(obj, clean_tool, pitch_angle, yaw_angle, dis_trans)
+            obj.CalcCycleInfo(clean_tool(2), obj.vertices_new(:,1)-obj.vertices_new(:,4), ...
+                                            obj.vertices_new(:,3)-obj.vertices_new(:,2));
+            start_pos1 = obj.vertices_new(:,4);
+            start_pos2 = obj.vertices_new(:,3);
+            if dis_trans>0
+                trans_vec = dis_trans*obj.rot_plane(:,3);
+                for idx=1:obj.cycle_num
+                    pos2 = start_pos1+(idx-1)*obj.step_size1*obj.step_vec1;
+                    pos1 = pos2+trans_vec;
+                    pos3 = start_pos2+(idx-1)*obj.step_size2*obj.step_vec2;
+                    pos4 = pos3+trans_vec;
+                    [pitch1,pitch2,yaw1,yaw2] = obj.CalcSPathRot(pitch_angle, yaw_angle, pos2, idx);
+                    rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
+                    rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
+                    rpy1 = tr2rpy(rot_tool1, 'xyz');
+                    rpy2 = tr2rpy(rot_tool2, 'xyz');
+                    via_posrpy(:,4*idx-3) = [pos1; rpy1'];
+                    via_posrpy(:,4*idx-2) = [pos2; rpy1'];
+                    via_posrpy(:,4*idx-1) = [pos3; rpy2'];
+                    via_posrpy(:,4*idx) = [pos4; rpy2'];
+                end
+            else
+                for idx=1:obj.cycle_num
+                    pos1 = start_pos1+(idx-1)*obj.step_size1*obj.step_vec1;
+                    pos2 = start_pos2+(idx-1)*obj.step_size2*obj.step_vec2;
+                    [pitch1,pitch2,yaw1,yaw2] = obj.CalcSPathRot(pitch_angle, yaw_angle, pos1, idx);
+                    rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
+                    rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
+                    rpy1 = tr2rpy(rot_tool1, 'xyz');
+                    rpy2 = tr2rpy(rot_tool2, 'xyz');
+                    via_posrpy(:,2*idx-1) = [pos1; rpy1'];
+                    via_posrpy(:,2*idx) = [pos2; rpy2'];
+                end
+            end
+        end
+
+        function CalcCycleInfo(obj, interval, vec1, vec2)
+            len1 = norm(vec1);
+            len2 = norm(vec2);
+            cycle_num1 = ceil(len1/interval)+1;
+            cycle_num2 = ceil(len2/interval)+1;
+            obj.cycle_num = max(cycle_num1,cycle_num2);
+            obj.step_size1 = len1/(obj.cycle_num-1);
+            obj.step_size2 = len2/(obj.cycle_num-1);
+            obj.step_vec1 = vec1/len1;
+            obj.step_vec2 = vec2/len2;
+        end
+
+        function [pitch1, pitch2, yaw1, yaw2] = CalcNPathRot(obj, pitch_angle, yaw_angle, pos1, pos2, idx)
+            pitch1 = pitch_angle(1);
+            pitch2 = pitch_angle(2);
+            yaw1 = obj.CalcNPathYaw(pos1, yaw_angle(1), idx);
+            yaw2 = obj.CalcNPathYaw(pos2, yaw_angle(2), idx);
+        end
+
+        function [pitch1, pitch2, yaw1, yaw2] = CalcSPathRot(obj, pitch_angle, yaw_angle, pos, idx)
+            pitch1 = obj.CalcSPathPitch(pitch_angle, idx);
+            pitch2 = pitch1;
+            yaw1 = obj.CalcSPathYaw(pos, yaw_angle, idx);
+            yaw2 = -yaw1;
+        end
+
+        function CalcPlaneRot(obj, vertices)
+            x0_plane = vertices(:,4)-vertices(:,1);
+            z0_plane = cross(x0_plane, vertices(:,2)-vertices(:,1));
+            y0_plane = cross(z0_plane, x0_plane);
+            obj.rot_plane = [x0_plane/norm(x0_plane), y0_plane/norm(y0_plane), z0_plane/norm(z0_plane)];
+        end
+
+        function yaw = CalcNPathYaw(obj, pos, yaw_angle, index)
             if yaw_angle>pi || yaw_angle<-pi
                 origin = 0.5*(obj.vertices_new(:,1)+obj.vertices_new(:,2));
                 yaw = CalcAdaptiveYaw(origin, pos);
             else
-                step_yaw = 2*yaw_angle/(ncycle-1);
+                step_yaw = 2*yaw_angle/(obj.cycle_num-1);
                 yaw = yaw_angle-(index-1)*step_yaw;
             end
         end
 
-        function yaw = CalcSPathYaw(obj, pos, yaw_range, ncycle, index)
+        function yaw = CalcSPathYaw(obj, pos, yaw_range, index)
             if yaw_range(1)>pi || yaw_range(1)<-pi
                 origin = 0.5*(obj.vertices_new(:,1)+obj.vertices_new(:,2));
                 yaw = CalcAdaptiveYaw(origin, pos);
             else
-                step_yaw = abs(yaw_range(2)-yaw_range(1))/(ncycle-1);
+                step_yaw = abs(yaw_range(2)-yaw_range(1))/(obj.cycle_num-1);
                 yaw = yaw_range(1)-(index-1)*step_yaw;
             end
         end
@@ -185,14 +229,21 @@ classdef UniversalRectanglePlanner < handle
         end
 
         function via_posrpy = PlanTable(obj, vertices)
-
-        end
-
-        function via_posrpy = PlanGround(obj, vertices)
-            path_type = 's';
+            path_type = 'n';
             camera_ori = 'top';
             dis_trans = -1;
             pitch_angle = [50*pi/180, pi-50*pi/180];
+            yaw_angle = [70*pi/180, 10*pi/180];
+            clean_tool = [0.2, 0.15];
+            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
+                                        yaw_angle,dis_trans,camera_ori,path_type);
+        end
+
+        function via_posrpy = PlanGround(obj, vertices)
+            path_type = 'n';
+            camera_ori = 'top';
+            dis_trans = -1;
+            pitch_angle = [50*pi/180, 80*pi/180];
             yaw_angle = [70*pi/180, 10*pi/180];
             clean_tool = [0.2, 0.15];
             via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
