@@ -106,7 +106,7 @@ compare_plan = 0;
 dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
-rectplanner = UniversalRectanglePlanner;
+rectplanner = QuadranglePlanner;
 p1 = [0.8,-0.1,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.1,0.81]';
 vision_pos = [p1,p2,p3,p4];
 % via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
@@ -134,10 +134,9 @@ compare_plan = 0;
 dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
-rectplanner = UniversalRectanglePlanner;
+rectplanner = QuadranglePlanner;
 p1 = [0.1,-0.5,-0.6]'; p2 = [0.1,0.5,-0.6]'; p3 = [0.6,0.5,-0.6]'; p4 = [0.6,-0.5,-0.6]';
 vision_pos = [p1,p2,p3,p4];
-% via_posrpy = PlanUniversalRectPath(vision_pos, [0.2,0.15], [50*pi/180, pi-50*pi/180], [70*pi/180, 10*pi/180], -1, 'top', 's');
 via_posrpy = rectplanner.PlanGround(vision_pos);
 taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
 
@@ -150,7 +149,7 @@ end
 figure
 plot2(cpos(1:3,:)', 'r--');hold on;
 plot2(via_posrpy(1:3,:)', 'bo'); plot2(vision_pos', 'r*'); axis equal;
-PlotRPY(cpos, 60);
+PlotRPY(cpos, 100);
 grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
 end

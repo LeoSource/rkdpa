@@ -48,7 +48,6 @@ classdef QuadranglePlanner < handle
             elseif path_type=='s'
                 via_posrpy = obj.PlanSPath(clean_tool, pitch_angle, yaw_angle, dis_trans);
             end
-
         end
 
         function via_posrpy = PlanNPath(obj, clean_tool, pitch_angle, yaw_angle, dis_trans)
@@ -58,15 +57,9 @@ classdef QuadranglePlanner < handle
             obj.start_pos2 = obj.vertices_new(:,1);
             if dis_trans>0
                 trans_vec = dis_trans*obj.rot_plane(:,3);
-                for idx=1:obj.cycle_num
-                    waypoint = obj.CalcDisCycleWaypoint(pitch_angle,yaw_angle,trans_vec,'n');
-                    via_posrpy(:,4*idx-3:4*idx) = waypoint;
-                end
+                via_posrpy = obj.CalcDisCycleWaypoint(pitch_angle,yaw_angle,trans_vec,'n');
             else
-                for idx=1:obj.cycle_num
-                    waypoint = obj.CalcCycleWaypoint(pitch_angle, yaw_angle, idx, 'n');
-                    via_posrpy(:,2*idx-1:2*idx) = waypoint;
-                end
+                via_posrpy = obj.CalcCycleWaypoint(pitch_angle, yaw_angle, 'n');
             end
         end
 
@@ -77,52 +70,50 @@ classdef QuadranglePlanner < handle
             obj.start_pos2 = obj.vertices_new(:,3);
             if dis_trans>0
                 trans_vec = dis_trans*obj.rot_plane(:,3);
-                for idx=1:obj.cycle_num
-                    waypoint = obj.CalcDisCycleWaypoint(pitch_angle,yaw_angle,trans_vec,'s');
-                    via_posrpy(:,4*idx-3:4*idx) = waypoint;
-                end
+                via_posrpy = obj.CalcDisCycleWaypoint(pitch_angle,yaw_angle,trans_vec,'s');
             else
-                for idx=1:obj.cycle_num
-                    waypoint = obj.CalcCycleWaypoint(pitch_angle,yaw_angle,idx,'s');
-                    via_posrpy(:,2*idx-1:2*idx) = waypoint;
-                end
+                via_posrpy = obj.CalcCycleWaypoint(pitch_angle,yaw_angle,'s');
             end
         end
 
-        function waypoint = CalcCycleWaypoint(obj, pitch_angle, yaw_angle, idx, path_type)
-            pos1 = obj.start_pos1+(idx-1)*obj.step_size1*obj.step_vec1;
-            pos2 = obj.start_pos2+(idx-1)*obj.step_size2*obj.step_vec2;
-            if path_type=='n'
-                [pitch1,pitch2,yaw1,yaw2] = obj.CalcNPathRot(pitch_angle,yaw_angle,pos1,pos2,idx);
-            elseif path_type=='s'
-                [pitch1,pitch2,yaw1,yaw2] = obj.CalcSPathRot(pitch_angle, yaw_angle, pos1, idx);
+        function waypoint = CalcCycleWaypoint(obj, pitch_angle, yaw_angle, path_type)
+            for idx=1:obj.cycle_num
+                pos1 = obj.start_pos1+(idx-1)*obj.step_size1*obj.step_vec1;
+                pos2 = obj.start_pos2+(idx-1)*obj.step_size2*obj.step_vec2;
+                if path_type=='n'
+                    [pitch1,pitch2,yaw1,yaw2] = obj.CalcNPathRot(pitch_angle,yaw_angle,pos1,pos2,idx);
+                elseif path_type=='s'
+                    [pitch1,pitch2,yaw1,yaw2] = obj.CalcSPathRot(pitch_angle, yaw_angle, pos1, idx);
+                end
+                rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
+                rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
+                rpy1 = tr2rpy(rot_tool1, 'xyz');
+                rpy2 = tr2rpy(rot_tool2, 'xyz');
+                waypoint(:,2*idx-1) = [pos1; rpy1'];
+                waypoint(:,2*idx) = [pos2; rpy2'];
             end
-            rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
-            rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
-            rpy1 = tr2rpy(rot_tool1, 'xyz');
-            rpy2 = tr2rpy(rot_tool2, 'xyz');
-            waypoint(:,1) = [pos1; rpy1'];
-            waypoint(:,2) = [pos2; rpy2'];
         end
 
         function waypoint = CalcDisCycleWaypoint(obj, pitch_angle, yaw_angle, trans_vec, path_type)
-            pos2 = obj.start_pos1+(idx-1)*obj.step_size1*obj.step_vec1;
-            pos1 = pos2+trans_vec;
-            pos3 = obj.start_pos2+(idx-1)*obj.step_size2*obj.step_vec2;
-            pos4 = pos3+trans_vec;
-            if path_type=='n'
-                [pitch1,pitch2,yaw1,yaw2] = obj.CalcNPathRot(pitch_angle,yaw_angle,pos2,pos3,idx);
-            elseif path_type=='s'
-                [pitch1,pitch2,yaw1,yaw2] = obj.CalcSPathRot(pitch_angle, yaw_angle, pos2, idx);
+            for idx=1:obj.cycle_num
+                pos2 = obj.start_pos1+(idx-1)*obj.step_size1*obj.step_vec1;
+                pos1 = pos2+trans_vec;
+                pos3 = obj.start_pos2+(idx-1)*obj.step_size2*obj.step_vec2;
+                pos4 = pos3+trans_vec;
+                if path_type=='n'
+                    [pitch1,pitch2,yaw1,yaw2] = obj.CalcNPathRot(pitch_angle,yaw_angle,pos2,pos3,idx);
+                elseif path_type=='s'
+                    [pitch1,pitch2,yaw1,yaw2] = obj.CalcSPathRot(pitch_angle, yaw_angle, pos2, idx);
+                end
+                rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
+                rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
+                rpy1 = tr2rpy(rot_tool1, 'xyz');
+                rpy2 = tr2rpy(rot_tool2, 'xyz');
+                waypoint(:,4*idx-3) = [pos1; rpy1'];
+                waypoint(:,4*idx-2) = [pos2; rpy1'];
+                waypoint(:,4*idx-1) = [pos3; rpy2'];
+                waypoint(:,4*idx) = [pos4; rpy2'];
             end
-            rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
-            rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
-            rpy1 = tr2rpy(rot_tool1, 'xyz');
-            rpy2 = tr2rpy(rot_tool2, 'xyz');
-            via_posrpy(:,4*idx-3) = [pos1; rpy1'];
-            via_posrpy(:,4*idx-2) = [pos2; rpy1'];
-            via_posrpy(:,4*idx-1) = [pos3; rpy2'];
-            via_posrpy(:,4*idx) = [pos4; rpy2'];
         end
 
         function CalcCycleInfo(obj, interval, vec1, vec2)
@@ -198,12 +189,43 @@ classdef QuadranglePlanner < handle
         function CalcCleanAreaVertices(obj, vertices, clean_tool)
             % simplify the clean area model
             l = clean_tool(1); w = clean_tool(2);
-            x0_plane = obj.rot_plane(:,1);
-            y0_plane = obj.rot_plane(:,2);
-            obj.vertices_new(:,1) = vertices(:,1)+w/2*x0_plane+l/2*y0_plane;
-            obj.vertices_new(:,2) = vertices(:,2)+w/2*x0_plane-l/2*y0_plane;
-            obj.vertices_new(:,3) = vertices(:,3)-w/2*x0_plane-l/2*y0_plane;
-            obj.vertices_new(:,4) = vertices(:,4)-w/2*x0_plane+l/2*y0_plane;
+            z0_plane = obj.rot_plane(:,3);
+            vec12 = vertices(:,2)-vertices(:,1);
+            vec12 = vec12/norm(vec12);
+            vec14 = vertices(:,4)-vertices(:,1);
+            vec14 = vec14/norm(vec14);
+            n_vec12 = cross(vec12,z0_plane);
+            n_vec14 = cross(z0_plane,vec14);
+            n_vec12 = n_vec12/norm(n_vec12);
+            n_vec14 = n_vec14/norm(n_vec14);
+            obj.vertices_new(:,1) = obj.CalcNewVertice(vec12,vec14,w/2,l/2,n_vec12,vertices(:,1));
+            vec23 = vertices(:,3)-vertices(:,2);
+            n_vec23 = cross(vec23,z0_plane);
+            vec23 = vec23/norm(vec23);
+            n_vec23 = n_vec23/norm(n_vec23);
+            obj.vertices_new(:,2) = obj.CalcNewVertice(vec23,-vec12,l/2,w/2,n_vec23,vertices(:,2));
+            vec34 = vertices(:,4)-vertices(:,3);
+            n_vec34 = cross(vec34,z0_plane);
+            n_vec34 = n_vec34/norm(n_vec34);
+            obj.vertices_new(:,3) = obj.CalcNewVertice(vec34,-vec23,w/2,l/2,n_vec34,vertices(:,3));
+            obj.vertices_new(:,4) = obj.CalcNewVertice(-vec14,-vec34,l/2,w/2,n_vec14,vertices(:,4));
+        end
+
+        function vertice_new = CalcNewVertice(obj, v1, v2, nlen1, nlen2, nv1, vertice)
+            cos_theta = dot(v1,v2)/norm(v1)/norm(v2);
+            theta = acos(cos_theta);
+            if abs(nlen1)<1e-5
+                len1 = nlen2/sin(theta);
+                vec_new = len1*v1;
+            elseif abs(nlen2)<1e-5
+                len2 = nlen1/sin(theta);
+                vec_new = len2*v2;
+            else
+                theta1 = atan2(nlen1/nlen2*sin(theta), 1+nlen1/nlen2*cos(theta));
+                len1 = cot(theta1)*nlen1;
+                vec_new = len1*v1+nlen1*nv1;
+            end
+            vertice_new = vec_new+vertice;
         end
 
         function SetRotTransformation(obj, camera_ori)
