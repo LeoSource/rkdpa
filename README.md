@@ -4,7 +4,9 @@
 Matlab2018b
 
 ## 依赖
-Robotics ToolBox--v10.4
+Robotics ToolBox    --  v10.4
+MQTT in MATLAB  --  v1.4
+Real-Time Pacer for Simulink    --  v1.0.0.1
 
 ## 架构说明
 1. docs/  
