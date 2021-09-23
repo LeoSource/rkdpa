@@ -205,6 +205,7 @@ classdef QuadranglePlanner < handle
             n_vec23 = n_vec23/norm(n_vec23);
             obj.vertices_new(:,2) = obj.CalcNewVertice(vec23,-vec12,l/2,w/2,n_vec23,vertices(:,2));
             vec34 = vertices(:,4)-vertices(:,3);
+            vec34 = vec34/norm(vec34);
             n_vec34 = cross(vec34,z0_plane);
             n_vec34 = n_vec34/norm(n_vec34);
             obj.vertices_new(:,3) = obj.CalcNewVertice(vec34,-vec23,w/2,l/2,n_vec34,vertices(:,3));
@@ -264,7 +265,7 @@ classdef QuadranglePlanner < handle
         end
 
         function via_posrpy = PlanGround(obj, vertices)
-            path_type = 's';
+            path_type = 'n';
             camera_ori = 'top';
             dis_trans = -1;
             pitch_angle = [50*pi/180, 80*pi/180];
