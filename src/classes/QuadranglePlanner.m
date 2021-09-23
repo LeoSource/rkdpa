@@ -65,7 +65,7 @@ classdef QuadranglePlanner < handle
 
         function via_posrpy = PlanSPath(obj, clean_tool, pitch_angle, yaw_angle, dis_trans)
             obj.CalcCycleInfo(clean_tool(2), obj.vertices_new(:,1)-obj.vertices_new(:,4), ...
-                                            obj.vertices_new(:,3)-obj.vertices_new(:,2));
+                                            obj.vertices_new(:,2)-obj.vertices_new(:,3));
             obj.start_pos1 = obj.vertices_new(:,4);
             obj.start_pos2 = obj.vertices_new(:,3);
             if dis_trans>0
@@ -181,8 +181,8 @@ classdef QuadranglePlanner < handle
             yaw = sign(dir(3))*acos(cos_theta);
         end
 
-        function pitch = CalcSPathPitch(obj, pitch_range, ncycle, index)
-            step_pitch = (pitch_range(2)-pitch_range(1))/(ncycle-1);
+        function pitch = CalcSPathPitch(obj, pitch_range, index)
+            step_pitch = (pitch_range(2)-pitch_range(1))/(obj.cycle_num-1);
             pitch = pitch_range(1)+(index-1)*step_pitch;
         end
 
@@ -264,7 +264,7 @@ classdef QuadranglePlanner < handle
         end
 
         function via_posrpy = PlanGround(obj, vertices)
-            path_type = 'n';
+            path_type = 's';
             camera_ori = 'top';
             dis_trans = -1;
             pitch_angle = [50*pi/180, 80*pi/180];
