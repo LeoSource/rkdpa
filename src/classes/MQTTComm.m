@@ -35,9 +35,14 @@ methods
             json_data = jsondecode(msg);
             obj.jpos = json_data.joint_actual_position;
         end
+        disp(datetime);
         out_data = obj.jpos;
     end
-
+    
+    function PublishData(obj, topic, msg)
+        json_data = jsonencode(msg);
+        publish(obj.my_mqtt, topic, json_data);
+    end
     
     
     
