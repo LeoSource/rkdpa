@@ -1,11 +1,11 @@
 function out_data = read_mqtt(address, topic)
 
-persistent comm
-if isempty(comm)
-    comm = MQTTComm(address, topic, zeros(6,1));
+persistent mqtt_comm
+if isempty(mqtt_comm)
+    mqtt_comm = MQTTComm(address, zeros(6,1), topic);
     out_data = zeros(6,1);
 else
-    out_data = comm.jdata;
+    out_data = mqtt_comm.ReadData();
 end
 
 
