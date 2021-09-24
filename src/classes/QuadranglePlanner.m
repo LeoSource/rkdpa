@@ -37,6 +37,39 @@ classdef QuadranglePlanner < handle
         function obj = QuadranglePlanner()
 
         end
+        
+        function via_posrpy = PlanMirror(obj, vertices)
+            path_type = 'n';
+            camera_ori = 'top';
+            dis_trans = 0.08;
+            pitch_angle = [60*pi/180, 60*pi/180];
+            yaw_angle = [0, 0];
+            clean_tool = [0.15, 0];
+            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
+                                        yaw_angle,dis_trans,camera_ori,path_type);
+        end
+
+        function via_posrpy = PlanTable(obj, vertices)
+            path_type = 'n';
+            camera_ori = 'top';
+            dis_trans = -1;
+            pitch_angle = [50*pi/180, pi-50*pi/180];
+            yaw_angle = [70*pi/180, 10*pi/180];
+            clean_tool = [0.2, 0.15];
+            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
+                                        yaw_angle,dis_trans,camera_ori,path_type);
+        end
+
+        function via_posrpy = PlanGround(obj, vertices)
+            path_type = 'n';
+            camera_ori = 'top';
+            dis_trans = -1;
+            pitch_angle = [50*pi/180, 80*pi/180];
+            yaw_angle = [70*pi/180, 10*pi/180];
+            clean_tool = [0.2, 0.15];
+            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
+                                        yaw_angle,dis_trans,camera_ori,path_type);
+        end
 
         function via_posrpy = UniversalPlan(obj, vertices,clean_tool,pitch_angle,...
                                             yaw_angle,dis_trans,camera_ori,path_type)
@@ -242,38 +275,6 @@ classdef QuadranglePlanner < handle
             end
         end
 
-        function via_posrpy = PlanMirror(obj, vertices)
-            path_type = 'n';
-            camera_ori = 'top';
-            dis_trans = 0.08;
-            pitch_angle = [60*pi/180, 60*pi/180];
-            yaw_angle = [0, 0];
-            clean_tool = [0.15, 0];
-            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
-                                        yaw_angle,dis_trans,camera_ori,path_type);
-        end
-
-        function via_posrpy = PlanTable(obj, vertices)
-            path_type = 'n';
-            camera_ori = 'top';
-            dis_trans = -1;
-            pitch_angle = [50*pi/180, pi-50*pi/180];
-            yaw_angle = [70*pi/180, 10*pi/180];
-            clean_tool = [0.2, 0.15];
-            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
-                                        yaw_angle,dis_trans,camera_ori,path_type);
-        end
-
-        function via_posrpy = PlanGround(obj, vertices)
-            path_type = 'n';
-            camera_ori = 'top';
-            dis_trans = -1;
-            pitch_angle = [50*pi/180, 80*pi/180];
-            yaw_angle = [70*pi/180, 10*pi/180];
-            clean_tool = [0.2, 0.15];
-            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
-                                        yaw_angle,dis_trans,camera_ori,path_type);
-        end
 
     end
 

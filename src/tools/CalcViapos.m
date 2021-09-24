@@ -4,14 +4,14 @@ function via_posrpy = CalcViapos(vision_pos, type)
     if strcmp(type, 'toilet')
         center = mean(vision_pos, 2);
         rot_center = [0, 1, 0; 1, 0, 0; 0, 0, -1];
-        rpy = tr2rpy(rot_center, 'xyz');
-        via_posrpy(:,1) = [center; rpy'];
-        theta = 10*pi/180;%angle of vertical plane
+        rpy1 = tr2rpy(rot_center, 'xyz');
+        via_posrpy(:,1) = [center; rpy1'];
+        arc_theta = 10*pi/180;%angle of vertical plane
         for idx=1:npos
             pos_tmp = vision_pos(:,idx);
             len = norm(center-pos_tmp);
             pos_high = center;
-            pos_high(3) = center(3)+len*cot(theta);
+            pos_high(3) = center(3)+len*cot(arc_theta);
             z0 = pos_tmp-pos_high;
             z0 = z0/norm(z0);
             y0 = CalcPlaneIntersection(z0,pos_high);
@@ -22,21 +22,20 @@ function via_posrpy = CalcViapos(vision_pos, type)
 %             x0 = x0/norm(x0);
 %             y0 = cross(z0,x0);
             rot_mat = [x0, y0, z0];
-            rpy = tr2rpy(rot_mat, 'xyz');
-            via_posrpy(:,idx+1) = [pos_tmp; rpy'];
+            rpy1 = tr2rpy(rot_mat, 'xyz');
+            via_posrpy(:,idx+1) = [pos_tmp; rpy1'];
         end
     elseif strcmp(type,'table')
-        theta = 40*pi/180;%angle of horizontal plane
+        arc_theta = 40*pi/180;%angle of horizontal plane
         origin = 0.5*(vision_pos(:,1)+vision_pos(:,2));
         len = norm(origin-vision_pos(:,3));
-        origin(3) = origin(3)+len*tan(theta);
-        interval = 0.02;
+        origin(3) = origin(3)+len*tan(arc_theta);
+        interval = 0.075;
         step_vec1 = vision_pos(:,3)-vision_pos(:,4);
         step_vec2 = vision_pos(:,2)-vision_pos(:,1);
         start_pos1 = vision_pos(:,4);
         start_pos2 = vision_pos(:,1);
         cycle_num = round(norm(step_vec1)/interval)+1;
-%         numvp = 2*cycle_num;
         step_size = norm(step_vec1)/(cycle_num-1);
         step_vec1 = step_vec1/norm(step_vec1);
         step_vec2 = step_vec2/norm(step_vec2);
@@ -49,15 +48,17 @@ function via_posrpy = CalcViapos(vision_pos, type)
             x0 = cross(v1,v2);
             y0 = cross(z0,x0);
             rot_mat = [x0/norm(x0), y0/norm(y0), z0/norm(z0)];
-            rpy = tr2rpy(rot_mat, 'xyz');
-            via_posrpy(:,2*idx-1) = [pos1; rpy'];
-            via_posrpy(:,2*idx) = [pos2; rpy'];
+            rpy1 = tr2rpy(rot_mat, 'xyz');
+            via_posrpy(:,2*idx-1) = [pos1; rpy1'];
+            via_posrpy(:,2*idx) = [pos2; rpy1'];
         end
     elseif strcmp(type, 'toilet_lid')
         %the 3rd point is the mark point: posC
         %rotation axis is the 2nd point to 1st: posB->posA
         posA = vision_pos(:,1); posB = vision_pos(:,2); posC = vision_pos(:,3);
-        theta = vision_pos(1,end);
+        arc_theta = vision_pos(1,end);
+        slant = vision_pos(2,end);% positive for open, negative for close
+        dis_trans = vision_pos(3,end);
         z0 = posA-posB;
         z0 = z0/norm(z0);
         radius = norm(cross(z0,posC-posB));
@@ -67,24 +68,27 @@ function via_posrpy = CalcViapos(vision_pos, type)
         x0 = x0/norm(x0);
         y0 = cross(z0,x0);
         rot_mat = [x0,y0,z0];
-        via_posrpy(1:3,1) = posC;
-        tmp_pos(1,1) = radius*cos(theta/2);
-        tmp_pos(2,1) = radius*sin(theta/2);
-        tmp_pos(3,1) = 0;
-        via_posrpy(1:3,2) = posM+rot_mat*tmp_pos;
-        tmp_pos(1,1) = radius*cos(theta);
-        tmp_pos(2,1) = radius*sin(theta);
+        via_posrpy(1:3,2) = posC;
+        tmp_pos(1,1) = radius*cos(arc_theta/2);
+        tmp_pos(2,1) = radius*sin(arc_theta/2);
         tmp_pos(3,1) = 0;
         via_posrpy(1:3,3) = posM+rot_mat*tmp_pos;
-        rpy_z0 = (posB-posC)/norm(posB-posC);
-%         rpy_z0 = z0;
-        rpy_y0 = [0;0;1];
+        tmp_pos(1,1) = radius*cos(arc_theta);
+        tmp_pos(2,1) = radius*sin(arc_theta);
+        tmp_pos(3,1) = 0;
+        via_posrpy(1:3,4) = posM+rot_mat*tmp_pos;
+        rpy_z0 = (posA-posC)/norm(posA-posC);
+        via_posrpy(1:3,1) = posC-dis_trans*rpy_z0;
+        rpy_y0 = cross(rpy_z0,z0);
         rpy_x0 = cross(rpy_y0,rpy_z0);
-        rpy_mat = [rpy_x0, rpy_y0, rpy_z0];
-        rpy = tr2rpy(rpy_mat, 'xyz');
-        via_posrpy(4:6,1) = rpy;
-        via_posrpy(4:6,2) = rpy;
-        via_posrpy(4:6,3) = rpy;
+        tmp_mat = [rpy_x0, rpy_y0, rpy_z0];
+        rpy_mat1 = tmp_mat*rotx(180/pi*slant);
+        rpy1 = tr2rpy(rpy_mat1, 'xyz');
+        rpy2 = tr2rpy(tmp_mat, 'xyz');
+        via_posrpy(4:6,1) = rpy1;
+        via_posrpy(4:6,2) = rpy1;
+        via_posrpy(4:6,3) = rpy1;
+        via_posrpy(4:6,4) = rpy2;
     end
 
 end

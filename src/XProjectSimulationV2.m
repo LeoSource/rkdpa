@@ -21,11 +21,11 @@ mdh_table = [0, d1, 0, 0, 0, 0;...
                     0, d5, 0, -pi/2, 0, 0;...
                     0, d6, 0, pi/2, 0, 0];
 % pose_tool = SE3(rotx(-10), [0,0,0.116]);
-pose_tool = SE3(rotx(0), [0,0,0.29]);
+pose_tool = SE3(rotx(0), [0,-0.035,0.23]);
 qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
-simu_mode = 'mirror';
+simu_mode = 'toilet_lid';
 switch simu_mode
     case 'workspace'
 %% plot workspace
@@ -85,10 +85,12 @@ compare_plan = 1;
 dt = 0.01;
 q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
-a = [0.815, 0.431, -0.2876]'; b = [0.7674, 0.1089, -0.3071]'; c = [0.6015, 0.1089, -0.3071]'; theta = pi/2;
-vision_pos = [a,b,c,[theta;0;0]];
+% a = [0.815, 0.431, -0.2876]'; b = [0.7674, 0.1089, -0.3071]'; c = [0.6015, 0.1089, -0.3071]'; theta = pi/2;
+a = [0.8, 0.08, -0.331]'; b = [0.814, -0.1, -0.333]'; c = [0.9, -0.16, 0.05]';
+vision_pos = [a,b,c,[-pi/2; -40*pi/180; 0.05]];
 via_posrpy = CalcViapos(vision_pos, 'toilet_lid');
-taskplanner.AddTraj(via_posrpy, 'arc', 0);
+taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
+taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0);
 
 [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
 
