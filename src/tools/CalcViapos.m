@@ -25,33 +25,6 @@ function via_posrpy = CalcViapos(vision_pos, type)
             rpy1 = tr2rpy(rot_mat, 'xyz');
             via_posrpy(:,idx+1) = [pos_tmp; rpy1'];
         end
-    elseif strcmp(type,'table')
-        arc_theta = 40*pi/180;%angle of horizontal plane
-        origin = 0.5*(vision_pos(:,1)+vision_pos(:,2));
-        len = norm(origin-vision_pos(:,3));
-        origin(3) = origin(3)+len*tan(arc_theta);
-        interval = 0.075;
-        step_vec1 = vision_pos(:,3)-vision_pos(:,4);
-        step_vec2 = vision_pos(:,2)-vision_pos(:,1);
-        start_pos1 = vision_pos(:,4);
-        start_pos2 = vision_pos(:,1);
-        cycle_num = round(norm(step_vec1)/interval)+1;
-        step_size = norm(step_vec1)/(cycle_num-1);
-        step_vec1 = step_vec1/norm(step_vec1);
-        step_vec2 = step_vec2/norm(step_vec2);
-        for idx=1:cycle_num
-            pos1 = start_pos1+(idx-1)*step_size*step_vec1;
-            pos2 = start_pos2+(idx-1)*step_size*step_vec2;
-            z0 = pos1-origin;
-            v1 = -z0;
-            v2 = 0.5*(vision_pos(:,1)+vision_pos(:,2))-pos1;
-            x0 = cross(v1,v2);
-            y0 = cross(z0,x0);
-            rot_mat = [x0/norm(x0), y0/norm(y0), z0/norm(z0)];
-            rpy1 = tr2rpy(rot_mat, 'xyz');
-            via_posrpy(:,2*idx-1) = [pos1; rpy1'];
-            via_posrpy(:,2*idx) = [pos2; rpy1'];
-        end
     elseif strcmp(type, 'toilet_lid')
         %the 3rd point is the mark point: posC
         %rotation axis is the 2nd point to 1st: posB->posA
@@ -59,6 +32,7 @@ function via_posrpy = CalcViapos(vision_pos, type)
         arc_theta = vision_pos(1,end);
         slant = vision_pos(2,end);% positive for open, negative for close
         dis_trans = vision_pos(3,end);
+        %calculate the arc orientation and 3 points in arc
         z0 = posA-posB;
         z0 = z0/norm(z0);
         radius = norm(cross(z0,posC-posB));
@@ -72,11 +46,16 @@ function via_posrpy = CalcViapos(vision_pos, type)
         tmp_pos(1,1) = radius*cos(arc_theta/2);
         tmp_pos(2,1) = radius*sin(arc_theta/2);
         tmp_pos(3,1) = 0;
-        via_posrpy(1:3,3) = posM+rot_mat*tmp_pos;
+        tmp_pos = posM+rot_mat*tmp_pos;
+        dir_point = (posA-tmp_pos)/norm(posA-tmp_pos);
+        via_posrpy(1:3,3) = tmp_pos+0.5*dir_point*dis_trans;
         tmp_pos(1,1) = radius*cos(arc_theta);
         tmp_pos(2,1) = radius*sin(arc_theta);
         tmp_pos(3,1) = 0;
-        via_posrpy(1:3,4) = posM+rot_mat*tmp_pos;
+        tmp_pos = posM+rot_mat*tmp_pos;
+        dir_point = (posA-tmp_pos)/norm(posA-tmp_pos);
+        via_posrpy(1:3,4) = tmp_pos+dir_point*dis_trans;
+        %calculae orientation of the 3 points in arc
         rpy_z0 = (posA-posC)/norm(posA-posC);
         via_posrpy(1:3,1) = posC-dis_trans*rpy_z0;
         rpy_y0 = cross(rpy_z0,z0);
