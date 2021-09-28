@@ -3,7 +3,7 @@ close all
 clc
 
 addpath('classes');
-addpath('tools');
+addpath(genpath('tools'));
 %% define robot model with MDH method
 global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos g_cycle_time
 g_jvmax = [pi/4, pi/4, pi/4, pi/4, pi/4, pi/4];
@@ -85,9 +85,10 @@ compare_plan = 1;
 dt = 0.01;
 q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
-% a = [0.815, 0.431, -0.2876]'; b = [0.7674, 0.1089, -0.3071]'; c = [0.6015, 0.1089, -0.3071]'; theta = pi/2;
-a = [0.8, 0.08, -0.331]'; b = [0.814, -0.1, -0.333]'; c = [0.9, -0.16, 0.05]';
-vision_pos = [a,b,c,[-pi/2; -40*pi/180; 0.05]];
+a = [0.815, 0.431, -0.2876]'; b = [0.7674, 0.1089, -0.3071]'; c = [0.6015, 0.1089, -0.3071]'; theta = pi/2;
+vision_pos = [a,b,c,[110*pi/180;40*pi/180;0.03]];%open toilet_lid
+% a = [0.8, 0.08, -0.331]'; b = [0.814, -0.1, -0.333]'; c = [0.9, -0.16, 0.05]';
+% vision_pos = [a,b,c,[-pi/2; -40*pi/180; 0.03]];%close toilet_lid
 via_posrpy = CalcViapos(vision_pos, 'toilet_lid');
 taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
 taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0);
@@ -109,7 +110,7 @@ dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 rectplanner = QuadranglePlanner;
-p1 = [0.8,-0.1,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.1,0.81]';
+p1 = [0.8,-0.2,0.35]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.71]'; p4 = [0.8,-0.1,0.81]';
 vision_pos = [p1,p2,p3,p4];
 % via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
 % via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.08, 'right');
@@ -137,7 +138,7 @@ dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 rectplanner = QuadranglePlanner;
-p1 = [0.1,-0.5,-0.6]'; p2 = [0.1,0.5,-0.6]'; p3 = [0.6,0.5,-0.6]'; p4 = [0.6,-0.5,-0.6]';
+p1 = [0.1,-0.5,-0.6]'; p2 = [0.2,0.5,-0.6]'; p3 = [0.6,0.7,-0.6]'; p4 = [0.6,-0.5,-0.6]';
 vision_pos = [p1,p2,p3,p4];
 via_posrpy = rectplanner.PlanGround(vision_pos);
 taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
