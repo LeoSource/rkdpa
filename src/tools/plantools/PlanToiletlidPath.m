@@ -48,6 +48,7 @@ else
     rpy_y0 = (posM-tmp_pos)/norm(posM-tmp_pos);
     rpy_x0 = cross(rpy_y0,rpy_z0);
     rot_rpy = [rpy_x0,rpy_y0,rpy_z0];
+    rot_rpy = rot_rpy*roty(180/pi*point_angle)*rotx(180/pi*slant_angle);
     rpy2 = tr2rpy(rot_rpy, 'xyz');
 end
 via_posrpy(4:6,1) = rpy1;

@@ -87,11 +87,11 @@ q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 % a = [0.815, 0.431, -0.2876]'; b = [0.8174, 0.1089, -0.3071]'; c = [0.6015, 0.1089, -0.3071]';
 % via_posrpy = OpenToiletlidPath(vision_pos, 110*pi/180, 30*pi/180, 40*pi/180, 0.05);
-% via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, -30*pi/180, -40*pi/180, 0.05);
 a = [0.8, 0.08, -0.331]'; b = [0.814, -0.1, -0.333]'; c = [0.9, -0.16, 0.05]';
 % via_posrpy = CloseToiletlidPath(vision_pos, -pi/2, 0, -40*pi/180, 0.05);
 vision_pos = [a,b,c];
-via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, 0*pi/180, -40*pi/180, 0.05);
+% via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, -30*pi/180, -40*pi/180, 0.05);
+via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, -60*pi/180, -40*pi/180, 0.05);
 taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
 taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0);
 
