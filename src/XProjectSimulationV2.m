@@ -90,8 +90,8 @@ a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0
 vision_pos = [a,b,c];
 via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, (-0-90)*pi/180, 40*pi/180, 0.05);
 % via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, -30*pi/180, -40*pi/180, 0.05);
-taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
-taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0);
+taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0,1.0,1.0);
+taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0,1.0,1.0);
 
 [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
 

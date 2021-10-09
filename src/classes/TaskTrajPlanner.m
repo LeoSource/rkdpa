@@ -23,13 +23,34 @@ classdef TaskTrajPlanner < handle
             obj.pre_trajpose = obj.robot.fkine(q0);
         end
         
-        function AddTraj(obj, via_pos, traj_type, traj_opt)
+        function AddTraj(obj, via_pos, traj_type, traj_opt, vmax_arg, amax_arg)
+            global g_jvmax g_jamax g_cvmax g_camax
+            if strcmp(traj_type,'joint')
+                vmax = g_jvmax;
+                amax = g_jamax;
+            else
+                vmax = g_cvmax;
+                amax = g_camax;
+            end
+            if nargin==6
+                if isscalar(vmax_arg)
+                    vmax = vmax*vmax_arg;
+                else
+                    vmax = vmax_arg;
+                end
+                if isscalar(amax_arg)
+                    amax = amax*amax_arg;
+                else
+                    amax = amax_arg;
+                end
+            end
+
             switch traj_type
             case 'cartesian'
                 pos0 = obj.pre_trajpose.t;
                 rpy0 = tr2rpy(obj.pre_trajpose,'xyz')';
                 cplanner = CartesianPlanner([pos0;rpy0], traj_opt);
-                cplanner.AddPosRPY(via_pos);
+                cplanner.AddPosRPY(via_pos,vmax,amax);
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = cplanner;
                 obj.traj_type{obj.ntraj} = 'cartesian';
@@ -38,7 +59,7 @@ classdef TaskTrajPlanner < handle
                 obj.pre_trajq = obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5)';
             case 'joint'
                 jplanner = JointPlanner(obj.pre_trajq, traj_opt);
-                jplanner.AddJntPos(via_pos);
+                jplanner.AddJntPos(via_pos, vmax, amax);
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = jplanner;
                 obj.traj_type{obj.ntraj} = 'joint';
@@ -48,8 +69,15 @@ classdef TaskTrajPlanner < handle
                 pos0 = obj.pre_trajpose.t;
                 rpy0 = tr2rpy(obj.pre_trajpose, 'xyz')';
                 pos_rpy0 = [pos0;rpy0];
-                tf_uk = CalcBSplineTime([pos_rpy0,via_pos]);
-                posplanner = CubicBSplinePlanner([pos_rpy0,via_pos], traj_opt, tf_uk);
+                tf_uk = CalcBSplineTime([pos_rpy0,via_pos],vmax);
+                if traj_opt==1
+                    option = 'interpolation';
+                elseif traj_opt==0
+                    option = 'approximation';
+                else
+                    option = 'ctrlpos';
+                end
+                posplanner = CubicBSplinePlanner([pos_rpy0,via_pos], option, tf_uk);
 %                 rot_data = RPY2AxisAngle([rpy0,via_pos(4:6,:)]);
 %                 rotplanner = CubicBSplinePlanner(rot_data, traj_opt, tf_uk);
 %                 rotplanner = CubicBSplinePlanner([rpy0,via_pos(4:6,:)], traj_opt, tf_uk);
@@ -67,16 +95,15 @@ classdef TaskTrajPlanner < handle
                 pos0 = obj.pre_trajpose.t;
                 rpy0 = tr2rpy(obj.pre_trajpose, 'xyz')';
                 cplanner = CartesianPlanner([pos0;rpy0], false);
-                cplanner.AddPosRPY(via_pos(:,1));
+                cplanner.AddPosRPY(via_pos(:,1),vmax,amax);
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = cplanner;
                 obj.traj_type{obj.ntraj} = 'cartesian';
                 %add arc trajectory
                 pos1 = via_pos(1:3,1); pos2 = via_pos(1:3,2); pos3 = via_pos(1:3,3);
                 rpy1 = via_pos(4:6,1); rpy3 = via_pos(4:6,3);
-                global g_cvmax g_camax
-                arcplanner = ArcPlanner(pos1,pos2,pos3,g_cvmax(1),g_camax(1),[0,0],...
-                                    rpy1,rpy3,g_cvmax(2),g_camax(2),[0,0], 'arc');
+                arcplanner = ArcPlanner(pos1,pos2,pos3,vmax(1),amax(1),[0,0],...
+                                        rpy1,rpy3,vmax(2),amax(2),[0,0], 'arc');
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = arcplanner;
                 obj.traj_type{obj.ntraj} = 'arc';
@@ -245,7 +272,7 @@ classdef TaskTrajPlanner < handle
 
 end
 
-function tf = CalcBSplineTime(pos_rpy)
+function tf = CalcBSplineTime(pos_rpy,cvmax)
     np = size(pos_rpy,2);
     pos_len = 0;
     rot_len = 0;
@@ -258,9 +285,8 @@ function tf = CalcBSplineTime(pos_rpy)
         rot_len = rot_len+rpy_len;
     end
     tscale = 1.5;
-    global g_cvmax
-    tf_pos = pos_len/g_cvmax(1)*tscale;
-    tf_rot = rot_len/g_cvmax(2)*tscale;
+    tf_pos = pos_len/cvmax(1)*tscale;
+    tf_rot = rot_len/cvmax(2)*tscale;
     tf = max([tf_pos,tf_rot]);
 end
 
