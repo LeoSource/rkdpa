@@ -33,13 +33,14 @@ tmp_pos = posM+rot_plane*tmp_pos;
 via_posrpy(1:3,4) = tmp_pos+z0_axis*dis_trans;
 % calculate orientation of the 3 points in arc
 if arc_angle>0
-    rot_rpy = rot_plane*rotz(90)*rotx(180/pi*point_angle)*roty(180/pi*slant_angle);
+%     rot_rpy = rot_plane*rotz(90)*rotx(180/pi*point_angle)*roty(180/pi*slant_angle);
+    rot_rpy = rot_plane*roty(180/pi*point_angle)*rotx(180/pi*slant_angle);
     rpy1 = tr2rpy(rot_rpy,'xyz');
-    rpy_x0 = z0_axis;
-    rpy_z0 = cross(z0_axis,tmp_pos-posM);
-    rpy_z0 = rpy_z0/norm(rpy_z0);
+    rpy_z0 = z0_axis;
+    rpy_x0 = (tmp_pos-posM)/norm(tmp_pos-posM);
     rpy_y0 = cross(rpy_z0,rpy_x0);
     rot_rpy = [rpy_x0,rpy_y0,rpy_z0];
+    rot_rpy = rot_rpy*roty(-90)*rotx(-90);
     rpy2 = tr2rpy(rot_rpy,'xyz');
 else
     rot_rpy = rot_plane*roty(180/pi*point_angle)*rotx(180/pi*slant_angle);
@@ -48,6 +49,7 @@ else
     rpy_y0 = (posM-tmp_pos)/norm(posM-tmp_pos);
     rpy_x0 = cross(rpy_y0,rpy_z0);
     rot_rpy = [rpy_x0,rpy_y0,rpy_z0];
+    rot_rpy = rot_rpy*roty(180/pi*point_angle)*rotx(180/pi*slant_angle);
     rpy2 = tr2rpy(rot_rpy, 'xyz');
 end
 via_posrpy(4:6,1) = rpy1;
