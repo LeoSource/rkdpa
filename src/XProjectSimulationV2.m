@@ -21,10 +21,11 @@ mdh_table = [0, d1, 0, 0, 0, 0;...
                     0, d5, 0, -pi/2, 0, 0;...
                     0, d6, 0, pi/2, 0, 0];
 % pose_tool = SE3(rotx(-10), [0,0,0.116]);
-pose_tool = SE3(rotx(0), [0,-0.035,0.23]);
+tool_toiletlid = SE3(rotx(0), [0,-0.035,0.23]);
 qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
-rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
+rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',tool_toiletlid);
+rbt.qlim(:,1) = qmin; rbt.qlim(:,2) = qmax;
 simu_mode = 'toilet_lid';
 switch simu_mode
     case 'workspace'
@@ -83,12 +84,14 @@ joint_plot = 1;
 compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
-q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
+% q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
+% q0 = [-60,50,40,-50,-20,-90]'*pi/180;
+q0 = [-40,65,40,-5,55,-180]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
 % a = [0.87, 0.178, -0.3627]'; b = [0.85426, -0.19926, -0.36788]'; c = [0.9232, -0.069565, 0.066379]';
 vision_pos = [a,b,c];
-via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, (-0-90)*pi/180, 40*pi/180, 0.05);
+via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, (-0-100)*pi/180, 0*pi/180, 0.05);
 % via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, -30*pi/180, -40*pi/180, 0.05);
 taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0,1.0,1.0);
 taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0,1.0,1.0);
