@@ -88,13 +88,13 @@ dt = 0.01;
 % q0 = [-60,50,40,-50,-20,-90]'*pi/180;
 q0 = [-40,65,40,-5,55,-180]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
-a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
-% a = [0.87, 0.178, -0.3627]'; b = [0.85426, -0.19926, -0.36788]'; c = [0.9232, -0.069565, 0.066379]';
+% a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
+a = [0.87, 0.178, -0.3627]'; b = [0.85426, -0.19926, -0.36788]'; c = [0.9232, 0.069565, 0.066379]';
 vision_pos = [a,b,c];
-via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, (-0-100)*pi/180, 0*pi/180, 0.05);
-% via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, -30*pi/180, -40*pi/180, 0.05);
-taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0,1.0,1.0);
-taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0,1.0,1.0);
+% via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, (-0-100)*pi/180, 0*pi/180, 0.05);
+via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, -(180-30)*pi/180, -40*pi/180, 0.05);
+taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
+taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0);
 
 [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
 
