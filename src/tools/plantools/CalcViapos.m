@@ -25,49 +25,6 @@ function via_posrpy = CalcViapos(vision_pos, type)
             rpy1 = tr2rpy(rot_mat, 'xyz');
             via_posrpy(:,idx+1) = [pos_tmp; rpy1'];
         end
-    elseif strcmp(type, 'toilet_lid')
-        %the 3rd point is the mark point: posC
-        %rotation axis is the 2nd point to 1st: posB->posA
-        posA = vision_pos(:,1); posB = vision_pos(:,2); posC = vision_pos(:,3);
-        arc_theta = vision_pos(1,end);
-        slant = vision_pos(2,end);% positive for open, negative for close
-        dis_trans = vision_pos(3,end);
-        %calculate the arc orientation and 3 points in arc
-        z0 = posA-posB;
-        z0 = z0/norm(z0);
-        radius = norm(cross(z0,posC-posB));
-        scale = dot(posC,z0)-dot(posB,z0);
-        posM = posB+scale*z0;
-        x0 = posC-posM;
-        x0 = x0/norm(x0);
-        y0 = cross(z0,x0);
-        rot_mat = [x0,y0,z0];
-        via_posrpy(1:3,2) = posC;
-        tmp_pos(1,1) = radius*cos(arc_theta/2);
-        tmp_pos(2,1) = radius*sin(arc_theta/2);
-        tmp_pos(3,1) = 0;
-        tmp_pos = posM+rot_mat*tmp_pos;
-%         dir_point = (posA-tmp_pos)/norm(posA-tmp_pos);
-        via_posrpy(1:3,3) = tmp_pos+0.5*z0*dis_trans;
-        tmp_pos(1,1) = radius*cos(arc_theta);
-        tmp_pos(2,1) = radius*sin(arc_theta);
-        tmp_pos(3,1) = 0;
-        tmp_pos = posM+rot_mat*tmp_pos;
-%         dir_point = (posA-tmp_pos)/norm(posA-tmp_pos);
-        via_posrpy(1:3,4) = tmp_pos+z0*dis_trans;
-        %calculae orientation of the 3 points in arc
-        rpy_z0 = (posA-posC)/norm(posA-posC);
-        via_posrpy(1:3,1) = posC-dis_trans*rpy_z0;
-        rpy_y0 = cross(rpy_z0,z0);
-        rpy_x0 = cross(rpy_y0,rpy_z0);
-        tmp_mat = [rpy_x0, rpy_y0, rpy_z0];
-        rpy_mat1 = tmp_mat*rotx(180/pi*slant);
-        rpy1 = tr2rpy(rpy_mat1, 'xyz');
-        rpy2 = tr2rpy(tmp_mat, 'xyz');
-        via_posrpy(4:6,1) = rpy1;
-        via_posrpy(4:6,2) = rpy1;
-        via_posrpy(4:6,3) = rpy1;
-        via_posrpy(4:6,4) = rpy2;
     end
 
 end
