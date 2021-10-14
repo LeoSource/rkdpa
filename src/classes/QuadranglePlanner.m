@@ -42,11 +42,12 @@ classdef QuadranglePlanner < handle
             path_type = 'n';
             camera_ori = 'top';
             dis_trans = 0.08;
-            pitch_angle = [60*pi/180, 60*pi/180];
+            pitch_angle = [30*pi/180, 50*pi/180];
             yaw_angle = [0, 0];
             clean_tool = [0.15, 0];
-            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,...
-                                        yaw_angle,dis_trans,camera_ori,path_type);
+            trans_angle = 10*pi/180;
+            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,yaw_angle...
+                                        ,dis_trans,camera_ori,path_type,trans_angle);
         end
 
         function via_posrpy = PlanTable(obj, vertices)
@@ -71,38 +72,48 @@ classdef QuadranglePlanner < handle
                                         yaw_angle,dis_trans,camera_ori,path_type);
         end
 
-        function via_posrpy = UniversalPlan(obj, vertices,clean_tool,pitch_angle,...
-                                            yaw_angle,dis_trans,camera_ori,path_type)
+        function via_posrpy = UniversalPlan(obj, vertices,clean_tool,pitch_angle,yaw_angle...
+                                            ,dis_trans,camera_ori,path_type,trans_angle)
             obj.CalcPlaneRot(vertices);
             obj.CalcCleanAreaVertices(vertices,clean_tool);
             obj.SetRotTransformation(camera_ori);
             if path_type=='n'
-                via_posrpy = obj.PlanNPath(clean_tool, pitch_angle, yaw_angle, dis_trans);
+                via_posrpy = obj.PlanNPath(clean_tool,pitch_angle,yaw_angle,dis_trans,trans_angle);
             elseif path_type=='s'
-                via_posrpy = obj.PlanSPath(clean_tool, pitch_angle, yaw_angle, dis_trans);
+                via_posrpy = obj.PlanSPath(clean_tool,pitch_angle,yaw_angle,dis_trans,trans_angle);
             end
         end
 
-        function via_posrpy = PlanNPath(obj, clean_tool, pitch_angle, yaw_angle, dis_trans)
+        function via_posrpy = PlanNPath(obj,clean_tool,pitch_angle,yaw_angle,dis_trans,trans_angle)
             obj.CalcCycleInfo(clean_tool(1), obj.vertices_new(:,3)-obj.vertices_new(:,4), ...
                                             obj.vertices_new(:,2)-obj.vertices_new(:,1));
             obj.start_pos1 = obj.vertices_new(:,4);
             obj.start_pos2 = obj.vertices_new(:,1);
             if dis_trans>0
-                trans_vec = dis_trans*obj.rot_plane(:,3);
+                if nargin==5
+                    trans_vec = dis_trans*obj.rot_plane(:,3);
+                else
+                    rot_trans = obj.rot_plane*roty(trans_angle*180/pi);
+                    trans_vec = dis_trans*rot_trans(:,3);
+                end
                 via_posrpy = obj.CalcDisCycleWaypoint(pitch_angle,yaw_angle,trans_vec,'n');
             else
                 via_posrpy = obj.CalcCycleWaypoint(pitch_angle, yaw_angle, 'n');
             end
         end
 
-        function via_posrpy = PlanSPath(obj, clean_tool, pitch_angle, yaw_angle, dis_trans)
+        function via_posrpy = PlanSPath(obj,clean_tool,pitch_angle,yaw_angle,dis_trans,trans_angle)
             obj.CalcCycleInfo(clean_tool(2), obj.vertices_new(:,1)-obj.vertices_new(:,4), ...
                                             obj.vertices_new(:,2)-obj.vertices_new(:,3));
             obj.start_pos1 = obj.vertices_new(:,4);
             obj.start_pos2 = obj.vertices_new(:,3);
             if dis_trans>0
-                trans_vec = dis_trans*obj.rot_plane(:,3);
+                if nargin==5
+                    trans_vec = dis_trans*obj.rot_plane(:,3);
+                else
+                    rot_trans = obj.rot_plane*roty(trans_angle*180/pi);
+                    trans_vec = dis_trans*rot_trans(:,3);
+                end
                 via_posrpy = obj.CalcDisCycleWaypoint(pitch_angle,yaw_angle,trans_vec,'s');
             else
                 via_posrpy = obj.CalcCycleWaypoint(pitch_angle,yaw_angle,'s');
