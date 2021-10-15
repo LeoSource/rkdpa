@@ -26,7 +26,7 @@ qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',tool_toiletlid);
 rbt.qlim(:,1) = qmin; rbt.qlim(:,2) = qmax;
-simu_mode = 'common';
+simu_mode = 'table';
 switch simu_mode
     case 'workspace'
 %% plot workspace
@@ -107,9 +107,9 @@ grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
     case 'mirror'
 %% simulate scrape mirror 
-joint_plot = 0;
+joint_plot = 1;
 compare_cpp = 0;
-compare_plan = 0;
+compare_plan = 1;
 dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
@@ -135,14 +135,14 @@ grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
     case 'table'
 %% simulate rectangle table or ground zones
-joint_plot = 0;
+joint_plot = 1;
 compare_cpp = 0;
-compare_plan = 0;
+compare_plan = 1;
 dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 rectplanner = QuadranglePlanner;
-p1 = [0.1,-0.5,-0.6]'; p2 = [0.2,0.5,-0.6]'; p3 = [0.6,0.7,-0.6]'; p4 = [0.6,-0.5,-0.6]';
+p1 = [0.45,-0.25,-0.75]'; p2 = [0.45,0.25,-0.75]'; p3 = [0.8,0.25,-0.75]'; p4 = [0.8,-0.25,-0.75]';
 vision_pos = [p1,p2,p3,p4];
 via_posrpy = rectplanner.PlanGround(vision_pos);
 taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
