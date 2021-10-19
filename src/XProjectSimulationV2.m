@@ -21,11 +21,12 @@ mdh_table = [0, d1, 0, 0, 0, 0;...
                     0, d5, 0, -pi/2, 0, 0;...
                     0, d6, 0, pi/2, 0, 0];
 % pose_tool = SE3(rotx(-10), [0,0,0.116]);
-pose_tool = SE3(rotx(0), [0,-0.035,0.23]);
+tool_toiletlid = SE3(rotx(0), [0,-0.035,0.23]);
 qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
-rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',pose_tool);
-simu_mode = 'toilet_lid';
+rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',tool_toiletlid);
+rbt.qlim(:,1) = qmin; rbt.qlim(:,2) = qmax;
+simu_mode = 'table';
 switch simu_mode
     case 'workspace'
 %% plot workspace
@@ -44,17 +45,18 @@ xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
     
     case 'common'
 %% simulation all task
-joint_plot = 0;
-compare_cpp = 0;
-compare_plan = 0;
+joint_plot = 1;
+compare_cpp = 1;
+compare_plan = 1;
 dt = 0.01;
 
 q0 =  [-38,-27,18,-7,-82,-82]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
-vision_pos = [0.8527, 0.6601, 0.6989, 0.7480, 0.8413, 0.8691, 0.8462, 0.7860, 0.6957;
-                    0.04529, 0.01799, 0.07349, 0.12125, 0.08598, -0.01277, -0.06161, -0.11613, -0.09246;
-                    -0.2481, -0.2592, -0.2510, -0.2186, -0.1599, -0.1411, -0.1779, -0.1954, -0.2522];
-via_posrpy = CalcViapos(vision_pos(:,2:end), 'toilet');
+vision_pos = [0.649857,  0.612921, 0.662765, 0.745594, 0.839413, 0.876876, 0.811265, 0.732626, 0.7157;
+                    -0.106503, -0.00835975, 0.0869856, 0.112016, 0.0893813, -0.0304303, -0.126356, -0.142894, -0.09246;
+                    -0.533577, -0.542969, -0.53932, -0.526466, -0.506219, -0.491052, -0.50203, -0.512606, -0.6222];
+% via_posrpy = CalcViapos(vision_pos(:,2:end), 'toilet');
+via_posrpy = PlanToiletInlierPath(vision_pos,10*pi/180,'left');
 % pos1 = [0.5297,0.2516,-0.4929]'; pos2 = [0.5208,0.2905,-0.5424]'; pos3 = [0.6039,0.4115,-0.544]';
 % pos4 = [0.7013,0.3362,-0.5544]'; pos5 = [0.6396,0.2582,-0.567]';
 % rpy1 = [-106,0.3,-175]'*pi/180; rpy2 = [-104.7,-0.8,-170]'*pi/180; rpy3 = [-114.8,3.7,-168]'*pi/180;
@@ -66,10 +68,10 @@ via_posrpy = CalcViapos(vision_pos(:,2:end), 'toilet');
 % pos3 = [1,1,1]'; rpy3 = tr2rpy(roty(90), 'xyz')'; posrpy3 = [pos3;rpy3];
 % via_posrpy = [posrpy1, posrpy2, posrpy3];
 % taskplanner.AddTraj(via_posrpy, 'bspline', 'interpolation');
-taskplanner.AddTraj(via_posrpy, 'cartesian', 1);
+taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
 
-% [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
-[cpos,cve,cacc] = taskplanner.GenerateCartTraj(dt);
+[cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+% [cpos,cve,cacc] = taskplanner.GenerateCartTraj(dt);
 
 figure
 plot2(cpos(1:3,:)', 'r--'); hold on;%plot2(cpos_sim', 'k');
@@ -83,15 +85,15 @@ joint_plot = 1;
 compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
-q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
+% q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
+% q0 = [-60,50,40,-50,-20,-90]'*pi/180;
+q0 = [-40,65,40,-5,55,-180]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
-% a = [0.815, 0.431, -0.2876]'; b = [0.8174, 0.1089, -0.3071]'; c = [0.6015, 0.1089, -0.3071]';
-% via_posrpy = OpenToiletlidPath(vision_pos, 110*pi/180, 30*pi/180, 40*pi/180, 0.05);
-a = [0.8, 0.08, -0.331]'; b = [0.814, -0.1, -0.333]'; c = [0.9, -0.16, 0.05]';
-% via_posrpy = CloseToiletlidPath(vision_pos, -pi/2, 0, -40*pi/180, 0.05);
+% a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
+a = [0.87, 0.178, -0.3627]'; b = [0.85426, -0.19926, -0.36788]'; c = [0.9232, 0.069565, 0.066379]';
 vision_pos = [a,b,c];
-% via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, -30*pi/180, -40*pi/180, 0.05);
-via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, -60*pi/180, -40*pi/180, 0.05);
+% via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, (-0-100)*pi/180, 0*pi/180, 0.05);
+via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, -(180-30)*pi/180, -40*pi/180, 0.05);
 taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
 taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0);
 
@@ -105,9 +107,9 @@ grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
     case 'mirror'
 %% simulate scrape mirror 
-joint_plot = 0;
+joint_plot = 1;
 compare_cpp = 0;
-compare_plan = 0;
+compare_plan = 1;
 dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
@@ -133,14 +135,14 @@ grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
     case 'table'
 %% simulate rectangle table or ground zones
-joint_plot = 0;
+joint_plot = 1;
 compare_cpp = 0;
-compare_plan = 0;
+compare_plan = 1;
 dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
 rectplanner = QuadranglePlanner;
-p1 = [0.1,-0.5,-0.6]'; p2 = [0.2,0.5,-0.6]'; p3 = [0.6,0.7,-0.6]'; p4 = [0.6,-0.5,-0.6]';
+p1 = [0.45,-0.25,-0.75]'; p2 = [0.45,0.25,-0.75]'; p3 = [0.8,0.25,-0.75]'; p4 = [0.8,-0.25,-0.75]';
 vision_pos = [p1,p2,p3,p4];
 via_posrpy = rectplanner.PlanGround(vision_pos);
 taskplanner.AddTraj(via_posrpy, 'cartesian', 0);

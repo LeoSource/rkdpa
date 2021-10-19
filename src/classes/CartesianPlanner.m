@@ -22,7 +22,8 @@ classdef CartesianPlanner < handle
         rpy_corner
         pos_seg
         rpy_seg
-        
+        vmax
+        amax
         varc
         trans_radius
         trans_ratio
@@ -38,7 +39,9 @@ classdef CartesianPlanner < handle
             obj.trans_ratio = 0.3;
         end
         
-        function AddPosRPY(obj,pos_rpy)
+        function AddPosRPY(obj,pos_rpy,cvmax,camax)
+            obj.vmax = cvmax;
+            obj.amax = camax;
             if obj.continuity
                 while 1
                     if obj.trans_ratio<0
@@ -62,7 +65,6 @@ classdef CartesianPlanner < handle
         end
         
         function AddContiPosRPY(obj,pos_rpy)
-            global g_cvmax g_camax
             obj.pos_corner = [obj.pos_corner,pos_rpy(1:3)];
             obj.rpy_corner = [obj.rpy_corner,pos_rpy(4:6)];
             if size(obj.pos_corner,2)==2
@@ -70,33 +72,32 @@ classdef CartesianPlanner < handle
                 posn = obj.pos_corner(:,2);
                 rpy0 = obj.rpy_corner(:,1);
                 rpyn = obj.rpy_corner(:,2);
-                obj.segpath_planner{1} = LinePlanner(pos0,posn,g_cvmax(1),g_camax(1),[0,0],...
-                                                        rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
+                obj.segpath_planner{1} = LinePlanner(pos0,posn,obj.vmax(1),obj.amax(1),[0,0],...
+                                                    rpy0,rpyn,obj.vmax(2),obj.amax(2),[0,0]);
                 obj.ntraj = 1;
             elseif size(obj.pos_corner,2)==3
                 pos_tmp = CalcSplineTransPos(obj.pos_corner(:,1:3),obj.trans_radius,'arc');
                 obj.pos_seg = [obj.pos_seg, pos_tmp];
                 [~,radius,~] = CalcArcInfo(obj.pos_seg(:,1),obj.pos_corner(:,2),obj.pos_seg(:,2));
-                obj.varc(1) = sqrt(g_camax(1)*radius);
+                obj.varc(1) = sqrt(obj.amax(1)*radius);
                 pos0 = obj.pos_corner(:,1);
                 posn = obj.pos_seg(:,1);
                 rpy0 = obj.rpy_corner(:,1);
                 rpyn = obj.rpy_corner(:,2);
-                obj.segpath_planner{1} = LinePlanner(pos0,posn,g_cvmax(1),g_camax(1),[0,obj.varc(1)],...
-                                                                rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
+                obj.segpath_planner{1} = LinePlanner(pos0,posn,obj.vmax(1),obj.amax(1),[0,obj.varc(1)],...
+                                                    rpy0,rpyn,obj.vmax(2),obj.amax(2),[0,0]);
                 obj.ntraj = 3;
             else
                 np = size(obj.pos_corner,2);
                 pos_tmp = CalcSplineTransPos(obj.pos_corner(:,np-2:np),obj.trans_radius,'arc');
                 obj.pos_seg = [obj.pos_seg, pos_tmp];
                 [~,radius,~] = CalcArcInfo(obj.pos_seg(:,end-1),obj.pos_corner(:,np-1),obj.pos_seg(:,end));
-                obj.varc = [obj.varc,sqrt(g_camax(1)*radius)];
+                obj.varc = [obj.varc,sqrt(obj.amax(1)*radius)];
                 obj.ntraj = obj.ntraj+2;
             end
         end
         
         function AddDiscontiPosRPY(obj,pos_rpy)
-            global g_cvmax g_camax
             obj.pos_corner = [obj.pos_corner, pos_rpy(1:3)];
             obj.rpy_corner = [obj.rpy_corner, pos_rpy(4:6)];
             np = size(obj.pos_corner,2);
@@ -105,8 +106,8 @@ classdef CartesianPlanner < handle
             posn = obj.pos_corner(:,np);
             rpy0 = obj.rpy_corner(:,np-1);
             rpyn = obj.rpy_corner(:,np);
-            obj.segpath_planner{obj.ntraj} = LinePlanner(pos0,posn,g_cvmax(1),g_camax(1),[0,0],...
-                                                                                        rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
+            obj.segpath_planner{obj.ntraj} = LinePlanner(pos0,posn,obj.vmax(1),obj.amax(1),[0,0],...
+                                                        rpy0,rpyn,obj.vmax(2),obj.amax(2),[0,0]);
         end
 
         function [pos,pvel,pacc,rpy,rvel,racc] = GenerateTraj(obj,dt)
@@ -118,7 +119,6 @@ classdef CartesianPlanner < handle
         end
         
         function [pos,pvel,pacc,rpy,rvel,racc] = GenerateContiTraj(obj,dt)
-            global g_cvmax g_camax
             pos = []; pvel = []; pacc = [];
             rpy = []; rvel = []; racc = [];
             for idx=1:obj.ntraj
@@ -131,7 +131,7 @@ classdef CartesianPlanner < handle
                         pos2 = obj.pos_corner(:,(idx+1)/2+1);
                         pos3 = obj.UpdateSegPos(pos1,pos2,obj.pos_corner(:,(idx+1)/2+2));
                         vcons = norm(vp(:,end));
-                        obj.segpath_planner{idx+1} = ArcPlanner(pos1,pos2,pos3,vcons,g_camax(1),[vcons,vcons],...
+                        obj.segpath_planner{idx+1} = ArcPlanner(pos1,pos2,pos3,vcons,obj.amax(1),[vcons,vcons],...
                                                                     r(:,end),r(:,end),[],[],[], 'arctrans');
                     else
                         % plan the next trajectory: line segment
@@ -146,8 +146,8 @@ classdef CartesianPlanner < handle
                             posn = obj.pos_seg(:,idx+1);
                             vf = obj.varc(idx/2+1);
                         end
-                        obj.segpath_planner{idx+1} = LinePlanner(pos0,posn,g_cvmax(1),g_camax(1),[v0,vf],...
-                                            rpy0,rpyn,g_cvmax(2),g_camax(2),[0,0]);
+                        obj.segpath_planner{idx+1} = LinePlanner(pos0,posn,obj.vmax(1),obj.amax(1),[v0,vf],...
+                                            rpy0,rpyn,obj.vmax(2),obj.amax(2),[0,0]);
                     end
                     pos = [pos,p(:,1:end-1)]; pvel = [pvel,vp(:,1:end-1)]; pacc = [pacc,ap(:,1:end-1)];
                     rpy = [rpy,r(:,1:end-1)]; rvel = [rvel,vr(:,1:end-1)]; racc = [racc,ar(:,1:end-1)];

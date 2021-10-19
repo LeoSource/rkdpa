@@ -2,8 +2,6 @@ classdef JointPlanner < handle
     
     properties
         jpos
-        vmax
-        amax
         tf
         nj
         ntraj
@@ -16,17 +14,14 @@ classdef JointPlanner < handle
 
     methods
         function obj = JointPlanner(q0,sync)
-            global g_jvmax g_jamax
             obj.jpos = q0;
-            obj.vmax = g_jvmax;
-            obj.amax = g_jamax;
             obj.sync = sync;
             obj.nj = length(q0);
             obj.plan_idx = [];
             obj.unplan_idx = [];
         end
 
-        function AddJntPos(obj,q)
+        function AddJntPos(obj,q,jvmax,jamax)
             obj.jpos = [obj.jpos, q];
             obj.ntraj = size(obj.jpos,2)-1;
             for traj_idx=1:obj.ntraj
@@ -43,14 +38,14 @@ classdef JointPlanner < handle
                 tf_tmp = [];
                 for idx=planidx
                     uplanner{idx} = LspbPlanner([q0(idx),qf(idx)],...
-                                            obj.vmax(idx),obj.amax(idx));
+                                            jvmax(idx),jamax(idx));
                     tf_tmp = [tf_tmp,uplanner{idx}.tf];
                 end
                 obj.tf(traj_idx) = max(tf_tmp);
                 if(obj.sync)
                     for idx=planidx
                         uplanner{idx} = LspbPlanner([q0(idx),qf(idx)],...
-                                                obj.vmax(idx),obj.amax(idx),obj.tf(traj_idx));
+                                                jvmax(idx),jamax(idx),obj.tf(traj_idx));
                     end
                 end
                 obj.segplanner{traj_idx} = uplanner;
