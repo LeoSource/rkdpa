@@ -10,11 +10,14 @@
 %   yaw_angle(rotz): when it is bigger than pi or less than -pi, it will be defined
 %   by an adaptive method, otherwise, use its input variable to define orientation
 %   pitch_angle(roty): it dose not hava an adaptive method to set pitch
-%   for example:
-%   mirror: pitch_angle = [60degree, 60degree] yaw_angle = [0,0]
-%   table: pitch_angle = [50degree, 130degree] yaw_angle = [-10,0]
 %   dis_trans: transition distance with surface constructed bt vertices
 %   camera_ori: includes 4 types, front, down, left, right
+%   For example:
+%   mirror: pitch_angle = [60degree, 60degree] yaw_angle = [0,0]
+%   table: pitch_angle = [50degree, 130degree] yaw_angle = [-10,0]
+%   Drawback:
+%   it is hard to define the orientation of target plane just according to 
+%   4 vertices
 %   Author:
 %   Liao Zhixiang, zhixiangleo@163.com
 

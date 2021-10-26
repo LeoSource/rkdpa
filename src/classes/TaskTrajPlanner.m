@@ -3,7 +3,7 @@ classdef TaskTrajPlanner < handle
     properties
         ntraj
         traj_type
-        tf
+%         tf
         segplanner
 
         robot
@@ -11,26 +11,37 @@ classdef TaskTrajPlanner < handle
         pre_trajq
         pre_trajpose
         compare_plan
+        
+        cycle_time
+        jvmax
+        jamax
+        cvmax
+        camax
     end
     
     methods
-        function obj = TaskTrajPlanner(rbt_model,q0,compare_plan)
+        function obj = TaskTrajPlanner(rbt_model,q0,cycle_time,jvmax,jamax,...
+                                                        cvmax,camax,compare_plan)
             obj.robot = rbt_model;
             obj.pre_q = q0;
             obj.compare_plan = compare_plan;
             obj.ntraj = 0;
             obj.pre_trajq = q0;
             obj.pre_trajpose = obj.robot.fkine(q0);
+            obj.cycle_time = cycle_time;
+            obj.jvmax = jvmax;
+            obj.jamax = jamax;
+            obj.cvmax = cvmax;
+            obj.camax = camax;
         end
         
         function AddTraj(obj, via_pos, traj_type, traj_opt, vmax_arg, amax_arg)
-            global g_jvmax g_jamax g_cvmax g_camax
             if strcmp(traj_type,'joint')
-                vmax = g_jvmax;
-                amax = g_jamax;
+                vmax = obj.jvmax;
+                amax = obj.jamax;
             else
-                vmax = g_cvmax;
-                amax = g_camax;
+                vmax = obj.cvmax;
+                amax = obj.camax;
             end
             if nargin==6
                 if isscalar(vmax_arg)

@@ -26,7 +26,7 @@ qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',tool_toiletlid);
 rbt.qlim(:,1) = qmin; rbt.qlim(:,2) = qmax;
-simu_mode = 'table';
+simu_mode = 'mirror';
 switch simu_mode
     case 'workspace'
 %% plot workspace
@@ -51,7 +51,8 @@ compare_plan = 1;
 dt = 0.01;
 
 q0 =  [-38,-27,18,-7,-82,-82]'*pi/180;
-taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
+taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+                                            g_cvmax,g_camax,compare_plan);
 vision_pos = [0.649857,  0.612921, 0.662765, 0.745594, 0.839413, 0.876876, 0.811265, 0.732626, 0.7157;
                     -0.106503, -0.00835975, 0.0869856, 0.112016, 0.0893813, -0.0304303, -0.126356, -0.142894, -0.09246;
                     -0.533577, -0.542969, -0.53932, -0.526466, -0.506219, -0.491052, -0.50203, -0.512606, -0.6222];
@@ -88,7 +89,8 @@ dt = 0.01;
 % q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
 % q0 = [-60,50,40,-50,-20,-90]'*pi/180;
 q0 = [-40,65,40,-5,55,-180]'*pi/180;
-taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
+taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+                                            g_cvmax,g_camax,compare_plan);
 % a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
 a = [0.87, 0.178, -0.3627]'; b = [0.85426, -0.19926, -0.36788]'; c = [0.9232, 0.069565, 0.066379]';
 vision_pos = [a,b,c];
@@ -112,9 +114,10 @@ compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
-taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
+taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+                                            g_cvmax,g_camax,compare_plan);
 rectplanner = QuadranglePlanner;
-p1 = [0.8,-0.2,0.35]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.71]'; p4 = [0.8,-0.1,0.81]';
+p1 = [0.8,-0.2,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.2,0.81]';
 vision_pos = [p1,p2,p3,p4];
 % via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
 % via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.08, 'right');
@@ -140,7 +143,8 @@ compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
-taskplanner = TaskTrajPlanner(rbt,q0,compare_plan);
+taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+                                            g_cvmax,g_camax,compare_plan);
 rectplanner = QuadranglePlanner;
 p1 = [0.45,-0.25,-0.75]'; p2 = [0.45,0.25,-0.75]'; p3 = [0.8,0.25,-0.75]'; p4 = [0.8,-0.25,-0.75]';
 vision_pos = [p1,p2,p3,p4];
