@@ -7,7 +7,7 @@ addpath(genpath('tools'));
 dt = 0.005;
 %% analyse test data
 nj = 6;
-td = load('./data/test_data_1021_175909.csv');
+td = load('./data/test_data_1103_112045.csv');
 jpos_idx = 1; jvel_idx = 2; jtor_idx = 3;
 jpos = td(:,1:jpos_idx*nj);
 jvel = td(:,nj+1:jvel_idx*nj);

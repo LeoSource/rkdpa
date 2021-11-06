@@ -21,6 +21,8 @@ model/
 .vscode/
 
 src/data/
+*.mat
+*.txt
 # 暂时忽略others文件夹
 others/
 
