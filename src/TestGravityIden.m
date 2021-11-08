@@ -6,7 +6,6 @@ addpath('classes');
 addpath(genpath('tools'));
 addpath('gravity')
 dt = 0.005;
-
 %% load joint test data
 nj = 6;
 td = load('./data/test_data_1106_105529.csv');
