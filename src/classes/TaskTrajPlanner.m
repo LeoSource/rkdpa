@@ -275,7 +275,15 @@ classdef TaskTrajPlanner < handle
                 end
             end
         end
-
+        
+        function Reset(obj,q0)
+            obj.pre_q = q0;
+            obj.pre_trajq = q0;
+            obj.pre_trajpose = obj.robot.fkine(q0);
+            obj.segplanner = {};
+            obj.traj_type = {};
+            obj.ntraj = 0;
+        end
 
     end
 
