@@ -6,8 +6,8 @@ addpath('classes');
 addpath(genpath('tools'));
 %% define robot model with MDH method
 global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos g_cycle_time
-g_jvmax = [pi/4, pi/4, pi/4, pi/4, pi/4, pi/4];
-g_jamax = [pi/2, pi/2, pi/2, pi/2, pi/2, pi/2];
+g_jvmax = [pi/8, pi/8, pi/5, pi/2, pi/2, pi/2];
+g_jamax = [pi/4, pi/4, pi/2, pi/2, pi/2, pi/2];
 g_cvmax = [0.15, 0.15]; g_camax = [0.3, 0.3];
 g_stowed_pos = [0;0;0;0;-pi/2;0];
 g_cycle_time = 0.005;
@@ -26,7 +26,7 @@ qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',tool_toiletlid);
 rbt.qlim(:,1) = qmin; rbt.qlim(:,2) = qmax;
-simu_mode = 'mirror';
+simu_mode = 'fric_test';
 switch simu_mode
     case 'workspace'
 %% plot workspace
@@ -162,6 +162,41 @@ plot2(cpos(1:3,:)', 'r--');hold on;
 plot2(via_posrpy(1:3,:)', 'bo'); plot2(vision_pos', 'r*'); axis equal;
 PlotRPY(cpos, 100);
 grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+
+    case 'fric_test'
+%% simulate friction test trajectory
+joint_plot = 0;
+compare_cpp = 0;
+compare_plan = 0;
+dt = 0.01;
+q0 = [0,45,45,0,-10,0]'*pi/180';
+taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+                                g_cvmax,g_camax,compare_plan);
+det_q = {[0,0,0,0,10,0]'*pi/180,[0,0,0,0,20,0]'*pi/180,[0,0,0,0,30,0]'*pi/180,...
+        [0,0,0,0,40,0]'*pi/180,[0,0,0,0,50,0]'*pi/180,[0,0,0,0,60,0]'*pi/180,...
+        [0,0,0,0,70,0]'*pi/180,[0,0,0,0,80,0]'*pi/180,[0,0,0,0,90,0]'*pi/180};
+q00 = [0,45,45,0,0,0]'*pi/180';
+jpos = []; jvel = [];
+vel_scale = [0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0];
+for idx=1:length(vel_scale)
+    if idx < 9
+        detq_pos = det_q{idx};
+        detq_neg = -det_q{idx+1};
+    else
+        detq_pos = det_q{9};
+        detq_neg = -det_q{9};
+    end
+    q1 = q00+detq_pos;
+    q2 = q00+detq_neg;
+    taskplanner.Reset(q0);
+    taskplanner.AddTraj([q1,q2],'joint',1,vel_scale(idx),1);
+    [jpos_tmp,jvel_tmp,~] = taskplanner.GenerateJointTraj(dt);
+    jpos = [jpos,jpos_tmp]; jvel = [jvel,jvel_tmp];
+    q0 = jpos(:,end);
+end
+plot(jpos(5,:)); grid on; hold on;
+plot(jvel(5,:)); hold off;
+
 
 end
 

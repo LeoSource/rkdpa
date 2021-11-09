@@ -18,24 +18,29 @@ fs = 200;
 N = 2;
 fc_vel = 1;
 fc_tau = 2;
+fc_acc = 0.5;
 [Bvel,Avel] = butter(N,fc_vel/(fs/2));
 [Btau,Atau] = butter(N,fc_tau/(fs/2));
+[Bacc,Aacc] = butter(N,fc_acc/(fs/2));
 joint_idx = 5;
 vel_filter = filtfilt(Bvel, Avel, jvel(:,joint_idx));
 tau_filter = filtfilt(Btau, Atau, jtor(:,joint_idx));
+acc = diff(jvel(:,joint_idx))/dt;
+acc_filter = filtfilt(Bacc, Aacc, acc);
+acc_filter = [0;acc_filter];
 figure
 plot(t,jvel(:,joint_idx),'r'); grid on; hold on;
-plot(t,vel_filter,'k'); hold off;
+plot(t,vel_filter,'k'); plot(t,acc_filter,'b'); hold off;
 title('joint velocity')
 figure
 plot(t,jtor(:,joint_idx),'r'); grid on; hold on;
 plot(t,tau_filter,'k'); hold off;
 title('joint torque')
 %% joint friction parameters identification
-seg_idx = {[1011,8076],[9510,16610],[18820,21930],[23250,26410],[28200,29450],[30600,31880],...
-            [33760,34480],[35850,36550],[38370,38760],[39830,40180],[42000,42210],[43310,43590],...
-            [45430,45740],[46650,47030],[48740,49020],[49830,50130],[52160,52390],[53170,53410],...
-            [54980,55150],[55880,56080],[57880,58010],[58800,58930]};
+% seg_idx = {[1011,8076],[9510,16610],[18820,21930],[23250,26410],[28200,29450],[30600,31880],...
+%             [33760,34480],[35850,36550],[38370,38760],[39830,40180],[42000,42210],[43310,43590],...
+%             [45430,45740],[46650,47030],[48740,49020],[49830,50130],[52160,52390],[53170,53410],...
+%             [54980,55150],[55880,56080],[57880,58010],[58800,58930]};
 tau_Iden = []; jvel_iden = []; reg_fric = [];
 for idx=1:length(seg_idx)
     vel = vel_filter(seg_idx{idx}(1):seg_idx{idx}(2));
