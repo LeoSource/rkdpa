@@ -7,7 +7,7 @@ addpath(genpath('tools'));
 dt = 0.005;
 %% load joint test data
 nj = 6;
-td = load('./data/joint5_friction_1108_155104.csv');
+td = load('./data/joint1_friction_1108_155706.csv');
 jpos_idx = 1; jvel_idx = 2; jtor_idx = 3;
 jpos = td(:,1:jpos_idx*nj);
 jvel = td(:,nj+1:jvel_idx*nj);
@@ -22,7 +22,7 @@ fc_acc = 0.5;
 [Bvel,Avel] = butter(N,fc_vel/(fs/2));
 [Btau,Atau] = butter(N,fc_tau/(fs/2));
 [Bacc,Aacc] = butter(N,fc_acc/(fs/2));
-joint_idx = 5;
+joint_idx = 1;
 vel_filter = filtfilt(Bvel, Avel, jvel(:,joint_idx));
 tau_filter = filtfilt(Btau, Atau, jtor(:,joint_idx));
 acc = diff(jvel(:,joint_idx))/dt;
@@ -37,6 +37,9 @@ plot(t,jtor(:,joint_idx),'r'); grid on; hold on;
 plot(t,tau_filter,'k'); hold off;
 title('joint torque')
 %% joint friction parameters identification
+seg_idx = {[1638,14690],[18390,30790],[35130,40780],[43870,49140],[52760,54780],[56850,59540],...
+            [61760,62900],[64070,65320],[67190,67950],[69140,69560],[71340,71800],[72680,73180],...
+            [75020,75320],[76270,76530],[78250,78440],[79440,79560],[81310,81460],[82320,82470]};
 % seg_idx = {[1011,8076],[9510,16610],[18820,21930],[23250,26410],[28200,29450],[30600,31880],...
 %             [33760,34480],[35850,36550],[38370,38760],[39830,40180],[42000,42210],[43310,43590],...
 %             [45430,45740],[46650,47030],[48740,49020],[49830,50130],[52160,52390],[53170,53410],...
