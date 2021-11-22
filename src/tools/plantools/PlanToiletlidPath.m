@@ -4,7 +4,7 @@
 %   argumets examples:
 %   right config:
 %   open -> PlanToiletlidPath(vision_pos,110degree,-(90-10)degree,0degree,0.03)
-%   close -> PlanToiletlidPath(vision_pos,-60degree,-30degree,-40degree,0.03)
+%   close -> PlanToiletlidPath(vision_pos,-60degree,-30degree,-90degree,0.03)
 %   left config:
 %   open -> PlanToiletlidPath(vision_pos,110degree,-(90+10)degree,0degree,0.03)
 %   close -> PlanToiletlidPath(vision_pos,-60degree,-(180-30)degree,-40degree,0.03)
