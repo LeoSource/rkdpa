@@ -41,7 +41,7 @@ classdef QuadranglePlanner < handle
 
         end
         
-        function via_posrpy = PlanMirror(obj, vertices)
+        function via_posrpy = PlanMirror(obj, vertices, hori_times)
             path_type = 'n';
             camera_ori = 'top';
             dis_trans = 0.08;
@@ -49,8 +49,14 @@ classdef QuadranglePlanner < handle
             yaw_angle = [0, 0];
             clean_tool = [0.15, 0];
             trans_angle = 10*pi/180;
-            via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,yaw_angle,...
+            len = (hori_times+1)*0.5*clean_tool(1);
+            v1 = vertices(:,1)+len*(vertices(:,4)-vertices(:,1))/norm(vertices(:,4)-vertices(:,1));
+            v2 = vertices(:,2)+len*(vertices(:,3)-vertices(:,2))/norm(vertices(:,3)-vertices(:,2));
+            via_posrpy_vert = obj.UniversalPlan([v1,v2,vertices(:,3:4)],clean_tool,pitch_angle,yaw_angle,...
                                         dis_trans,camera_ori,path_type,trans_angle);
+            via_posrpy_hori = obj.HorizontalScrape([vertices(:,1:2),v2,v1],clean_tool,hori_times);
+            via_posrpy = [via_posrpy_vert, via_posrpy_hori];
+%             via_posrpy = via_posrpy_vert;
         end
 
         function via_posrpy = PlanTable(obj, vertices)
@@ -87,6 +93,35 @@ classdef QuadranglePlanner < handle
             elseif path_type=='s'
                 via_posrpy = obj.PlanSPath(clean_tool,pitch_angle,yaw_angle,dis_trans,trans_angle);
             end
+        end
+
+        function via_posrpy = HorizontalScrape(obj,vertices,clean_tool,hori_times)
+            via_pos_end = 0.5*(vertices(:,1)+vertices(:,2));
+            via_rpy_end = tr2rpy(obj.rot_plane*roty(30)*obj.rot_transform, 'xyz');
+            rpy_left = tr2rpy(obj.rot_plane*rotx(-30)*[-1,0,0;0,0,1;0,1,0],'xyz');
+            rpy_right = tr2rpy(obj.rot_plane*rotx(30)*[1,0,0;0,0,-1;0,1,0],'xyz');
+            trans_vec = 0.08*obj.rot_plane(:,3);
+            len = norm(vertices(:,2)-vertices(:,1));
+            width = norm(vertices(:,3)-vertices(:,2));
+            via_left = []; via_right = [];
+            for idx=1:hori_times
+                pos_tmp = vertices(:,3)-idx*0.5*clean_tool(1)*obj.rot_plane(:,1);
+                via_left(:,5*idx-4) = [pos_tmp+trans_vec; rpy_left'];
+                via_left(:,5*idx-3) = [pos_tmp; rpy_left'];
+                via_left(:,5*idx-2) = [pos_tmp-0.5*len*obj.rot_plane(:,2); rpy_left'];
+                via_left(:,5*idx-1) = [via_pos_end; via_rpy_end'];
+                via_left(:,5*idx) = [via_pos_end+trans_vec; via_rpy_end'];
+            end
+            for idx=1:hori_times
+                pos_tmp = vertices(:,4)-idx*0.5*clean_tool(1)*obj.rot_plane(:,1);
+                via_right(:,5*idx-4) = [pos_tmp+trans_vec; rpy_right'];
+                via_right(:,5*idx-3) = [pos_tmp; rpy_right'];
+                via_right(:,5*idx-2) = [pos_tmp+0.5*len*obj.rot_plane(:,2); rpy_right'];
+                via_right(:,5*idx-1) = [via_pos_end; via_rpy_end'];
+                via_right(:,5*idx) = [via_pos_end+trans_vec; via_rpy_end'];
+            end
+            via_posrpy = [via_left, via_right];
+
         end
 
         function via_posrpy = PlanNPath(obj,clean_tool,pitch_angle,yaw_angle,dis_trans,trans_angle)

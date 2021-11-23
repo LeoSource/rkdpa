@@ -26,7 +26,7 @@ qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',tool_toiletlid);
 rbt.qlim(:,1) = qmin; rbt.qlim(:,2) = qmax;
-simu_mode = 'fric_test';
+simu_mode = 'mirror';
 switch simu_mode
     case 'workspace'
 %% plot workspace
@@ -86,16 +86,17 @@ joint_plot = 1;
 compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
+rbt.tool = SE3(rotx(0), [-0.12,-0.026,0.17]);
 % q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
 % q0 = [-60,50,40,-50,-20,-90]'*pi/180;
 q0 = [-40,65,40,-5,55,-180]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                             g_cvmax,g_camax,compare_plan);
 % a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
-a = [0.87, 0.178, -0.3627]'; b = [0.85426, -0.19926, -0.36788]'; c = [0.9232, 0.069565, 0.066379]';
+a = [0.87, 0.178, -0.3627]'; b = [0.85426, -0.19926, -0.36788]'; c = [0.9232, -0.069565, 0.066379]';%c = [0.9232, 0.069565, 0.066379]'
 vision_pos = [a,b,c];
-% via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, (-0-100)*pi/180, 0*pi/180, 0.05);
-via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, -(180-30)*pi/180, -40*pi/180, 0.05);
+% via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, (-90-10)*pi/180, 10*pi/180, 0.05);
+via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, -90*pi/180, -70*pi/180, 0.05);
 taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
 taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0);
 
@@ -113,6 +114,7 @@ joint_plot = 1;
 compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
+rbt.tool = SE3(rotx(-30), [0,0.058,0.398]);
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                             g_cvmax,g_camax,compare_plan);
@@ -121,7 +123,7 @@ p1 = [0.8,-0.2,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.
 vision_pos = [p1,p2,p3,p4];
 % via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
 % via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.08, 'right');
-via_posrpy = rectplanner.PlanMirror(vision_pos);
+via_posrpy = rectplanner.PlanMirror(vision_pos, 1);
 taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
 
 if compare_plan
