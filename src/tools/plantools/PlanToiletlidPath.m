@@ -51,14 +51,15 @@ if arc_angle>0
     rot_rpy = rot_rpy*roty(-90)*rotx(-90);
     rpy2 = tr2rpy(rot_rpy,'xyz');
 else
-    rot_rpy = rot_plane*roty(180/pi*point_angle)*rotx(180/pi*slant_angle);
+    rot_rpy = rot_plane*roty(180/pi*point_angle)*rotz(180/pi*slant_angle);
     rpy1 = tr2rpy(rot_rpy,'xyz');
     rpy_z0 = z0_axis;
     rpy_y0 = (posM-tmp_pos)/norm(posM-tmp_pos);
     rpy_x0 = cross(rpy_y0,rpy_z0);
     rot_rpy = [rpy_x0,rpy_y0,rpy_z0];
     rot_rpy = rot_rpy*roty(180/pi*point_angle)*rotx(180/pi*slant_angle);
-    rpy2 = tr2rpy(rot_rpy, 'xyz');
+%     rpy2 = tr2rpy(rot_rpy, 'xyz');
+    rpy2 = rpy1;
 end
 via_posrpy(4:6,1) = rpy1;
 via_posrpy(4:6,2) = rpy1;
