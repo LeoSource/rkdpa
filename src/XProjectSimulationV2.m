@@ -90,7 +90,7 @@ dt = 0.01;
 q0 = [0,-35,20,65,-90,0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                             g_cvmax,g_camax,compare_plan);
-toilet_lid = 'open';
+toilet_lid = 'close';
 if strcmp(toilet_lid,'open')
     a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
     vision_pos = [a,b,c];
@@ -99,8 +99,12 @@ if strcmp(toilet_lid,'open')
 elseif strcmp(toilet_lid,'close')
     a = [0.87, 0.178, -0.3627]'; b = [0.85426, -0.19926, -0.36788]'; c = [0.9232, -0.079565, 0.066379]';
     vision_pos = [a,b,c];
-    via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, 0*pi/180, 150*pi/180, 0.05);
-    tmp_jpos = [0,-35,20,0,-70,150]'*pi/180;
+    % for toilet lid
+%     via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, 0*pi/180, 150*pi/180, 0.05);
+%     tmp_jpos = [0,-35,20,0,-70,150]'*pi/180;
+    % for toilet seat
+    via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, -100*pi/180, 20*pi/180, 0.05);
+    tmp_jpos = [-40,65,40,-35,-90,0]'*pi/180;
 end
 taskplanner.AddTraj(tmp_jpos, 'joint', 1);
 taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
