@@ -49,7 +49,8 @@ classdef LinePlanner < handle
                 obj.tf_rot = obj.rot_uplanner.tf;
                 obj.tf = obj.tf_rot;
             else
-                error('error line option');
+                obj.tf = 0;
+%                 error('error line option');
             end
         end
 

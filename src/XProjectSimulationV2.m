@@ -6,8 +6,8 @@ addpath('classes');
 addpath(genpath('tools'));
 %% define robot model with MDH method
 global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos g_cycle_time
-g_jvmax = [pi/8, pi/8, pi/5, pi/2, pi/2, pi/2];
-g_jamax = [pi/4, pi/4, pi/2, pi/2, pi/2, pi/2];
+g_jvmax = [pi/8, pi/8, 0.8*pi/4, pi/4, pi/4, pi/4];
+g_jamax = [pi/4, pi/4, pi/2, pi/4, pi/4, pi/4];
 g_cvmax = [0.15, 0.15]; g_camax = [0.3, 0.3];
 g_stowed_pos = [0;0;0;0;-pi/2;0];
 g_cycle_time = 0.005;
@@ -109,6 +109,7 @@ elseif strcmp(toilet_lid,'close')
     taskplanner.AddTraj(tmp_jpos, 'joint', 1);
     taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
     taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0);
+    taskplanner.AddTraj(fliplr(via_posrpy(:,2:end)), 'arc', 0);
 end
 
 if compare_plan
