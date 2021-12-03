@@ -86,31 +86,26 @@ joint_plot = 1;
 compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
-toilet_lid = 'close';
-% q0 = [0,-35, 50, -100, -90, 0]'*pi/180;
-% q0 = [-60,50,40,-50,-20,-90]'*pi/180;
-if strcmp(toilet_lid,'open')
-    q0 = [-40,65,40,-5,55,-180]'*pi/180;
-elseif strcmp(toilet_lid,'close')
-    q0 = [0,-35,20,65,-90,0]'*pi/180;
-end
+
+q0 = [0,-35,20,65,-90,0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                             g_cvmax,g_camax,compare_plan);
-toilet_lid = 'close';
+toilet_lid = 'open';
 if strcmp(toilet_lid,'open')
     a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
     vision_pos = [a,b,c];
-    via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, (-0-100)*pi/180, 0*pi/180, 0.05);
+    via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, -110*pi/180, 90*pi/180, 0.05);
+    tmp_jpos = [-40,65,40,-35,-90,0]'*pi/180;
 elseif strcmp(toilet_lid,'close')
     a = [0.87, 0.178, -0.3627]'; b = [0.85426, -0.19926, -0.36788]'; c = [0.9232, -0.079565, 0.066379]';
     vision_pos = [a,b,c];
     via_posrpy = PlanToiletlidPath(vision_pos, -pi/3, 0*pi/180, 150*pi/180, 0.05);
     tmp_jpos = [0,-35,20,0,-70,150]'*pi/180;
-    taskplanner.AddTraj(tmp_jpos, 'joint', 1);
-    taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
-    taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0);
-    taskplanner.AddTraj(fliplr(via_posrpy(:,2:end)), 'arc', 0);
 end
+taskplanner.AddTraj(tmp_jpos, 'joint', 1);
+taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', 0);
+taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', 0);
+% taskplanner.AddTraj(fliplr(via_posrpy(:,2:end)), 'arc', 0);
 
 if compare_plan
     [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);

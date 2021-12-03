@@ -3,8 +3,8 @@
 %   point_angle: negative for open
 %   argumets examples:
 %   right config:
-%   open -> PlanToiletlidPath(vision_pos,110degree,-(90-10)degree,0degree,0.03)
-%   close -> PlanToiletlidPath(vision_pos,-60degree,-30degree,-40degree,0.03)
+%   open -> PlanToiletlidPath(vision_pos,110degree,-110degree,90degree,0.03)
+%   close -> PlanToiletlidPath(vision_pos,-60degree,0degree,150degree,0.03)
 %   left config:
 %   open -> PlanToiletlidPath(vision_pos,110degree,-(90+10)degree,0degree,0.03)
 %   close -> PlanToiletlidPath(vision_pos,-60degree,-(180-30)degree,-40degree,0.03)
@@ -49,7 +49,8 @@ if arc_angle>0
     rpy_y0 = cross(rpy_z0,rpy_x0);
     rot_rpy = [rpy_x0,rpy_y0,rpy_z0];
     rot_rpy = rot_rpy*roty(-90)*rotx(-90);
-    rpy2 = tr2rpy(rot_rpy,'xyz');
+%     rpy2 = tr2rpy(rot_rpy,'xyz');
+    rpy2 = rpy1;
 else
     rot_rpy = rot_plane*roty(180/pi*point_angle)*rotz(180/pi*slant_angle);
     rpy1 = tr2rpy(rot_rpy,'xyz');
