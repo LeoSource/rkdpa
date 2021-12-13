@@ -67,7 +67,9 @@ classdef TaskTrajPlanner < handle
                 obj.traj_type{obj.ntraj} = 'cartesian';
                 obj.pre_trajpose  = SE3.rpy(180/pi*via_pos(4:6,end)', 'xyz');
                 obj.pre_trajpose.t = via_pos(1:3,end);
-                obj.pre_trajq = obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5)';
+                if obj.compare_plan
+                    obj.pre_trajq = obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5)';
+                end
             case 'joint'
                 jplanner = JointPlanner(obj.pre_trajq, traj_opt);
                 jplanner.AddJntPos(via_pos, vmax, amax);
@@ -141,11 +143,11 @@ classdef TaskTrajPlanner < handle
                 case 'joint'
                     [jp,jv,ja] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
-%                     [p,v,a] = obj.Transform2Cart(jp,jv,ja);
-%                     cpos = [cpos, p]; cvel = [cvel, v]; cacc = [cacc, a];
-%                     if obj.compare_plan
-%                         cpos_sim = [cpos_sim,p(1:3,:)];
-%                     end
+                    [p,v,a] = obj.Transform2Cart(jp,jv,ja);
+                    cpos = [cpos, p]; cvel = [cvel, v]; cacc = [cacc, a];
+                    if obj.compare_plan
+                        cpos_sim = [cpos_sim,p(1:3,:)];
+                    end
                 case 'bspline'
                     [p,vp,ap] = obj.segplanner{traj_idx}{1}.GenerateTraj(dt);
                     [r,vr,ar] = obj.segplanner{traj_idx}{2}.GenerateTraj(dt);
@@ -260,7 +262,7 @@ classdef TaskTrajPlanner < handle
                 cmd_pose = SE3.rpy(180/pi*cp(4:6,idx)','xyz');
                 cmd_pose.t = cp(1:3,idx);
                 q = obj.robot.ikine(cmd_pose,'q0',obj.pre_q','tol',1e-5)';
-                if size(q)~=6
+                if length(q)~=6
                     a = 1;
                 end
                 jaco = obj.robot.jacob0(q);
