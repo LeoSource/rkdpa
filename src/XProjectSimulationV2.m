@@ -26,7 +26,7 @@ qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
 qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
 rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',tool_toiletlid);
 rbt.qlim(:,1) = qmin; rbt.qlim(:,2) = qmax;
-simu_mode = 'toilet_lid';
+simu_mode = 'table';
 switch simu_mode
     case 'workspace'
 %% plot workspace
@@ -90,7 +90,7 @@ dt = 0.01;
 q0 = [0,-35,20,65,-90,0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                             g_cvmax,g_camax,compare_plan);
-toilet_lid = 'close';
+toilet_lid = 'open';
 if strcmp(toilet_lid,'open')
     a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
     vision_pos = [a,b,c];
@@ -158,13 +158,30 @@ joint_plot = 1;
 compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
-q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
+% q0 = [0,-35,40,-35,-90,0]'*pi/180;
+q0 = [-10,20,50,-35,-90,0]'*pi/180;
+rbt.tool = SE3(rotx(0), [0,0,0.51]);
 taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                             g_cvmax,g_camax,compare_plan);
 rectplanner = QuadranglePlanner;
-p1 = [0.45,-0.25,-0.75]'; p2 = [0.45,0.25,-0.75]'; p3 = [0.8,0.25,-0.75]'; p4 = [0.8,-0.25,-0.75]';
+% table zone
+% p1 = [0.379,0.018,-0.164]'; p2 = [0.407,0.5057,-0.158]';
+% p3 = [0.852,0.4808,-0.1438]'; p4 = [0.8264,-0.0066,-0.148375]';
+% ground zone A1
+p1 = [0.50024,0.01394,-0.80907]'; p2 = [0.55821,0.37747,-0.79605]';
+p3 = [1.04993,0.35174,-0.78043]'; p4 = [1.04299,0.02213,-0.796]';
+% ground zone A2
+% p1 = [0.42578,-0.28383,-0.81447]'; p2 = [0.54249,0.46099,-0.79074]';
+% p3 = [0.75257,0.46584,-0.78597]'; p4 = [0.72554,-0.27564,-0.79367]';
+% ground zone A3
+% p1 = [0.35768,-0.57864,-0.81025]'; p2 = [0.43221,-0.25252,-0.80335]';
+% p3 = [0.83252,-0.28358,-0.79444]'; p4 = [0.80586,-0.61339,-0.79536]';
+% ground zone A4
+% p1 = [0.42027,-0.2954,-0.80776]'; p2 = [0.51165,0.42612,-0.79377]';
+% p3 = [0.94606,0.4236,-0.77803]'; p4 = [0.67835,-0.30654,-0.79918]';
 vision_pos = [p1,p2,p3,p4];
 via_posrpy = rectplanner.PlanGround(vision_pos);
+% via_posrpy = rectplanner.PlanTable(vision_pos);
 taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
 
 if compare_plan
@@ -179,7 +196,7 @@ plot2(via_posrpy(1:3,:)', 'bo'); plot2(vision_pos', 'r*'); axis equal;
 PlotRPY(cpos, 100);
 grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
-    case 'fric_test'
+    case 'fric'
 %% simulate friction test trajectory
 joint_plot = 0;
 compare_cpp = 0;

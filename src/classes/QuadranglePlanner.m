@@ -55,11 +55,11 @@ classdef QuadranglePlanner < handle
 
         function via_posrpy = PlanTable(obj, vertices)
             path_type = 'n';
-            camera_ori = 'top';
+            camera_ori = 'down';
             dis_trans = -1;
-            pitch_angle = [50*pi/180, pi-50*pi/180];
-            yaw_angle = [70*pi/180, 10*pi/180];
-            clean_tool = [0.2, 0.15];
+            pitch_angle = [40*pi/180, 60*pi/180];
+            yaw_angle = [45*pi/180, 75*pi/180];
+            clean_tool = [0.1, 0.1];
             trans_angle = 0;
             via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,yaw_angle,...
                                         dis_trans,camera_ori,path_type,trans_angle);
@@ -69,8 +69,8 @@ classdef QuadranglePlanner < handle
             path_type = 'n';
             camera_ori = 'top';
             dis_trans = 0.08;
-            pitch_angle = [50*pi/180, 80*pi/180];
-            yaw_angle = [0*pi/180, 0*pi/180];
+            pitch_angle = [70*pi/180, 100*pi/180];
+            yaw_angle = [50*pi/180, 0*pi/180];
             clean_tool = [0.2, 0.15];
             trans_angle = 0;
             via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,yaw_angle,...
