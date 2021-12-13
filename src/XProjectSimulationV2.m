@@ -129,6 +129,7 @@ joint_plot = 1;
 compare_cpp = 0;
 compare_plan = 1;
 dt = 0.01;
+rbt.tool = SE3(rotx(-30), [0,0.058,0.398]);
 q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
 taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                             g_cvmax,g_camax,compare_plan);
@@ -137,7 +138,7 @@ p1 = [0.8,-0.2,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.
 vision_pos = [p1,p2,p3,p4];
 % via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
 % via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.08, 'right');
-via_posrpy = rectplanner.PlanMirror(vision_pos);
+via_posrpy = rectplanner.PlanMirror(vision_pos, 1);
 taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
 
 if compare_plan

@@ -7,16 +7,20 @@ addpath(genpath('tools'));
 dt = 0.005;
 %% analyse test data
 nj = 6;
-td = load('./data/test_data_1103_112045.csv');
+td = load('./data/test_data_1119_180949.csv');
 jpos_idx = 1; jvel_idx = 2; jtor_idx = 3;
 jpos = td(:,1:jpos_idx*nj);
 jvel = td(:,nj+1:jvel_idx*nj);
 jtor = td(:,2*nj+1:jtor_idx*nj);
 t = 0:dt:dt*(size(td,1)-1);
 
-jpos_plot = [1,3,6];
+analysis_mode = 'torque';
+switch analysis_mode
+    case 'common'
+%% plot joint position, velocity and torque
+jpos_plot = [1,2,3,4,5,6];
 jvel_plot = [1,2,3,4,5,6];
-jtor_plot = [1,2,3,4,5,6,];
+jtor_plot = [1,2,3,4,5,6];
 figure;
 for idx=jpos_plot
     plot(t,jpos(:,idx),'DisplayName',['jpos',num2str(idx)]); grid on;
@@ -36,6 +40,16 @@ for idx=jtor_plot
 end
 hold off; legend;
 
+    case 'torque'
+%% analyse joint torque
+for idx=1:6
+    figure
+    plot(t,jvel(:,idx), t,jtor(:,idx)); grid on;
+    xlabel('time(s)'); ylabel('torque(Nm)');
+    title(['joint',num2str(idx)]);
+end
+
+    case 'filter'
 %% filter compared
 fs = 200;
 N= 5;
@@ -48,3 +62,6 @@ figure
 plot(t, jtor(:,4), t, tor); grid on;
 figure
 plot(t,tor, t, tor1); grid on;
+
+end
+
