@@ -14,7 +14,7 @@ classdef RobotGravityIden < handle
             
         end
         
-        function Identificatino(obj,jpos,jtau)
+        function Identification(obj,jpos,jtau)
             [jpos_grav,jtau_grav] = obj.ProcessJointData(jpos,jtau);
             %%gravity identification%%
             sparse_value = 5;
@@ -46,12 +46,12 @@ classdef RobotGravityIden < handle
             %%process identification data%%
             record_value = [-0.87,0.87];
             eps = 1e-5;
-            start_idx = find(jpos(:,2)>record_value(1)-5*eps & jpos(:,2)<record_value(1)+4*eps);
+            start_idx = find(jpos(:,2)>record_value(1)-4*eps & jpos(:,2)<record_value(1)+5*eps);
             stop_idx = find(jpos(:,2)>record_value(2)-4*eps & jpos(:,2)<record_value(2)+4*eps);
             if length(start_idx) ~=2  || length(stop_idx) ~=2
                 error('rescop1');
             end
-            start_idx(2) = start_idx(2)+2;
+            start_idx(2) = start_idx(2)-3;
             if abs(stop_idx(1)-start_idx(1)) ~= abs(stop_idx(2)-start_idx(2))
                 error('rescope2');
             end

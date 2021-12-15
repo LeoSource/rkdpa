@@ -8,7 +8,7 @@ addpath('gravity')
 dt = 0.005;
 %% load joint test data
 nj = 6;
-td = load('./data/test_data_1106_105529.csv');
+td = load('./data/test_data_1214_155413.csv');
 jpos_idx = 1; jvel_idx = 2; jtor_idx = 3;
 jpos = td(:,1:jpos_idx*nj);
 jvel = td(:,nj+1:jvel_idx*nj);
@@ -41,4 +41,10 @@ if plot_jdata
 end
 %% robot gravity identification
 grav_iden = RobotGravityIden;
-grav_iden.Identificatino(jpos,jtor);
+grav_iden.Identification(jpos,jtor);
+%%save gravity identification parameters%%
+time_tmp = datevec(now);
+time_stamp = time_tmp(4)*100+time_tmp(5);
+file_name = ['gravity/gravity_parameters',num2str(time_stamp),'.txt'];
+dlmwrite(file_name,grav_iden.barycenter_params,'precision',12);
+
