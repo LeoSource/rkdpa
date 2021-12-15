@@ -44,27 +44,31 @@ classdef QuadranglePlanner < handle
         function via_posrpy = PlanMirror(obj, vertices, hori_times)
             path_type = 'n';
             camera_ori = 'top';
-            dis_trans = 0.08;
-            pitch_angle = [30*pi/180, 50*pi/180];
+            dis_trans = 0.1;
+            pitch_angle = [deg2rad(30), deg2rad(50)];
             yaw_angle = [0, 0];
-            clean_tool = [0.15, 0];
-            trans_angle = 10*pi/180;
-            len = (hori_times+1)*0.5*clean_tool(1);
-            v1 = vertices(:,1)+len*(vertices(:,4)-vertices(:,1))/norm(vertices(:,4)-vertices(:,1));
-            v2 = vertices(:,2)+len*(vertices(:,3)-vertices(:,2))/norm(vertices(:,3)-vertices(:,2));
-            via_posrpy_vert = obj.UniversalPlan([v1,v2,vertices(:,3:4)],clean_tool,pitch_angle,yaw_angle,...
-                                        dis_trans,camera_ori,path_type,trans_angle);
-            via_posrpy_hori = obj.HorizontalScrape([vertices(:,1:2),v2,v1],clean_tool,hori_times);
-            via_posrpy = [via_posrpy_vert, via_posrpy_hori];
-%             via_posrpy = via_posrpy_vert;
+            clean_tool = [0.25, 0];
+            trans_angle = deg2rad(30);
+            if hori_times>0
+                len = (hori_times+1)*0.5*clean_tool(1);
+                v1 = vertices(:,1)+0.7*len*(vertices(:,4)-vertices(:,1))/norm(vertices(:,4)-vertices(:,1));
+                v2 = vertices(:,2)+0.7*len*(vertices(:,3)-vertices(:,2))/norm(vertices(:,3)-vertices(:,2));
+                via_posrpy_vert = obj.UniversalPlan([v1,v2,vertices(:,3:4)],clean_tool,pitch_angle,yaw_angle,...
+                                            dis_trans,camera_ori,path_type,trans_angle);
+                via_posrpy_hori = obj.HorizontalScrape([vertices(:,1:2),v2,v1],clean_tool,hori_times);
+                via_posrpy = [via_posrpy_vert, via_posrpy_hori];
+            else
+                via_posrpy = UniversalPlan(vertices,clean_tool,pitch_angle,yaw_angle,...
+                                            dis_trans,camera_ori,path_type,trans_angle);
+            end
         end
 
         function via_posrpy = PlanTable(obj, vertices)
             path_type = 'n';
             camera_ori = 'down';
             dis_trans = -1;
-            pitch_angle = [40*pi/180, 60*pi/180];
-            yaw_angle = [45*pi/180, 75*pi/180];
+            pitch_angle = [deg2rad(40), deg2rad(60)];
+            yaw_angle = [deg2rad(45), deg2rad(75)];
             clean_tool = [0.1, 0.1];
             trans_angle = 0;
             via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,yaw_angle,...
@@ -75,8 +79,8 @@ classdef QuadranglePlanner < handle
             path_type = 'n';
             camera_ori = 'top';
             dis_trans = 0.08;
-            pitch_angle = [70*pi/180, 100*pi/180];
-            yaw_angle = [50*pi/180, 0*pi/180];
+            pitch_angle = [deg2rad(70), deg2rad(100)];
+            yaw_angle = [deg2rad(50), deg2rad(0)];
             clean_tool = [0.2, 0.15];
             trans_angle = 0;
             via_posrpy = obj.UniversalPlan(vertices,clean_tool,pitch_angle,yaw_angle,...
@@ -96,29 +100,30 @@ classdef QuadranglePlanner < handle
         end
 
         function via_posrpy = HorizontalScrape(obj,vertices,clean_tool,hori_times)
-            via_pos_end = 0.5*(vertices(:,1)+vertices(:,2));
-            via_rpy_end = tr2rpy(obj.rot_plane*roty(30)*obj.rot_transform, 'xyz');
+            len = norm(vertices(:,2)-vertices(:,1));
+            len_left_scale = 2.0/3.0;
+            len_left = len_left_scale*len;
+            len_right = (1-len_left_scale)*len;
+            via_pos_end = vertices(:,1)+len_right*obj.rot_plane(:,2);
+            via_rpy_end = tr2rpy(obj.rot_plane*roty(50)*obj.rot_transform, 'xyz');
+            rpy_tmp = tr2rpy(obj.rot_plane*roty(90)*obj.rot_transform, 'xyz');
             rpy_left = tr2rpy(obj.rot_plane*rotx(-30)*[-1,0,0;0,0,1;0,1,0],'xyz');
             rpy_right = tr2rpy(obj.rot_plane*rotx(30)*[1,0,0;0,0,-1;0,1,0],'xyz');
             trans_vec = 0.08*obj.rot_plane(:,3);
-            len = norm(vertices(:,2)-vertices(:,1));
-            width = norm(vertices(:,3)-vertices(:,2));
             via_left = []; via_right = [];
             for idx=1:hori_times
-                pos_tmp = vertices(:,3)-idx*0.5*clean_tool(1)*obj.rot_plane(:,1);
-                via_left(:,5*idx-4) = [pos_tmp+trans_vec; rpy_left'];
-                via_left(:,5*idx-3) = [pos_tmp; rpy_left'];
-                via_left(:,5*idx-2) = [pos_tmp-0.5*len*obj.rot_plane(:,2); rpy_left'];
-                via_left(:,5*idx-1) = [via_pos_end; via_rpy_end'];
-                via_left(:,5*idx) = [via_pos_end+trans_vec; via_rpy_end'];
+                pos_tmp = vertices(:,2)+idx*0.5*clean_tool(1)*obj.rot_plane(:,1);
+                via_left(:,4*idx-3) = [pos_tmp+trans_vec; rpy_left'];
+                via_left(:,4*idx-2) = [pos_tmp; rpy_left'];
+                via_left(:,4*idx-1) = [pos_tmp-len_left*obj.rot_plane(:,2); rpy_left'];
+                via_left(:,4*idx) = [via_pos_end+trans_vec; rpy_tmp'];
             end
             for idx=1:hori_times
-                pos_tmp = vertices(:,4)-idx*0.5*clean_tool(1)*obj.rot_plane(:,1);
-                via_right(:,5*idx-4) = [pos_tmp+trans_vec; rpy_right'];
-                via_right(:,5*idx-3) = [pos_tmp; rpy_right'];
-                via_right(:,5*idx-2) = [pos_tmp+0.5*len*obj.rot_plane(:,2); rpy_right'];
-                via_right(:,5*idx-1) = [via_pos_end; via_rpy_end'];
-                via_right(:,5*idx) = [via_pos_end+trans_vec; via_rpy_end'];
+                pos_tmp = vertices(:,1)+idx*0.5*clean_tool(1)*obj.rot_plane(:,1);
+                via_right(:,4*idx-3) = [pos_tmp+trans_vec; rpy_right'];
+                via_right(:,4*idx-2) = [pos_tmp; rpy_right'];
+                via_right(:,4*idx-1) = [pos_tmp+len_right*obj.rot_plane(:,2); rpy_right'];
+                via_right(:,4*idx) = [via_pos_end+trans_vec; rpy_tmp'];
             end
             via_posrpy = [via_left, via_right];
 
@@ -133,7 +138,7 @@ classdef QuadranglePlanner < handle
                 if nargin==5
                     trans_vec = dis_trans*obj.rot_plane(:,3);
                 else
-                    rot_trans = obj.rot_plane*roty(trans_angle*180/pi);
+                    rot_trans = obj.rot_plane*roty(rad2deg(trans_angle));
                     trans_vec = dis_trans*rot_trans(:,3);
                 end
                 via_posrpy = obj.CalcDisCycleWaypoint(pitch_angle,yaw_angle,trans_vec,'n');
@@ -151,7 +156,7 @@ classdef QuadranglePlanner < handle
                 if nargin==5
                     trans_vec = dis_trans*obj.rot_plane(:,3);
                 else
-                    rot_trans = obj.rot_plane*roty(trans_angle*180/pi);
+                    rot_trans = obj.rot_plane*roty(rad2deg(trans_angle));
                     trans_vec = dis_trans*rot_trans(:,3);
                 end
                 via_posrpy = obj.CalcDisCycleWaypoint(pitch_angle,yaw_angle,trans_vec,'s');
@@ -169,8 +174,8 @@ classdef QuadranglePlanner < handle
                 elseif path_type=='s'
                     [pitch1,pitch2,yaw1,yaw2] = obj.CalcSPathRot(pitch_angle, yaw_angle, pos1, idx);
                 end
-                rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
-                rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
+                rot_tool1 = obj.rot_plane*rotz(rad2deg(-yaw1))*roty(rad2deg(pitch1))*obj.rot_transform;
+                rot_tool2 = obj.rot_plane*rotz(rad2deg(yaw2))*roty(rad2deg(pitch2))*obj.rot_transform;
                 rpy1 = tr2rpy(rot_tool1, 'xyz');
                 rpy2 = tr2rpy(rot_tool2, 'xyz');
                 waypoint(:,2*idx-1) = [pos1; rpy1'];
@@ -189,8 +194,8 @@ classdef QuadranglePlanner < handle
                 elseif path_type=='s'
                     [pitch1,pitch2,yaw1,yaw2] = obj.CalcSPathRot(pitch_angle, yaw_angle, pos2, idx);
                 end
-                rot_tool1 = obj.rot_plane*rotz(-180/pi*yaw1)*roty(180/pi*pitch1)*obj.rot_transform;
-                rot_tool2 = obj.rot_plane*rotz(-180/pi*yaw2)*roty(180/pi*pitch2)*obj.rot_transform;
+                rot_tool1 = obj.rot_plane*rotz(rad2deg(-yaw1))*roty(rad2deg(pitch1))*obj.rot_transform;
+                rot_tool2 = obj.rot_plane*rotz(rad2deg(-yaw2))*roty(rad2deg(pitch2))*obj.rot_transform;
                 rpy1 = tr2rpy(rot_tool1, 'xyz');
                 rpy2 = tr2rpy(rot_tool2, 'xyz');
                 waypoint(:,4*idx-3) = [pos1; rpy1'];
