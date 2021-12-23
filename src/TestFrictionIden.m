@@ -7,7 +7,7 @@ addpath(genpath('tools'));
 dt = 0.005;
 %% load joint test data
 nj = 6;
-td = load('./data/test_data_1214_155413.csv');
+td = load('./data/test_data_1222_175312.csv');
 jpos_idx = 1; jvel_idx = 2; jtor_idx = 3;
 jpos = td(:,1:jpos_idx*nj);
 jvel = td(:,nj+1:jvel_idx*nj);
@@ -37,10 +37,10 @@ plot(t,jtor(:,joint_idx),'r'); grid on; hold on;
 plot(t,tau_filter,'k'); hold off;
 title('joint torque')
 %% joint friction parameters identification
-% seg_idx = {[5.28,18.25],[30.52,42.99],[65.07,72.88],[81.11,93.2],[111.8,116.9],[129,136.4],...
-%             [154.7,159.4],[168.6,174.5],[192.5,196.1],[205,209.6],[229,232.8],[241.9,246.4],...
-%             [262.1,265.4],[274,278],[293.6,296.4],[305.8,309.3],[328.4,330.9],[340.6,344.2],...
-%             [364,366.2],[376.2,379],[400.8,402.8],[412.6,415.3]};
+% seg_idx = {[8.4,21.8],[28.96,42.56],[77.23,88.09],[99.29,114.7],[133.5,141.4],[148.9,157.6],...
+%             [177.8,184.4],[192.1,197.5],[218.5,221.8],[236.4,240.3],[264,267.4],[277.6,279.4],...
+%             [299.1,302.4],[312,314],[334.6,336.4],[346.8,349.3],[372.1,374.9],[384.6,386.2],...
+%             [406,408.2],[418.2,421],[441.8,442.8],[455.6,457.3]};
 seg_idx = {[8.615,13.08],[23.07,27.03],[45.07,47.15],[57.42,60.83],[78.23,79.88],[86.83,89.44],...
             [104.6,106.8],[114.2,116],[139.4,141],[151,152.1],[171.8,173.3],[182.2,183.7],...
             [201.4,203],[209.8,211.4],[229,230.4],[237.2,238.6],[256,257],[263.8,265.4],...
@@ -59,7 +59,7 @@ for idx=1:length(seg_idx)
 end
 fric_params = pinv(reg_fric)*tau_Iden;
 time_tmp = datevec(now);
-time_stamp = time_tmp(4)*100+time_tmp(5);
+time_stamp = [num2str(time_tmp(2)),num2str(time_tmp(3)),num2str(time_tmp(4)),num2str(time_tmp(5))];
 file_name = ['gravity/joint5_friction_parameters',num2str(time_stamp),'.txt'];
 dlmwrite(file_name,fric_params,'precision',12);
 %% joint friction parameters polyfit

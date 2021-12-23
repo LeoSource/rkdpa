@@ -58,7 +58,7 @@ classdef RobotGravityIden < handle
             if length(start_idx) ~=2  || length(stop_idx) ~=2
                 error('rescop1');
             end
-            start_idx(2) = start_idx(2)-3;
+            start_idx(2) = start_idx(2)+0;
             if abs(stop_idx(1)-start_idx(1)) ~= abs(stop_idx(2)-start_idx(2))
                 error('rescope2');
             end
