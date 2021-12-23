@@ -57,12 +57,36 @@ fc = 10;
 for idx=1:6
     [Btorque, Atorque] = butter(N, fc/(fs/2));
     tor = filtfilt(Btorque, Atorque, jtor(:,idx));
-    tor1 = filter(Btorque, Atorque, jtor(:,idx));
+%     tor1 = filter(Btorque, Atorque, jtor(:,idx));
+    tau_filter = Biquad('LOWPASS',fc/fs,0.707,0);
+    for nidx=1:length(jtor(:,idx))
+        tor1(nidx) = tau_filter.Filter(jtor(nidx,idx));
+    end
 
     figure
     plot(t, jtor(:,idx),'r', t, tor,'b', t,tor1,'k'); grid on;
+%     plot(t, tor,'b', t,tor1,'k'); grid on;
     xlabel('time(s)'); ylabel('torque(Nm)');
     title(['joint',num2str(idx)]);
+end
+
+    case 'collision'
+fs = 200;
+fc = 10;
+for idx=1:6
+    tau_filter = Biquad('LOWPASS',fc/fs,0.707,0);
+    for nidx=1:length(jtor(:,idx))
+        tor(nidx) = tau_filter.Filter(jtor(nidx,idx));
+    end
+    figure
+    title(['joint',num2str(idx)]);
+    xlabel('time(s)');
+    yyaxis left
+    plot(t,jtor(:,idx),'r', t,tor,'b-', t,jvel(:,idx),'k-'); grid on;
+    ylabel('joint torque(Nm)');
+    yyaxis right
+    plot(t,tor'-jvel(:,idx));
+    ylabel('joint torque bias(Nm)');
 end
 
 end
