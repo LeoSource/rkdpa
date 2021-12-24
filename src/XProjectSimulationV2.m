@@ -12,20 +12,21 @@ g_cvmax = [0.15, 0.15]; g_camax = [0.3, 0.3];
 g_cycle_time = 0.005;
 
 func_map = containers.Map;
-simu_name = {'workspace','common','toilet_lid','mirror','table','fric'};
+simu_name = {'workspace','common','toilet_lid','mirror','table','friction','gravity'};
 simu_func = {@PlotWorkspace,...
                     @PlanCommon,...
                     @PlanToiletlid,...
                     @PlanMirror,...
                     @PlanTable,...
-                    @GeneraFricTraj};
+                    @GenerateFricIdenTraj,...
+                    @GenerateGravIdenTraj};
 for idx=1:length(simu_name)
     func_map(simu_name{idx}) = simu_func{idx};
 end
 
 rbt = CreateRobot();
-dt = 0.01;
-test_name = 'toilet_lid';
+dt = 0.005;
+test_name = 'gravity';
 if strcmp(test_name, 'workspace')
     PlotWorkspace(rbt)
 else
@@ -255,8 +256,8 @@ function [output_pos,joint_plot,compare_cpp] = PlanTable(rbt, dt)
     grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 end
 
-%% simulate friction test trajectory
-function [output_pos,joint_plot,compare_cpp] = GeneraFricTraj(rbt, dt)
+%% simulate friction identification trajectory
+function [output_pos,joint_plot,compare_cpp] = GenerateFricIdenTraj(rbt, dt)
     global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
     joint_plot = 0;
     compare_cpp = 0;
@@ -290,4 +291,38 @@ function [output_pos,joint_plot,compare_cpp] = GeneraFricTraj(rbt, dt)
     plot(jvel(5,:)); hold off;
     output_pos = jpos;
 end
+
+%% simulate gravity identification trajectory
+function [output_pos,joint_plot,compare_cpp] = GenerateGravIdenTraj(rbt, dt)
+    global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
+    joint_plot = 0;
+    compare_cpp = 0;
+    compare_plan = 0;
+    q0 = deg2rad([0,-60,-160,-90,-90,45]');
+    qf = deg2rad([0,60,20,90,90,-45]');
+    taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+                                    g_cvmax,g_camax,compare_plan);
+    taskplanner.AddTraj([qf,q0],'joint',1,0.05,1);
+    [jpos,jvel,~] = taskplanner.GenerateJointTraj(dt);
+    t = 0:dt:dt*(size(jpos,2)-1);
+    zero_vel_idx = find(~jvel(2,:));
+    drop_time = 5;
+    start_idx(1) = drop_time/dt;
+    stop_idx(1) = zero_vel_idx(2)-(start_idx(1)-1);
+    start_idx(2) = zero_vel_idx(2)+(start_idx(1)-1);
+    stop_idx(2) = start_idx(2)+(stop_idx(1)-start_idx(1));
+    time_slice{1} = dt*[start_idx(1),stop_idx(1)];
+    time_slice{2} = dt*[start_idx(2),stop_idx(2)];
+    disp('starting and ending time for processing gravity joint data is');
+    disp(time_slice{1});
+    disp(time_slice{2});
+    figure
+    plot(t,jpos(1,:),'-', t, jpos(2,:), '--', t, jpos(3,:), '-.', t, jpos(4,:), ':', t, jpos(5,:), '-', t,jpos(6,:),'k');
+    grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5', 'q6');
+    figure
+    plot(t,jvel(1,:),'-', t, jvel(2,:), '--', t, jvel(3,:), '-.', t, jvel(4,:), ':', t, jvel(5,:), '-', t,jvel(6,:),'k');
+    grid on; title('joint velocity'); legend('qd1', 'qd2', 'qd3', 'qd4', 'qd5', 'qd6');
+    output_pos = jpos;
+end
+
 

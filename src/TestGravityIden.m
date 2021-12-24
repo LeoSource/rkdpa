@@ -18,8 +18,8 @@ t = 0:dt:dt*(size(td,1)-1);
 plot_jdata = 0;
 if plot_jdata
     jpos_plot = [1,2,3,4,5,6];
-    jvel_plot = [5];
-    jtor_plot = [5];
+    jvel_plot = [2,3,4,5];
+    jtor_plot = [2,3,4,5];
     figure;
     for idx=jpos_plot
         plot(t,jpos(:,idx),'DisplayName',['jpos',num2str(idx)]); grid on;
@@ -41,8 +41,8 @@ if plot_jdata
 end
 %% robot gravity identification
 rbtdef = CreateRobot();
-grav_iden = RobotGravityIden(rbtdef);
-grav_iden.Identification(jpos,jtor);
+grav_iden = RobotDynamics(rbtdef);
+grav_iden.GravityIden(jpos,jtor);
 %%save gravity identification parameters%%
 time_tmp = datevec(now);
 time_stamp = [num2str(time_tmp(2)),num2str(time_tmp(3)),num2str(time_tmp(4)),num2str(time_tmp(5))];

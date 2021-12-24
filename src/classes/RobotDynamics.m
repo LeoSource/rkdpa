@@ -1,4 +1,4 @@
-classdef RobotGravityIden < handle
+classdef RobotDynamics < handle
     
     properties
 %         barycenter_j5 %% l5x,l5y,l6x,l6y,l6z,m6
@@ -6,23 +6,27 @@ classdef RobotGravityIden < handle
 %         barycenter_j3 %% l3x,l3y,l4x,l4y,m4,l5x,l5y,l5z,m5,l6x,l6y,l6z,m6
 %         barycenter_j2 %% l2x,l2y,l3x,l3y,m3,l4x,l4y,m4,l5x,l5y,l5z,m5,l6x,l6y,l6z,m6
         barycenter_params
+        fric_params
         rbtdef
+        njoint
         g
     end
     
     
     methods
-        function obj = RobotGravityIden(rbtdef)
+        function obj = RobotDynamics(rbtdef)
             obj.rbtdef = rbtdef;
             obj.g = abs(rbtdef.gravity(3));
+            obj.njoint = rbtdef.n;
         end
         
-        function LoadGravityParams(obj,file)
-            obj.barycenter_params = load(file);
+        function LoadParams(obj,grav_file,fric_file)
+            obj.barycenter_params = load(grav_file);
+            obj.fric_params = load(fric_file);
         end
         
-        function Identification(obj,jpos,jtau)
-            [jpos_grav,jtau_grav] = obj.ProcessJointData(jpos,jtau);
+        function GravityIden(obj,jpos,jtau)
+            [jpos_grav,jtau_grav] = obj.ProcessGravJointData(jpos,jtau);
             %%gravity identification%%
             sparse_value = 5;
             jpos_iden = jpos_grav(1:sparse_value:end,:);
@@ -49,24 +53,16 @@ classdef RobotGravityIden < handle
             end
         end
         
-        function [jpos_grav,jtau_grav] = ProcessJointData(obj,jpos,jtau)
+        function [jpos_grav,jtau_grav] = ProcessGravJointData(obj,jpos,jtau)
             %%process identification data%%
-            record_value = [-0.87,0.87];
-            eps = 1e-5;
-            start_idx = find(jpos(:,2)>record_value(1)-4*eps & jpos(:,2)<record_value(1)+5*eps);
-            stop_idx = find(jpos(:,2)>record_value(2)-4*eps & jpos(:,2)<record_value(2)+4*eps);
-            if length(start_idx) ~=2  || length(stop_idx) ~=2
-                error('rescop1');
-            end
-            start_idx(2) = start_idx(2)+0;
-            if abs(stop_idx(1)-start_idx(1)) ~= abs(stop_idx(2)-start_idx(2))
-                error('rescope2');
-            end
+            start_idx = [1000,22339];
+            stop_idx = [20341,41680];
             jpos_grav = jpos(start_idx(1):stop_idx(1),:);
             tau1 = jtau(start_idx(1):stop_idx(1),:);
-            tau2_tmp = jtau(stop_idx(2):start_idx(2),:);
-            tau2 = fliplr(tau2_tmp');
-            tau2 = tau2';
+            tau2 = jtau(start_idx(2):stop_idx(2),:);
+%             tau2_tmp = jtau(stop_idx(2):start_idx(2),:);
+%             tau2 = fliplr(tau2_tmp');
+%             tau2 = tau2';
             jtau_grav = 0.5*(tau1+tau2);
             %%filter joint torque data%%
             fs = 200;
@@ -181,8 +177,12 @@ classdef RobotGravityIden < handle
                                 - obj.g*obj.rbtdef.d(5)*cos(q5)^2*cos(q2 + q3 + q4);
         end
         
+        function tau_iden = GenerateIdenTorque(obj,jpos,jvel)
+            tau_iden = obj.GenerateGravTau(jpos)+obj.GenerateFricTau(jvel);
+        end
+        
         function tau_grav = GenerateGravTau(obj,jpos)
-            tau_grav = zeros(6,1);
+            tau_grav = zeros(obj.njoint,1);
             reg_mat = zeros(4,16);
             reg_mat(1,:) =obj. CalcRegressorJoint2(jpos);
             reg_mat(2,:) =obj. CalcRegressorJoint3(jpos);
@@ -191,27 +191,16 @@ classdef RobotGravityIden < handle
             tau_grav(2:5) = reg_mat*obj.barycenter_params;
         end
         
-        function tau = CalcGravJoint5(obj,jpos)
-            tau = obj.GenerateGravTau(jpos);
-            tau = tau(5);
-        end
-        
-        function tau = CalcGravJoint4(obj,jpos)
-            tau = obj.GenerateGravTau(jpos);
-            tau = tau(4);
-        end
-        
-        function tau = CalcGravJoint3(obj,jpos)
-            tau = obj.GenerateGravTau(jpos);
-            tau = tau(3);
-        end
-        
-        function tau = CalcGravJoint2(obj,jpos)
-            tau = obj.GenerateGravTau(jpos);
-            tau = tau(2);
+        function tau_fric = GenerateFricTau(obj,jvel)
+            tau_fric = zeros(obj.njoint,1);
+            for jidx=1:obj.njoint
+                tau_fric(jidx) = obj.fric_params(2*jidx-1)*SignVel(jvel(jidx))...
+                                        +obj.fric_params(2*jidx)*jvel(jidx);
+            end
         end
         
         
     end
     
- end
+end
+ 
