@@ -1,55 +1,42 @@
-clear
+clear all
 close all
 clc
 
 addpath('classes');
 addpath(genpath('tools'));
 
-% global g_jvmax g_jamax g_cvmax g_camax g_stowed_pos g_cycle_time
+global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
 g_jvmax = [pi/8, pi/8, 0.8*pi/4, pi/4, pi/4, pi/4];
 g_jamax = [pi/4, pi/4, pi/2, pi/4, pi/4, pi/4];
 g_cvmax = [0.15, 0.15]; g_camax = [0.3, 0.3];
-g_stowed_pos = [0;0;0;0;-pi/2;0];
 g_cycle_time = 0.005;
 
 func_map = containers.Map;
 simu_name = {'workspace','common','toilet_lid','mirror','table','fric'};
-simu_func = {{@PlotWorkspace, [0,0,0]},...
-                    {@PlanCommon, [0,0,0]},...
-                    {@PlanToiletlid, [0,0,0]},...
-                    {@PlanMirror, [0,0,0]},...
-                    {@PlanTable, [0,0,0]},...
-                    {@GeneraFricTraj, [0,0,0]}};%plot option for joint_plot, compare_cpp, compare_plan
+simu_func = {@PlotWorkspace,...
+                    @PlanCommon,...
+                    @PlanToiletlid,...
+                    @PlanMirror,...
+                    @PlanTable,...
+                    @GeneraFricTraj};
 for idx=1:length(simu_name)
     func_map(simu_name{idx}) = simu_func{idx};
 end
 
 rbt = CreateRobot();
-q0 = deg2rad([0,-35,20,65,-90,0]');
-compare_plan = 0;
-taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
-                                            g_cvmax,g_camax,compare_plan);
-func = func_map('workspace');
-func{1}(rbt,taskplanner,func{2});
-
-if joint_plot
-    t = 0:dt:dt*(size(jpos,2)-1);
-    figure
-    plot(t,jpos(1,:),'-', t, jpos(2,:), '--', t, jpos(3,:), '-.', t, jpos(4,:), ':', t, jpos(5,:), '-', t,jpos(6,:),'k');
-    grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5', 'q6');
-
-    if compare_cpp
-        q_cpp = load('./data/mirrortask_jpos1.csv');
-        q_cpp = reshape(q_cpp, 6, []);
-        tt = g_cycle_time*[0:size(q_cpp,2)-1];
-        for idx=1:rbt.n
-            figure
-            plot(t, jpos(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
-            xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
-            legend('matlab\_data', 'cpp\_data');
-        end
+dt = 0.01;
+test_name = 'toilet_lid';
+if strcmp(test_name, 'workspace')
+    PlotWorkspace(rbt)
+else
+    func = func_map(test_name);
+    [jpos,joint_plot,compare_cpp] = func(rbt,dt);
+    
+    if joint_plot
+        PlotJointPosition(jpos,compare_cpp,dt)
     end
 end
+
 
 %% robot description
 function rbt = CreateRobot()
@@ -70,7 +57,7 @@ function rbt = CreateRobot()
 end
 
 %% plot workspace
-function PlotWorkspace(rbt,~,~)
+function PlotWorkspace(rbt)
     nump = 5000;
     tmp_q = rand(1,6,nump);
     qmin = rbt.qlim(:,1);
@@ -86,12 +73,32 @@ function PlotWorkspace(rbt,~,~)
     xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 end
 
+%% plot joint position
+function PlotJointPosition(jpos,compare_cpp,dt)
+    t = 0:dt:dt*(size(jpos,2)-1);
+    figure
+    plot(t,jpos(1,:),'-', t, jpos(2,:), '--', t, jpos(3,:), '-.', t, jpos(4,:), ':', t, jpos(5,:), '-', t,jpos(6,:),'k');
+    grid on; title('joint position'); legend('q1', 'q2', 'q3', 'q4', 'q5', 'q6');
+
+    if compare_cpp
+        q_cpp = load('./data/mirrortask_jpos1.csv');
+        q_cpp = reshape(q_cpp, 6, []);
+        tt = g_cycle_time*[0:size(q_cpp,2)-1];
+        for idx=1:rbt.n
+            figure
+            plot(t, jpos(idx,:), 'b--', tt, q_cpp(idx,:), 'r-');
+            xlabel('time'); ylabel(['q', num2str(idx)]); grid on;
+            legend('matlab\_data', 'cpp\_data');
+        end
+    end
+end
+
 %% simulation all task
-function PlanCommon(rbt,taskplanner,plotopt)
+function [output_pos,joint_plot,compare_cpp] = PlanCommon(rbt, dt)
+    global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
     joint_plot = 1;
     compare_cpp = 1;
     compare_plan = 1;
-    dt = 0.01;
 
     q0 =  [-38,-27,18,-7,-82,-82]'*pi/180;
     taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
@@ -116,7 +123,8 @@ function PlanCommon(rbt,taskplanner,plotopt)
 
     [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
     % [cpos,cve,cacc] = taskplanner.GenerateCartTraj(dt);
-
+    output_pos = jpos;
+    
     figure
     plot2(cpos(1:3,:)', 'r--'); hold on;%plot2(cpos_sim', 'k');
     plot2(via_posrpy(1:3,:)', 'bo'); axis equal;%axis square vis3d;
@@ -125,11 +133,11 @@ function PlanCommon(rbt,taskplanner,plotopt)
 end
 
 %% simulate toilet lifting
-function PlanToiletlid(rbt)
+function [output_pos,joint_plot,compare_cpp] = PlanToiletlid(rbt, dt)
+    global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
     joint_plot = 1;
     compare_cpp = 0;
     compare_plan = 1;
-    dt = 0.01;
 
     q0 = [0,-35,20,65,-90,0]'*pi/180;
     taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
@@ -157,6 +165,7 @@ function PlanToiletlid(rbt)
 
     if compare_plan
         [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+        output_pos = jpos;
     else
         [cpos,cvel,cacc] = taskplanner.GenerateCartTraj(dt);
     end
@@ -169,11 +178,11 @@ function PlanToiletlid(rbt)
 end
 
 %% simulate scrape mirror 
-function PlanMirror(rbt)
+function [output_pos,joint_plot,compare_cpp] = PlanMirror(rbt, dt)
+    global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
     joint_plot = 1;
     compare_cpp = 0;
     compare_plan = 1;
-    dt = 0.01;
     rbt.tool = SE3(rotx(-30), [0,0.058,0.398]);
     q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
     taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
@@ -188,6 +197,7 @@ function PlanMirror(rbt)
 
     if compare_plan
         [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+        output_pos = jpos;
     else
         [cpos,cvel,cacc] = taskplanner.GenerateCartTraj(dt);
     end
@@ -200,11 +210,11 @@ function PlanMirror(rbt)
 end
 
 %% simulate rectangle table or ground zones
-function PlanTable(rbt)
+function [output_pos,joint_plot,compare_cpp] = PlanTable(rbt, dt)
+    global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
     joint_plot = 1;
     compare_cpp = 0;
     compare_plan = 1;
-    dt = 0.01;
     % q0 = [0,-35,40,-35,-90,0]'*pi/180;
     q0 = [-10,20,50,-35,-90,0]'*pi/180;
     rbt.tool = SE3(rotx(0), [0,0,0.51]);
@@ -233,6 +243,7 @@ function PlanTable(rbt)
 
     if compare_plan
         [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+        output_pos = jpos;
     else
         [cpos,cvel,cacc] = taskplanner.GenerateCartTraj(dt);
     end
@@ -245,11 +256,11 @@ function PlanTable(rbt)
 end
 
 %% simulate friction test trajectory
-function GeneraFricTraj(rbt)
+function [output_pos,joint_plot,compare_cpp] = GeneraFricTraj(rbt, dt)
+    global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
     joint_plot = 0;
     compare_cpp = 0;
     compare_plan = 0;
-    dt = 0.01;
     q0 = [0,45,45,0,-10,0]'*pi/180';
     taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                     g_cvmax,g_camax,compare_plan);
@@ -277,5 +288,6 @@ function GeneraFricTraj(rbt)
     end
     plot(jpos(5,:)); grid on; hold on;
     plot(jvel(5,:)); hold off;
+    output_pos = jpos;
 end
 
