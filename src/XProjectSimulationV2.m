@@ -26,7 +26,7 @@ end
 
 rbt = CreateRobot();
 dt = 0.005;
-test_name = 'gravity';
+test_name = 'friction';
 if strcmp(test_name, 'workspace')
     PlotWorkspace(rbt)
 else
@@ -265,31 +265,53 @@ function [output_pos,joint_plot,compare_cpp] = GenerateFricIdenTraj(rbt, dt)
     q0 = [0,45,45,0,-10,0]'*pi/180';
     taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                     g_cvmax,g_camax,compare_plan);
-    det_q = {[0,0,0,0,10,0]'*pi/180,[0,0,0,0,20,0]'*pi/180,[0,0,0,0,30,0]'*pi/180,...
-            [0,0,0,0,40,0]'*pi/180,[0,0,0,0,50,0]'*pi/180,[0,0,0,0,60,0]'*pi/180,...
-            [0,0,0,0,70,0]'*pi/180,[0,0,0,0,80,0]'*pi/180,[0,0,0,0,90,0]'*pi/180};
-    q00 = [0,45,45,0,0,0]'*pi/180';
-    jpos = []; jvel = [];
+    joint_idx = 5;
+    if joint_idx==1
+        proj = [1,0,0,0,0,0]';
+        q00 = deg2rad([0,-35,20,65,-90,0]');
+    elseif joint_idx==5
+        proj = [0,0,0,0,1,0]';
+        q00 = deg2rad([0,0,0,-90,0,0]');
+    end
+    det_q = deg2rad([10,20,30,50,70,90,110,120,130,140,150]);
     vel_scale = [0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0];
+    taskplanner.Reset(q00);
     for idx=1:length(vel_scale)
-        if idx < 9
-            detq_pos = det_q{idx};
-            detq_neg = -det_q{idx+1};
+        detq_pos = proj*det_q(idx);
+        if idx==11
+            detq_neg = -proj*det_q(idx);
         else
-            detq_pos = det_q{9};
-            detq_neg = -det_q{9};
+            detq_neg = -proj*det_q(idx+1);
         end
         q1 = q00+detq_pos;
         q2 = q00+detq_neg;
-        taskplanner.Reset(q0);
         taskplanner.AddTraj([q1,q2],'joint',1,vel_scale(idx),1);
-        [jpos_tmp,jvel_tmp,~] = taskplanner.GenerateJointTraj(dt);
-        jpos = [jpos,jpos_tmp]; jvel = [jvel,jvel_tmp];
-        q0 = jpos(:,end);
     end
-    plot(jpos(5,:)); grid on; hold on;
-    plot(jvel(5,:)); hold off;
+    [jpos,jvel,jacc] = taskplanner.GenerateJointTraj(dt);
+    plot(rad2deg(jpos(joint_idx,:))); grid on; hold on;
+    plot(rad2deg(jvel(joint_idx,:)));
+    plot(rad2deg(jacc(joint_idx,:)));
+    hold off;
     output_pos = jpos;
+    
+    zero_acc_idx = find(~jacc(joint_idx,:));
+    seg_idx = [zero_acc_idx(1)];
+    for nidx=1:length(zero_acc_idx)-1
+        if zero_acc_idx(nidx+1)-zero_acc_idx(nidx)~=1
+            seg_idx = [seg_idx,zero_acc_idx(nidx),zero_acc_idx(nidx+1)];
+        end
+    end
+    seg_idx = [seg_idx,zero_acc_idx(end)];
+    start_idx = seg_idx(1:2:end);
+    stop_idx = seg_idx(2:2:end);
+    count_scale = 0.7;
+    for idx=1:length(start_idx)
+        len = stop_idx(idx)-start_idx(idx);
+        start_idx(idx) = start_idx(idx)+round(len*0.5*(1-count_scale));
+        stop_idx(idx) = stop_idx(idx)-round(len*0.5*(1-count_scale));
+    end
+    disp('starting index for identifying joint friction is'); disp(start_idx');
+    disp('ending index for identifying joint friction is'); disp(stop_idx');
 end
 
 %% simulate gravity identification trajectory
