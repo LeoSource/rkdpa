@@ -52,6 +52,78 @@ classdef RobotDynamics < handle
                 title(['joint',num2str(idx),' gravity validation']);
             end
         end
+
+        function FrictionIden(obj,jv1,jt1,jv2,jt2)
+            [jvel1,jtau1,jvel2,jtau2] = obj.ProcessFricJointData(jv1,jt1,jv2,jt2);
+            start1_idx = [273,2588,7666,11365,15562,18382,21877,24959,...
+                            28487,31705,35257,38562,42131,45473,48896,...
+                            52033,55243,58229,61284,64155,67088,69855];
+            stop1_idx = [1512,6318,10146,14468,17413,20856,23929,27426,...
+                            30636,34166,37461,41014,44370,47816,50979,...
+                            54205,57209,60272,63156,66096,68884,71651];
+            start2_idx = [143,1309,3861,5725,7852,9293,11083,12670,...
+                            14491,16161,18010,19737,21609,23370,25184,...
+                            26858,28582,30195,31855,33426,35041,36575];
+            stop2_idx = [757,3168,5090,7267,8757,10508,12078,13871,...
+                            15524,17348,19058,20910,22666,24479,26153,...
+                            27871,29480,31133,32697,34302,35834,37368];
+            [fc1,fv1,jvel1_iden,jtau1_iden] = obj.JointFrictionIden(jvel1,jtau1,start1_idx,stop1_idx);
+            [fc2,fv2,jvel2_iden,jtau2_iden] = obj.JointFrictionIden(jvel2,jtau2,start2_idx,stop2_idx);
+            obj.fric_params = [fc1,fv1,fc1,fv1,fc1,fv1,fc2,fv2,fc2,fv2,fc2,fv2]';
+            obj.PolyfitJointFriction(jvel1_iden,jtau1_iden,jvel2_iden,jtau2_iden);
+            figure
+            subplot(2,1,1); obj.ValidateJointFriction(jv1,jt1,1);
+            subplot(2,1,2); obj.ValidateJointFriction(jv2,jt2,5);
+        end
+
+        function [fc,fv,jvel_iden,tau_iden] = JointFrictionIden(obj,jv,jt,start_idx,stop_idx)
+            tau_iden = []; jvel_iden = []; reg_fric = [];
+            for idx=1:length(start_idx)
+                vel = jv(start_idx(idx):stop_idx(idx));
+                vel = mean(vel);
+                reg_mat = [sign(vel),vel];
+                reg_fric = [reg_fric; reg_mat];
+                jvel_iden = [jvel_iden;vel];
+                tau_iden = [tau_iden;mean(jt(start_idx(idx)):stop_idx(idx))];
+            end
+            joint_fric_params = pinv(reg_fric)*tau_iden;
+            fc = joint_fric_params(1);
+            fv = joint_fric_params(2);
+        end
+
+        function PolyfitJointFriction(obj,jv1_iden,jt1_iden,jv2_iden,jt2_iden)
+            vpoly1 = sort(jv1_iden);
+            tpoly1 = sort(jt1_iden);
+            vpoly2 = sort(jv2_iden);
+            tpoly2 = sort(jt2_iden);
+            figure
+            subplot(2,1,1)
+            plot(vpoly1,tpoly1,'o'); grid on; hold on;
+            vv = min(vpoly1):0.01:max(vpoly1);
+            plot(vv,obj.fric_params(1)*sign(vv)+obj.fric_params(2)*vv,'k');
+            xlabel('velocity(rad/s)'); ylabel('tau(Nm)');
+            subplot(2,1,2)
+            plot(vpoly2,tpoly2,'o'); grid on; hold on;
+            vv = min(vpoly2):0.01:max(vpoly2);
+            plot(vv,obj.fric_params(end-1)*sign(vv)+obj.fric_params(end)*vv,'k');
+            xlabel('velocity(rad/s)'); ylabel('tau(Nm)');
+        end
+
+        function ValidateJointFriction(obj,jv,jt,jidx)
+            if jidx==1
+                pidx=1;
+            elseif jidx==5
+                pidx=11;
+            end
+            tau_val = [];
+            for nidx=1:length(jv)
+                v = jv(nidx);
+                tau_tmp = obj.fric_params(pidx)*SignVel(v)+obj.fric_params(pidx+1)*v;
+                tau_val = [tau_val;tau_tmp];
+            end
+            plot(jt,'r'); grid on; hold on;
+            plot(tau_val,'k');
+        end
         
         function [jpos_grav,jtau_grav] = ProcessGravJointData(obj,jpos,jtau)
             %%process identification data%%
@@ -79,6 +151,43 @@ classdef RobotDynamics < handle
                 plot(tau2(:,idx)); plot(jtau_grav(:,idx)); hold off;
                 title(['joint',num2str(idx),' gravity']);
             end
+        end
+
+        function [jvel1,jtau1,jvel2,jtau2] = ProcessFricJointData(obj,jv1,jt1,jv2,jt2)
+            fs = 200;
+            N = 2;
+            t1 = 0:1/fs:1/fs*(length(jv1)-1);
+            fc_vel = 1; fc_tau = 2; fc_acc = 0.5;
+            [Bvel,Avel] = butter(N,fc_vel/(fs/2));
+            [Btau,Atau] = butter(N,fc_tau/(fs/2));
+            [Bacc,Aacc] = butter(N,fc_acc/(fs/2));
+            jvel1 = filtfilt(Bvel,Avel,jv1);
+            jtau1 = filtfilt(Btau,Atau,jt1);
+            ja1 = diff(jv1)*fs;
+            jacc1 = filtfilt(Bacc,Aacc,ja1);
+            jacc1 = [0;jacc1];
+
+            jvel2 = filtfilt(Bvel,Avel,jv2);
+            jtau2 = filtfilt(Btau,Atau,jt2);
+            ja2 = diff(jv2)*fs;
+            jacc2 = filtfilt(Bacc,Aacc,ja2);
+            jacc2 = [0;jacc2];
+            t2 = 0:1/fs:1/fs*(length(jv2)-1);
+
+            figure
+            subplot(2,1,1)
+            plot(t1,jv1,'r'); grid on; hold on;
+            plot(t1,jvel1,'k'); plot(t1,jacc1,'b'); hold off;
+            title('joint1')
+            subplot(2,1,2)
+            plot(t2,jv2,'r'); grid on; hold on;
+            plot(t2,jvel2,'k'); plot(t2,jacc2,'b'); hold off;
+            title('joint5');
+            figure
+            subplot(2,1,1)
+            plot(t1,jt1,'r',t1,jtau1,'k'); grid on; title('joint1');
+            subplot(2,1,2)
+            plot(t2,jt2,'r',t2,jtau2,'k'); grid on; title('joint5');
         end
 
         function reg_mat = CalcRegMat(obj,jpos)
