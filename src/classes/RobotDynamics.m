@@ -84,7 +84,7 @@ classdef RobotDynamics < handle
                 reg_mat = [sign(vel),vel];
                 reg_fric = [reg_fric; reg_mat];
                 jvel_iden = [jvel_iden;vel];
-                tau_iden = [tau_iden;mean(jt(start_idx(idx)):stop_idx(idx))];
+                tau_iden = [tau_iden;mean(jt(start_idx(idx):stop_idx(idx)))];
             end
             joint_fric_params = pinv(reg_fric)*tau_iden;
             fc = joint_fric_params(1);
@@ -131,10 +131,9 @@ classdef RobotDynamics < handle
             stop_idx = [20341,41680];
             jpos_grav = jpos(start_idx(1):stop_idx(1),:);
             tau1 = jtau(start_idx(1):stop_idx(1),:);
-            tau2 = jtau(start_idx(2):stop_idx(2),:);
-%             tau2_tmp = jtau(stop_idx(2):start_idx(2),:);
-%             tau2 = fliplr(tau2_tmp');
-%             tau2 = tau2';
+            tau2_tmp = jtau(start_idx(2):stop_idx(2),:);
+            tau2 = fliplr(tau2_tmp');
+            tau2 = tau2';
             jtau_grav = 0.5*(tau1+tau2);
             %%filter joint torque data%%
             fs = 200;

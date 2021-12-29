@@ -288,9 +288,10 @@ function [output_pos,joint_plot,compare_cpp] = GenerateFricIdenTraj(rbt, dt)
         taskplanner.AddTraj([q1,q2],'joint',1,vel_scale(idx),1);
     end
     [jpos,jvel,jacc] = taskplanner.GenerateJointTraj(dt);
-    plot(rad2deg(jpos(joint_idx,:))); grid on; hold on;
-    plot(rad2deg(jvel(joint_idx,:)));
-    plot(rad2deg(jacc(joint_idx,:)));
+    t = 0:dt:dt*(length(jpos(joint_idx,:))-1);
+    plot(t,rad2deg(jpos(joint_idx,:))); grid on; hold on;
+    plot(t,rad2deg(jvel(joint_idx,:)));
+    plot(t,rad2deg(jacc(joint_idx,:)));
     hold off;
     output_pos = jpos;
     
@@ -312,6 +313,13 @@ function [output_pos,joint_plot,compare_cpp] = GenerateFricIdenTraj(rbt, dt)
     end
     disp('starting index for identifying joint friction is'); disp(start_idx');
     disp('ending index for identifying joint friction is'); disp(stop_idx');
+    
+    [jpos1,jvel1,jtor1,t1] = LoadTestFile('./data/test_data_1229_145039.csv',0.005);
+    figure
+    subplot(2,1,1)
+    plot(t1,rad2deg(jpos1(:,joint_idx)),'r', t,rad2deg(jpos(joint_idx,:)),'k'); grid on;
+    subplot(2,1,2)
+    plot(t1,rad2deg(jvel1(:,joint_idx)),'r', t,rad2deg(jvel(joint_idx,:)),'k'); grid on;
 end
 
 %% simulate gravity identification trajectory

@@ -15,7 +15,7 @@ end
 
 %% robot gravity identification
 function GravityIden(dt)
-    [jpos,jvel,jtor,t] = LoadTestFile('./data/test_data_1222_171054.csv',dt);
+    [jpos,jvel,jtor,t] = LoadTestFile('./data/test_data_1229_132846.csv',dt);
     % PlotJointData(jpos,jvel,jtor,[1,2,3,4,5,6],[2,3,4,5],[2,3,4,5],t);
     rbtdef = CreateRobot();
     grav_iden = RobotDynamics(rbtdef);
@@ -29,8 +29,8 @@ end
 
 %% robot friction identification
 function FrictionIden(dt)
-    [~,jvel1,jtor1,~] = LoadTestFile('./data/test_data_1222_174238.csv',dt);
-    [~,jvel2,jtor2,~] = LoadTestFile('./data/test_data_1222_175312.csv',dt);
+    [~,jvel1,jtor1,~] = LoadTestFile('./data/test_data_1229_144307.csv',dt);
+    [~,jvel2,jtor2,~] = LoadTestFile('./data/test_data_1229_145039.csv',dt);
     rbtdef = CreateRobot();
     rbtdyn = RobotDynamics(rbtdef);
     rbtdyn.FrictionIden(jvel1(:,1),jtor1(:,1),jvel2(:,5),jtor2(:,5));
@@ -43,7 +43,7 @@ end
 
 %% robot description
 function rbt = CreateRobot()
-    d1 = 0.048; a2 = 0.51; a3 = 0.51;
+    d1 = 0.048; a2 = 0.41; a3 = 0.41;
     d4 = 0.11; d5 = 0.08662; d6 = 0.035;
     mdh_table = [0, d1, 0, 0, 0, 0;...
                         0, 0, 0, -pi/2, 0, -pi/2;...
