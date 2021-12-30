@@ -266,7 +266,7 @@ function [output_pos,joint_plot,compare_cpp] = GenerateFricIdenTraj(rbt, dt)
     q0 = [0,45,45,0,-10,0]'*pi/180';
     taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                     g_cvmax,g_camax,compare_plan);
-    joint_idx = 1;
+    joint_idx = 5;
     if joint_idx==1
         proj = [1,0,0,0,0,0]';
         q00 = deg2rad([0,-35,20,65,-90,0]');
@@ -316,17 +316,22 @@ function [output_pos,joint_plot,compare_cpp] = GenerateFricIdenTraj(rbt, dt)
     disp('ending index for identifying joint friction is'); disp(stop_idx');
     
     [jpos1,jvel1,jtor1,t1] = LoadTestFile('./data/test_data_1229_145039.csv',0.005);
-    fs = 200;
-    fc = 5;
-    [Bacc,Aacc] = butter(2,fc/(fs/2));
-    ja = diff(jvel1(:,joint_idx))/dt;
-    ja = filtfilt(Bacc,Aacc,ja);
-    ja = [0; ja];
+    JointDiff1 = JointDifferentiator(1, 0.005);
+    JointDiff2 = JointDifferentiator(2, 0.005);
+    JointDiff3 = JointDifferentiator(3, 0.005);
+    for nidx=1:size(jvel1,1)
+        jacc_diff1(:,nidx) = JointDiff1.ProcessVelocity(jvel1(nidx,:));
+        jacc_diff2(:,nidx) = JointDiff2.ProcessVelocity(jvel1(nidx,:));
+        jacc_diff3(:,nidx) = JointDiff3.ProcessVelocity(jvel1(nidx,:));
+    end
     figure
-    subplot(2,1,1)
-    plot(t1,rad2deg(jvel1(:,joint_idx)),'r', t,rad2deg(jvel(joint_idx,:)),'k'); grid on;
-    subplot(2,1,2)
-    plot(t1,rad2deg(ja),'r', t,rad2deg(jacc(joint_idx,:)),'k'); grid on;
+    plot(t,rad2deg(jacc(joint_idx,:)),'r', t1,rad2deg(jacc_diff1(joint_idx,:)),'g',...
+            t1,rad2deg(jacc_diff2(joint_idx,:)),'b', t1,rad2deg(jacc_diff3(joint_idx,:)),'m');
+    grid on; legend('acc\_cmd','acc\_order1','acc\_order2','acc\_order3');
+    % subplot(2,1,1)
+    % plot(t1,rad2deg(jvel1(:,joint_idx)),'r', t,rad2deg(jvel(joint_idx,:)),'k'); grid on;
+    % subplot(2,1,2)
+    % plot(t1,rad2deg(ja),'r', t,rad2deg(jacc(joint_idx,:)),'k'); grid on;
 end
 
 %% simulate gravity identification trajectory

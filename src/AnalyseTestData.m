@@ -7,14 +7,14 @@ addpath(genpath('tools'));
 dt = 0.005;
 %% analyse test data
 nj = 6;
-td = load('./data/test_data_1227_141827_toilet.csv');
+td = load('./data/test_data_1229_145039.csv');
 jpos_idx = 1; jvel_idx = 2; jtor_idx = 3;
 jpos = td(:,1:jpos_idx*nj);
 jvel = td(:,nj+1:jvel_idx*nj);
 jtor = td(:,2*nj+1:jtor_idx*nj);
 t = 0:dt:dt*(size(td,1)-1);
 
-analysis_mode = 'tau_compare';
+analysis_mode = 'acceleration';
 switch analysis_mode
     case 'common'
 %% plot joint position, velocity and torque
@@ -112,6 +112,29 @@ for idx=1:6
     title(['joint',num2str(idx)]);
     xlabel('time(s)'); ylabel('joint torque(Nm)');
 end
+
+    case 'acceleration'
+%% differentiator for acceleration
+JointDiff = JointDifferentiator(1, 0.005);
+% for nidx=1:size(jpos,1)
+%     [jvel_diff(:,nidx),jacc_diff(:,nidx)] = JointDiff.ProcessPosition(jpos(nidx,:));
+% end
+for nidx=1:size(jpos,1)
+    jacc_diff(:,nidx) = JointDiff.ProcessVelocity(jvel(nidx,:));
+end
+for jidx=1:6
+    figure
+    plot(t,jacc_diff(jidx,:)); grid on; title(['joint',num2str(jidx)]);
+end
+% for jidx=1:6
+%     figure
+%     plot(t,jvel(:,jidx)-jvel_diff(jidx,:)'); grid on; title(['joint',num2str(jidx)]);
+% end
+% for jidx=1:6
+%     figure
+%     plot(t,jvel(:,jidx),'r', t,jvel_diff(jidx,:),'k'); grid on;
+%     title(['joint',num2str(jidx)]);
+% end
 
 end
 
