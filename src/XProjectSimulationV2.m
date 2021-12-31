@@ -12,11 +12,12 @@ g_cvmax = [0.15, 0.15]; g_camax = [0.3, 0.3];
 g_cycle_time = 0.005;
 
 func_map = containers.Map;
-simu_name = {'workspace','common','toilet_lid','mirror','table','friction','gravity'};
+simu_name = {'workspace','common','toilet_lid','mirror_rect','mirror_ellipse','table','friction','gravity'};
 simu_func = {@PlotWorkspace,...
                     @PlanCommon,...
                     @PlanToiletlid,...
-                    @PlanMirror,...
+                    @PlanRectMirror,...
+                    @PlanEllipseMirror,...
                     @PlanTable,...
                     @GenerateFricIdenTraj,...
                     @GenerateGravIdenTraj};
@@ -25,8 +26,8 @@ for idx=1:length(simu_name)
 end
 
 rbt = CreateRobot();
-dt = 0.005;
-test_name = 'friction';
+dt = 0.01;
+test_name = 'mirror_ellipse';
 if strcmp(test_name, 'workspace')
     PlotWorkspace(rbt)
 else
@@ -180,7 +181,7 @@ function [output_pos,joint_plot,compare_cpp] = PlanToiletlid(rbt, dt)
 end
 
 %% simulate scrape mirror 
-function [output_pos,joint_plot,compare_cpp] = PlanMirror(rbt, dt)
+function [output_pos,joint_plot,compare_cpp] = PlanRectMirror(rbt, dt)
     global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
     joint_plot = 1;
     compare_cpp = 0;
@@ -192,8 +193,6 @@ function [output_pos,joint_plot,compare_cpp] = PlanMirror(rbt, dt)
     rectplanner = QuadranglePlanner;
     p1 = [0.8,-0.2,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.2,0.81]';
     vision_pos = [p1,p2,p3,p4];
-    % via_posrpy = CalcMirrorPath(vision_pos, 0.15, 10*pi/180, 50*pi/180);
-    % via_posrpy = CalcMirrorPath_Normal(vision_pos, 0.15, 60*pi/180, 0.08, 'right');
     via_posrpy = rectplanner.PlanMirror(vision_pos, 1);
     taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
 
@@ -209,6 +208,21 @@ function [output_pos,joint_plot,compare_cpp] = PlanMirror(rbt, dt)
     plot2(via_posrpy(1:3,:)', 'bo'); plot2(vision_pos', 'r*'); axis equal;
     PlotRPY(cpos, 60);
     grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+end
+
+%% simulate ellipse mirror scrape trajectory
+function [output_pos,joint_plot,compare_cpp] = PlanEllipseMirror(rbt,dt)
+    global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
+    joint_plot = 0;
+    compare_cpp = 0;
+    compare_plan = 0;
+    rbt.tool = SE3(rotx(-30), [0,0.058,0.398]);
+    q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
+    taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+                                                g_cvmax,g_camax,compare_plan);
+    p1 = [0.8,-0.2,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.2,0.81]';
+
+    
 end
 
 %% simulate rectangle table or ground zones
