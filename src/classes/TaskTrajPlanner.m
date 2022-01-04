@@ -116,8 +116,10 @@ classdef TaskTrajPlanner < handle
                 obj.traj_type{obj.ntraj} = 'cartesian';
                 obj.pre_trajpose = SE3.rpy(180/pi*via_pos(4:6,1)', 'xyz');
                 obj.pre_trajpose.t = via_pos(1:3,1);
-                obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
-                                                        obj.robot.n,1);
+                if obj.compare_plan
+                    obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
+                                                            obj.robot.n,1);
+                end
                 %add arc trajectory
                 pos1 = via_pos(1:3,1); pos2 = via_pos(1:3,2); pos3 = via_pos(1:3,3);
                 rpy1 = via_pos(4:6,1); rpy3 = via_pos(4:6,3);
@@ -128,8 +130,10 @@ classdef TaskTrajPlanner < handle
                 obj.traj_type{obj.ntraj} = 'arc';
                 obj.pre_trajpose = SE3.rpy(180/pi*rpy3', 'xyz');
                 obj.pre_trajpose.t = pos3;
-                obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
-                                                        obj.robot.n,1);
+                if obj.compare_plan
+                    obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
+                                                            obj.robot.n,1);
+                end                              
             end
         end
 

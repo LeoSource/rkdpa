@@ -220,9 +220,41 @@ function [output_pos,joint_plot,compare_cpp] = PlanEllipseMirror(rbt,dt)
     q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
     taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                                 g_cvmax,g_camax,compare_plan);
-    p1 = [0.8,-0.2,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.2,0.81]';
-
+    a = 0.5; b = 0.3; origin = [0.8,0,0.8]'; rot_ellipse = [0,0,-1;-1,0,0;0,1,0];
+    p1 = [origin(1),origin(2)-b,origin(3)]'; p2 = [origin(1),origin(2),origin(3)-a]';
+    p3 = [origin(1),origin(2)+b,origin(3)]'; p4 = [origin(1),origin(2),origin(3)+a]';
+    vision_pos = [p1,p2,p3,p4];
+    [via_posrpy_up,via_posrpy_middle,via_posrpy_down] = PlanEllipseMirrorPath(vision_pos);
+    % plan for up zone
+    taskplanner.AddTraj(via_posrpy_up(:,1), 'cartesian', 0);
+    taskplanner.AddTraj(via_posrpy_up(:,2:4), 'arc', 0);
+    taskplanner.AddTraj(via_posrpy_up(:,5), 'cartesian', 0);
+    % plan for middle zone
+    taskplanner.AddTraj(via_posrpy_middle, 'cartesian', 0);
+    % plan for down zone
+    taskplanner.AddTraj(via_posrpy_down(:,1), 'cartesian', 0);
+    taskplanner.AddTraj(via_posrpy_down(:,2:4), 'arc', 0);
+    taskplanner.AddTraj(via_posrpy_down(:,5), 'cartesian', 0);
+    if compare_plan
+        [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+        output_pos = jpos;
+    else
+        [cpos,cvel,cacc] = taskplanner.GenerateCartTraj(dt);
+    end
     
+    theta = 0:deg2rad(2):deg2rad(360);
+    ellipse_mirror(1,:) = b*cos(theta);
+    ellipse_mirror(2,:) = a*sin(theta);
+    ellipse_mirror(3,:) = zeros(size(ellipse_mirror(2,:)));
+    for idx=1:size(ellipse_mirror,2)
+        ellipse_mirror(:,idx) = origin+rot_ellipse*ellipse_mirror(:,idx);
+    end
+    figure
+    plot2(ellipse_mirror','r--'); hold on; axis equal;
+    plot2([via_posrpy_up(1:3,:),via_posrpy_middle(1:3,:),via_posrpy_down(1:3,:)]', 'bo');
+    plot2(vision_pos', 'r*'); axis equal;
+    PlotRPY(cpos, 60);
+    grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 end
 
 %% simulate rectangle table or ground zones
