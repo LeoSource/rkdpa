@@ -12,12 +12,14 @@ g_cvmax = [0.15, 0.15]; g_camax = [0.3, 0.3];
 g_cycle_time = 0.005;
 
 func_map = containers.Map;
-simu_name = {'workspace','common','toilet_lid','mirror_rect','mirror_ellipse','table','friction','gravity'};
+simu_name = {'workspace','common','toilet_lid','mirror_rect','mirror_ellipse',...
+                        'mirror_runway','table','friction','gravity'};
 simu_func = {@PlotWorkspace,...
                     @PlanCommon,...
                     @PlanToiletlid,...
                     @PlanRectMirror,...
                     @PlanEllipseMirror,...
+                    @PlanRunwayMirror,...
                     @PlanTable,...
                     @GenerateFricIdenTraj,...
                     @GenerateGravIdenTraj};
@@ -27,7 +29,7 @@ end
 
 rbt = CreateRobot();
 dt = 0.01;
-test_name = 'mirror_ellipse';
+test_name = 'mirror_runway';
 if strcmp(test_name, 'workspace')
     PlotWorkspace(rbt)
 else
@@ -180,7 +182,7 @@ function [output_pos,joint_plot,compare_cpp] = PlanToiletlid(rbt, dt)
     grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 end
 
-%% simulate scrape mirror 
+%% simulate rectangle mirror scrape trajectory
 function [output_pos,joint_plot,compare_cpp] = PlanRectMirror(rbt, dt)
     global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
     joint_plot = 1;
@@ -251,6 +253,64 @@ function [output_pos,joint_plot,compare_cpp] = PlanEllipseMirror(rbt,dt)
     end
     figure
     plot2(ellipse_mirror','r--'); hold on; axis equal;
+    plot2([via_posrpy_up(1:3,:),via_posrpy_middle(1:3,:),via_posrpy_down(1:3,:)]', 'bo');
+    plot2(vision_pos', 'r*'); axis equal;
+    PlotRPY(cpos, 60);
+    grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+end
+
+%% simulate runway mirror scrape trajectory
+function [output_pos,joint_plot,compare_cpp] = PlanRunwayMirror(rbt,dt)
+    global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
+    joint_plot = 0;
+    compare_cpp = 0;
+    compare_plan = 0;
+    rbt.tool = SE3(rotx(-30), [0,0.058,0.398]);
+    q0 = [0, -35, 50, -100, -90, 0]'*pi/180;
+    taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+                                                g_cvmax,g_camax,compare_plan);
+    p1 = [0.8,-0.2,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.2,0.81]';
+    vision_pos = [p1,p2,p3,p4];
+    [via_posrpy_up,via_posrpy_middle,via_posrpy_down] = PlanRunwayMirrorPath(vision_pos);
+    % plan for up zone
+    taskplanner.AddTraj(via_posrpy_up(:,1), 'cartesian', 0);
+    taskplanner.AddTraj(via_posrpy_up(:,2:4), 'arc', 0);
+    taskplanner.AddTraj(via_posrpy_up(:,5), 'cartesian', 0);
+    % plan for middle zone
+    taskplanner.AddTraj(via_posrpy_middle, 'cartesian', 0);
+    % plan for down zone
+    taskplanner.AddTraj(via_posrpy_down(:,1), 'cartesian', 0);
+    taskplanner.AddTraj(via_posrpy_down(:,2:4), 'arc', 0);
+    taskplanner.AddTraj(via_posrpy_down(:,5), 'cartesian', 0);
+    if compare_plan
+        [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+        output_pos = jpos;
+    else
+        [cpos,cvel,cacc] = taskplanner.GenerateCartTraj(dt);
+    end
+    
+    rot_runway = [0,0,-1;0,1,0;1,0,0];
+    origin_up = 0.5*(p3+p4);
+    radius_up = 0.5*norm(p3-p4);
+    th_up = deg2rad(-90):deg2rad(2):deg2rad(90);
+    arc_up(1,:) = radius_up*cos(th_up);
+    arc_up(2,:) = radius_up*sin(th_up);
+    arc_up(3,:) = zeros(size(arc_up(2,:)));
+    for idx=1:size(arc_up,2)
+        arc_up(:,idx) = origin_up+rot_runway*arc_up(:,idx);
+    end
+    origin_down = 0.5*(p1+p2);
+    radius_down = 0.5*norm(p1-p2);
+    th_down = deg2rad(90):deg2rad(2):deg2rad(270);
+    arc_down(1,:) = radius_down*cos(th_down);
+    arc_down(2,:) = radius_down*sin(th_down);
+    arc_down(3,:) = zeros(size(arc_down(2,:)));
+    for idx=1:size(arc_down,2)
+        arc_down(:,idx) = origin_down+rot_runway*arc_down(:,idx);
+    end
+    figure
+    plot2([p1,p4]','r--'); hold on; axis equal; plot2([p2,p3]','r--');
+    plot2(arc_up','r--'); plot2(arc_down','r--');
     plot2([via_posrpy_up(1:3,:),via_posrpy_middle(1:3,:),via_posrpy_down(1:3,:)]', 'bo');
     plot2(vision_pos', 'r*'); axis equal;
     PlotRPY(cpos, 60);

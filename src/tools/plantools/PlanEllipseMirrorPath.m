@@ -3,7 +3,6 @@
 
 
 function [via_posrpy_up,via_posrpy_middle,via_posrpy_down] = PlanEllipseMirrorPath(vision_pos)
-
     % plan for middle zone
     truncation_width = 0.4;
     rot_ellipse = CalcRotEllipse(vision_pos);

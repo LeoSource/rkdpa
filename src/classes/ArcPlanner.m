@@ -94,6 +94,7 @@ classdef ArcPlanner < handle
                 obj.radius = sqrt(tmp_value);
                 line_length = norm(pos3-pos1);
                 tmp_cos = (obj.radius^2+obj.radius^2-line_length^2)/(2*obj.radius*obj.radius);
+                tmp_cos = LimitNumber(-1,tmp_cos,1);
                 obj.theta = acos(tmp_cos);
                 n = (pos1-obj.center)/norm(pos1-obj.center);
                 n = reshape(n, 3,1);
