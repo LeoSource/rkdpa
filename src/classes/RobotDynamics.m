@@ -25,6 +25,7 @@ classdef RobotDynamics < handle
             obj.fric_params = load(fric_file);
         end
         
+        %% gravity and friction identification
         function GravityIden(obj,jpos,jtau)
             [jpos_grav,jtau_grav] = obj.ProcessGravJointData(jpos,jtau);
             %%gravity identification%%
@@ -189,6 +190,29 @@ classdef RobotDynamics < handle
             plot(t2,jt2,'r',t2,jtau2,'k'); grid on; title('joint5');
         end
 
+        %% robot dynamics calculation and generate joint torque
+        function tau_iden = GenerateIdenTorque(obj,jpos,jvel)
+            tau_iden = obj.GenerateGravTau(jpos)+obj.GenerateFricTau(jvel);
+        end
+        
+        function tau_grav = GenerateGravTau(obj,jpos)
+            tau_grav = zeros(obj.njoint,1);
+            reg_mat = zeros(4,16);
+            reg_mat(1,:) =obj. CalcRegressorJoint2(jpos);
+            reg_mat(2,:) =obj. CalcRegressorJoint3(jpos);
+            reg_mat(3,:) =obj. CalcRegressorJoint4(jpos);
+            reg_mat(4,:) =obj. CalcRegressorJoint5(jpos);
+            tau_grav(2:5) = reg_mat*obj.barycenter_params;
+        end
+        
+        function tau_fric = GenerateFricTau(obj,jvel)
+            tau_fric = zeros(obj.njoint,1);
+            for jidx=1:obj.njoint
+                tau_fric(jidx) = obj.fric_params(2*jidx-1)*SignVel(jvel(jidx))...
+                                        +obj.fric_params(2*jidx)*jvel(jidx);
+            end
+        end
+        
         function reg_mat = CalcRegMat(obj,jpos)
             reg_mat = zeros(4,16);
             reg_mat(1,:) = obj.CalcRegressorJoint2(jpos);
@@ -283,28 +307,6 @@ classdef RobotDynamics < handle
                                 - 0.01*obj.g*obj.rbtdef.a(3)*sin(q2 + q3)*cos(q3)...
                                 - obj.g*obj.rbtdef.a(4)*cos(q4)*cos(q2 + q3 + q4)...
                                 - obj.g*obj.rbtdef.d(5)*cos(q5)^2*cos(q2 + q3 + q4);
-        end
-        
-        function tau_iden = GenerateIdenTorque(obj,jpos,jvel)
-            tau_iden = obj.GenerateGravTau(jpos)+obj.GenerateFricTau(jvel);
-        end
-        
-        function tau_grav = GenerateGravTau(obj,jpos)
-            tau_grav = zeros(obj.njoint,1);
-            reg_mat = zeros(4,16);
-            reg_mat(1,:) =obj. CalcRegressorJoint2(jpos);
-            reg_mat(2,:) =obj. CalcRegressorJoint3(jpos);
-            reg_mat(3,:) =obj. CalcRegressorJoint4(jpos);
-            reg_mat(4,:) =obj. CalcRegressorJoint5(jpos);
-            tau_grav(2:5) = reg_mat*obj.barycenter_params;
-        end
-        
-        function tau_fric = GenerateFricTau(obj,jvel)
-            tau_fric = zeros(obj.njoint,1);
-            for jidx=1:obj.njoint
-                tau_fric(jidx) = obj.fric_params(2*jidx-1)*SignVel(jvel(jidx))...
-                                        +obj.fric_params(2*jidx)*jvel(jidx);
-            end
         end
         
         
