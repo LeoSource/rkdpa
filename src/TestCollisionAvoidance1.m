@@ -34,8 +34,8 @@ end
 
 q = q0; qd = zeros(6,1);
 jpos = []; jvel = [];
-cpos_sim = []; proj_h1 = []; proj_h2 = [];
-distance1 = []; distance2 = [];
+cpos_sim = []; distance = [];
+kh_save = []; vo_save = [];
 
 for nidx=1:size(cpos,2)
     q = q+qd*dt;
@@ -44,80 +44,43 @@ for nidx=1:size(cpos,2)
     je_pinv = pinv(je);
     N = eye(6)-je_pinv*je;
     rbtpoints = CreateRobotPoints(rbt,q);
-    % obstacle1: z=-0.14
-%     z = -0.14;
-    y = 0.5;
-    do = [];
-    for pidx=13:14
-        d1 = abs(y-rbtpoints{pidx}(2));
-        do = [do,d1];
-    end
-    [dmin1,idx] = min(do);
-    point_idx = 10+idx;
-    xo1 = rbtpoints{point_idx};
-    jo1 = CalcJacoObstacle(rbt,q,xo1,point_idx);
-    distance_ug = 0.2;
-    distance_soi = 0.4;
-    if dmin1<=distance_ug
-        ko = (distance_ug/dmin1)^2-1;
+    xo = 0.5*(rbtpoints{11}+rbtpoints{12});
+    jo = CalcJacoObstacle(rbt,q,xo,11);
+    jo = jo(1:2,:);
+    clean_center = 0.5*(0.5*(p1+p3)+0.5*(p2+p4));
+    dis = sqrt((xo(1)-clean_center(1))^2+(xo(2)-clean_center(2))^2);
+    dis_soi = 0.3; dis_ni = 0.4; dis_ug = 0.08;
+    nvo = clean_center-xo;
+    nvo = nvo(1:2);
+    nkv = 0.8;
+    if dis>dis_ni
+        kv = 0;
+    elseif (dis<=dis_ni) && (dis>=dis_soi)
+        kv = nkv*(dis-dis_ni)/(dis_soi-dis_ni);
+    elseif (dis<dis_soi) && (dis>dis_ug)
+        kv= nkv;
     else
-        ko = 0;
+        kv= nkv*dis/dis_ug;
     end
-    vo1 = [0,0,1]';
-    h1 = pinv(jo1*N)*(ko*vo1-jo1*pinv(je)*cvel(:,nidx));
-    no1 = [0,0,1]';
-    jdo1 = no1'*jo1;
-    h11 = N*jdo1'*pinv(jdo1*N*jdo1')*(ko-jdo1*je_pinv*cvel(:,nidx));
-    if dmin1<=distance_ug
-        kh1 = 1;
-    elseif dmin1>distance_ug && dmin1<distance_soi
-        kh1 = 0.5*(1+cos(pi*(dmin1-distance_ug)/(distance_soi-distance_ug)));
+    vo = kv*nvo;
+    
+    nkh = 1;
+    if dis>dis_ni
+        kh = 0;
+    elseif (dis<=dis_ni) && (dis>dis_soi)
+        kh = 0.5*nkh*(1+cos(pi*((dis-dis_soi)/(dis_ni-dis_soi))));
+    elseif (dis<=dis_soi) && (dis>dis_ug)
+        kh = nkh;
     else
-        kh1 = 0;
+        kh = 0.5*nkh*(1+sin(pi/2*(2/dis_ug*dis-1)));
     end
     
-    % obstacle2: x = 0.9
-    x = 0.9;
-    do = [];
-    for pidx=13:15
-        d1 = abs(x-rbtpoints{pidx}(1));
-        do = [do,d1];
-    end
-    [dmin2,idx] = min(do);
-    point_idx = 10+idx;
-    xo2 = rbtpoints{point_idx};
-    jo2 = CalcJacoObstacle(rbt,q,xo2,point_idx);
-    if dmin2<=distance_ug
-        ko = (distance_ug/dmin2)^2-1;
-    else
-        ko = 0;
-    end
-    vo2 = [-1,0,0]';
-    h2 = pinv(jo2*N)*(ko*vo2-jo2*pinv(je)*cvel(:,nidx));
-    no2 = [-1,0,0]';
-    jdo2 = no2'*jo2;
-    h22 = N*jdo2'*pinv(jdo2*N*jdo2')*(ko-jdo2*je_pinv*cvel(:,nidx));
-    if dmin2<=distance_ug
-        kh2 = 1;
-    elseif dmin2>distance_ug && dmin2<distance_soi
-        kh2 = 0.5*(1+cos(pi*(dmin2-distance_ug)/(distance_soi-distance_ug)));
-    else
-        kh2 = 0;
-    end
-    
-    w_sum = (distance_soi-dmin1)+(distance_soi-dmin2);
-    w1 = (distance_soi-dmin1)/w_sum;
-    w2 = (distance_soi-dmin2)/w_sum;
     Ke = diag([10,10,10]);
     xerr = Ke*(cpos(:,nidx)-rbt.fkine(q).t);
     % original method
 %     qd = je_pinv*(cvel(:,nidx)+xerr);
     % method1
-%     qd = pinv(je)*(cvel(:,nidx)+xerr)+w1*kh1*h1+w2*kh2*h2;
-    % method2
-    w1 = 0.5; w2 = 0.5;
-    qd = je_pinv*(cvel(:,nidx)+xerr)+w1*kh1*h11+w2*kh2*h22;
-%     qd = je_pinv*(cvel(:,nidx)+xerr)+w1*kh1*h11;
+    qd = je_pinv*(cvel(:,nidx)+xerr)+kh*pinv(jo*N)*(vo-jo*je_pinv*cvel(:,nidx));
     
     if max(qd)>max(g_jvmax)
         a = 1;
@@ -125,8 +88,8 @@ for nidx=1:size(cpos,2)
 
     qd = LimitNumber(-g_jvmax,qd,g_jvmax);
     jpos = [jpos,q]; jvel = [jvel,qd];
-    proj_h1 = [proj_h1,w1*kh1*h11]; proj_h2 = [proj_h2,w2*kh2*h22];
-    distance1 = [distance1,dmin1]; distance2 = [distance2,dmin2];
+    distance = [distance,dis];
+    kh_save = [kh_save, kh]; vo_save = [vo_save,vo];
 end
 t = 0:dt:dt*(size(jpos,2)-1);
 
@@ -136,6 +99,8 @@ plot2([p1,p2,p3,p4,p1]','r*');
 plot2(cpos','k-'); plot2(cpos_sim','g');
 grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 
+figure
+plot(distance);
 %% robot description
 function rbt = CreateRobot()
     d1 = 0.048; a2 = 0.51; a3 = 0.51;
