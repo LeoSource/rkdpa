@@ -29,7 +29,7 @@ end
 
 rbt = CreateRobot();
 dt = 0.01;
-test_name = 'mirror_ellipse';
+test_name = 'mirror_runway';
 if strcmp(test_name, 'workspace')
     PlotWorkspace(rbt)
 else
@@ -274,7 +274,10 @@ function [output_pos,joint_plot,compare_cpp] = PlanRunwayMirror(rbt,dt)
                                                 g_cvmax,g_camax,compare_plan);
     p1 = [0.8,-0.2,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.2,0.81]';
     vision_pos = [p1,p2,p3,p4];
-    [via_posrpy_up,via_posrpy_middle,via_posrpy_down] = PlanRunwayMirrorPath(vision_pos);
+%     [via_posrpy_up,via_posrpy_middle,via_posrpy_down] = PlanRunwayMirrorPath(vision_pos);
+    mirror_planner = MirrorClean;
+    mirror_planner.SetCleanParams(vision_pos,'eRunway');
+    [via_posrpy_up,via_posrpy_middle,via_posrpy_down] = mirror_planner.PlanCleanPath();
     % plan for up zone
     taskplanner.AddTraj(via_posrpy_up(:,1), 'cartesian', 0);
     taskplanner.AddTraj(via_posrpy_up(:,2:4), 'arc', 0);
