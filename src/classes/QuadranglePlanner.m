@@ -41,14 +41,14 @@ classdef QuadranglePlanner < handle
 
         end
         
-        function via_posrpy = PlanMirror(obj, vertices, hori_times)
-            path_type = 'n';
-            camera_ori = 'top';
-            dis_trans = 0.1;
-            pitch_angle = [deg2rad(30), deg2rad(50)];
-            yaw_angle = [0, 0];
-            clean_tool = [0.25, 0];
-            trans_angle = deg2rad(30);
+        function via_posrpy = PlanMirror(obj, vertices, hori_times, clean_params)
+            path_type = clean_params.path_type;
+            camera_ori = clean_params.camera_ori;
+            dis_trans = clean_params.dis_trans;
+            pitch_angle = clean_params.pitch_angle;
+            yaw_angle = clean_params.yaw_angle;
+            clean_tool = clean_params.clean_tool;
+            trans_angle = clean_params.trans_angle;
             if hori_times>0
                 len = (hori_times+1)*0.5*clean_tool(1);
                 v1 = vertices(:,1)+0.7*len*(vertices(:,4)-vertices(:,1))/norm(vertices(:,4)-vertices(:,1));

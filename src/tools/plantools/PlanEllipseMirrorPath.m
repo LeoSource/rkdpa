@@ -62,7 +62,7 @@ function via_posrpy = PlanRectZonePath(vertices)
     via_posrpy = RectZonePath.UniversalPlan(vertices,clean_tool,pitch_angle,yaw_angle,...
                                             dis_trans,camera_ori,path_type,trans_angle);
 end
-
+    
 function rot_ellipse = CalcRotEllipse(vertices)
     origin = 0.5*(0.5*(vertices(:,1)+vertices(:,3))+0.5*(vertices(:,2)+vertices(:,4)));
     x0_ellipse = vertices(:,1)-origin;
