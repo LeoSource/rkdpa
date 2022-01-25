@@ -193,7 +193,7 @@ function [output_pos,joint_plot,compare_cpp] = PlanRectMirror(rbt, dt)
     vision_pos = [p1,p2,p3,p4];
 %     rectplanner = QuadranglePlanner;
 %     via_posrpy = rectplanner.PlanMirror(vision_pos, 1);
-    mirror_planner = MirrorClean;
+    mirror_planner = MirrorCleanPlanner;
     mirror_planner.SetCleanParams(vision_pos,'eRectangle');
     [~,via_posrpy,~] = mirror_planner.PlanCleanPath();
     taskplanner.AddTraj(via_posrpy, 'cartesian', 0);
@@ -227,7 +227,7 @@ function [output_pos,joint_plot,compare_cpp] = PlanEllipseMirror(rbt,dt)
     p3 = [origin(1),origin(2)+b,origin(3)]'; p4 = [origin(1),origin(2),origin(3)+a]';
     vision_pos = [p1,p2,p3,p4];
 %     [via_posrpy_up,via_posrpy_middle,via_posrpy_down] = PlanEllipseMirrorPath(vision_pos);
-    mirror_planner = MirrorClean;
+    mirror_planner = MirrorCleanPlanner;
     mirror_planner.SetCleanParams(vision_pos,'eEllipse');
     [via_posrpy_up,via_posrpy_middle,via_posrpy_down] = mirror_planner.PlanCleanPath();
     % plan for up zone
@@ -275,7 +275,7 @@ function [output_pos,joint_plot,compare_cpp] = PlanRunwayMirror(rbt,dt)
     p1 = [0.8,-0.2,0.45]'; p2 = [0.8,0.4,0.45]'; p3 = [0.8,0.4,0.81]'; p4 = [0.8,-0.2,0.81]';
     vision_pos = [p1,p2,p3,p4];
 %     [via_posrpy_up,via_posrpy_middle,via_posrpy_down] = PlanRunwayMirrorPath(vision_pos);
-    mirror_planner = MirrorClean;
+    mirror_planner = MirrorCleanPlanner;
     mirror_planner.SetCleanParams(vision_pos,'eRunway');
     [via_posrpy_up,via_posrpy_middle,via_posrpy_down] = mirror_planner.PlanCleanPath();
     % plan for up zone

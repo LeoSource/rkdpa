@@ -6,7 +6,7 @@
 %   Author:
 %   Liao Zhixiang, zhixiangleo@163.com
 
-classdef MirrorClean < handle
+classdef MirrorCleanPlanner < handle
     properties
         vertices
         type
@@ -19,7 +19,7 @@ classdef MirrorClean < handle
     
     
     methods
-        function obj = MirrorClean()
+        function obj = MirrorCleanPlanner()
             
         end
     
