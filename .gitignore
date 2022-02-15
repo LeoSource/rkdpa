@@ -23,6 +23,7 @@ model/
 src/data/
 *.mat
 *.txt
+*.tmp
 # 暂时忽略others文件夹
 others/
 
