@@ -101,10 +101,27 @@ classdef TaskTrajPlanner < handle
                 obj.pre_trajq = reshape(via_pos(:,end),obj.robot.n,1);
                 obj.pre_trajpose = obj.robot.fkine(obj.pre_trajq);
             case 'bspline'
+                %add line trajectory before b-spline for transition
                 pos0 = obj.pre_trajpose.t;
                 rpy0 = tr2rpy(obj.pre_trajpose, 'xyz')';
-                pos_rpy0 = [pos0;rpy0];
-                tf_uk = CalcBSplineTime([pos0,via_pos],vmax);
+                cplanner = CartesianPlanner([pos0;rpy0],false);
+                z0 = via_pos(:,1)-obj.params_clean_toilet.peak;
+                z0 = z0/norm(z0);
+                y0 = cross(z0,[0,1,0]');
+                x0 = cross(y0,z0);
+                rpy = tr2rpy([x0,y0,z0],'xyz');
+                cplanner.AddPosRPY([via_pos(:,1);rpy'],vmax,amax);
+                obj.ntraj = obj.ntraj+1;
+                obj.segplanner{obj.ntraj} = cplanner;
+                obj.traj_type{obj.ntraj} = 'cartesian';
+                obj.pre_trajpose = SE3.rpy(180/pi*rpy,'xyz');
+                obj.pre_trajpose.t = via_pos(:,1);
+                if obj.compare_plan
+                    obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
+                                                            obj.robot.n,1);
+                end
+                %add b-spline trajectory
+                tf_uk = CalcBSplineTime(via_pos,vmax);
                 if traj_opt==1
                     option = 'interpolation';
                 elseif traj_opt==0
@@ -112,14 +129,10 @@ classdef TaskTrajPlanner < handle
                 else
                     option = 'ctrlpos';
                 end
-                posplanner = CubicBSplinePlanner([pos0,via_pos], option, tf_uk);
+                posplanner = CubicBSplinePlanner(via_pos, option, tf_uk);
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = posplanner;
                 obj.traj_type{obj.ntraj} = 'bspline';
-%                 obj.pre_trajpose = SE3.rpy(180/pi*via_pos(4:6,end)', 'xyz');
-%                 obj.pre_trajpose.t = via_pos(1:3,end);
-%                 obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
-%                                                         obj.robot.n,1);
             case 'arc'
                 %add line trajectory befor arc for transition
                 pos0 = obj.pre_trajpose.t;

@@ -211,30 +211,11 @@ function [output_pos,joint_plot,compare_cpp] = PlanToilet(rbt,dt)
             [cpos_tmp,~,~] = taskplanner.GenerateCartTraj(dt);
             cpo = [cpos,cpos_tmp];
         end
-        
-%         bspline_planner = CubicBSplinePlanner(vision_pos(:,1:8),'interpolation',10);
-%         [bpos,bvel,bacc] = bspline_planner.GenerateTraj(dt);
-%         center = mean(vision_pos(:,1:8),2);
-%         for idx=1:size(bpos,2)
-%             pos_tmp = bpos(:,idx);
-%             center_tmp = [center(1),center(2),pos_tmp(3)]';
-%             len = norm(center_tmp-pos_tmp);
-%             peak = center_tmp;
-%             peak(3) = center_tmp(3)+len*cot(slant_angle);
-%             z0 = pos_tmp-peak;
-%             z0 = z0/norm(z0);
-%             y0 = cross(z0,[0,1,0]');
-%             y0 = y0/norm(y0);
-%             x0 = cross(y0,z0);
-%             rot_mat = [x0,y0,z0];
-%             rpy = tr2rpy(rot_mat,'xyz');
-%             cpos(:,idx) = [pos_tmp;rpy'];
-%         end
 
         figure
         plot2(cpos(1:3,:)', 'r--'); hold on;
         plot2(via_posrpy(1:3,:)', 'bo'); plot2(vision_pos', 'r*'); axis equal;
-        PlotRPY(cpos,80);
+        PlotRPY(cpos,50);
         grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 end
 
