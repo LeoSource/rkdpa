@@ -8,7 +8,7 @@ addpath(genpath('tools'));
 global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
 g_jvmax = [pi/8, pi/8, 0.8*pi/4, pi/4, pi/4, pi/4];
 g_jamax = [pi/4, pi/4, pi/2, pi/4, pi/4, pi/4];
-g_cvmax = [0.15, 0.3]; g_camax = [0.3, 0.5];
+g_cvmax = [0.4, 0.6]; g_camax = [0.8, 1.2];
 g_cycle_time = 0.005;
 
 func_map = containers.Map;
@@ -181,18 +181,63 @@ function [output_pos,joint_plot,compare_cpp] = PlanToilet(rbt,dt)
         global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
         joint_plot = 1;
         compare_cpp = 0;
-        compare_plan = 1;
-        q0 = deg2rad([0,-35,20,65,-90,0]');
+        compare_plan = 0;
+        q0 = deg2rad([20,30,40,-70,-90,0]');
         taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                                     g_cvmax,g_camax,compare_plan);
         p1 = [ 0.519909,0.309211,-0.456355]'; p2 = [0.391413,0.314306,-0.468476]'; p3 = [0.336517,0.393079,-0.468602]';
         p4 = [0.362503,0.477856,-0.466479]'; p5 = [ 0.473135,0.55325,-0.451316]'; p6 = [0.606719,0.556308,-0.440232]';
         p7 = [0.675789,0.48262,-0.429367]'; p8 = [0.635475,0.355141,-0.440339]'; p9 = [0.548193,0.454853,-0.66386]';
         vision_pos = [p1,p2,p3,p4,p5,p6,p7,p8,p9];
+        via_posrpy = PlanToiletInlierPath(vision_pos,deg2rad(20),'front');
+        taskplanner.AddTraj(via_posrpy,'cartesian',0);
+%         if compare_plan
+%             [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+%             output_pos = jpos;
+%         else
+%             [cpos,~,~] = taskplanner.GenerateCartTraj(dt);
+%         end
 
+        vp = CalcViapos(vision_pos(:,1:8),'toilet');
+        bspline_planner = CubicBSplinePlanner(vision_pos(:,1:8),'interpolation',10);
+        [bpos,bvel,bacc] = bspline_planner.GenerateTraj(dt);
+        slant_angle = deg2rad(20);
+        center = mean(vision_pos(:,1:8),2);
+        for idx=1:size(bpos,2)
+            pos_tmp = bpos(:,idx);
+            center_tmp = [center(1),center(2),pos_tmp(3)]';
+            len = norm(center_tmp-pos_tmp);
+            peak = center_tmp;
+            peak(3) = center_tmp(3)+len*cot(slant_angle);
+            z0 = pos_tmp-peak;
+            z0 = z0/norm(z0);
+            y0 = cross(z0,[0,1,0]');
+            y0 = y0/norm(y0);
+            x0 = cross(y0,z0);
+            rot_mat = [x0,y0,z0];
+            rpy = tr2rpy(rot_mat,'xyz');
+            cpos(:,idx) = [pos_tmp;rpy'];
+        end
+        
         figure
-        plot2(vision_pos', 'r*'); axis equal;
+        plot2(bpos', 'r--'); hold on;
+        plot2(vp(1:3,:)', 'bo'); axis equal;
+        PlotRPY(cpos,50);
         grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+        
+        figure
+        PlotRPY(via_posrpy,1); axis equal;
+        grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+        
+        figure
+        PlotRPY(vp,1); axis equal;
+        grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+
+%         figure
+%         plot2(cpos(1:3,:)', 'r--'); hold on;
+%         plot2(via_posrpy(1:3,:)', 'bo'); plot2(vision_pos', 'r*'); axis equal;
+%         PlotRPY(cpos,80);
+%         grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 end
 
 %% simulate rectangle table or ground zones
