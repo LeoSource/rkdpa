@@ -187,9 +187,17 @@ function [output_pos,joint_plot,compare_cpp] = PlanToilet(rbt,dt)
                                                     g_cvmax,g_camax,compare_plan);
         p1 = [ 0.519909,0.309211,-0.456355]'; p2 = [0.391413,0.314306,-0.468476]'; p3 = [0.336517,0.393079,-0.468602]';
         p4 = [0.362503,0.477856,-0.466479]'; p5 = [ 0.473135,0.55325,-0.451316]'; p6 = [0.606719,0.556308,-0.440232]';
-        p7 = [0.675789,0.48262,-0.429367]'; p8 = [0.635475,0.355141,-0.440339]'; p9 = [0.548193,0.454853,-0.66386]';
-        vision_pos = [p1,p2,p3,p4,p5,p6,p7,p8];
-        via_posrpy = PlanToiletInlierPath(vision_pos,deg2rad(20),'front');
+        p7 = [0.675789,0.48262,-0.429367]'; p8 = [0.635475,0.355141,-0.440339]';
+        p9 = [0.519909,0.329211,-0.526355]'; p10 = [0.401413,0.334306,-0.53]'; p11 = [0.366517,0.393079,-0.54]';
+        p12 = [0.392503,0.477856,-0.536]'; p13 = [0.473135,0.53325,-0.521316]'; p14 = [0.606719,0.536308,-0.510232]';
+        p15 = [0.675789,0.48262,-0.50]'; p16 = [0.635475,0.355141,-0.51]';
+        p19 = [0.548193,0.454853,-0.66386]';
+        vision_pos = [p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16];
+        figure
+        plot2(vision_pos','r*'); axis equal;
+        grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+        
+        via_posrpy = PlanToiletInlierPath(vision_pos(:,1:8),deg2rad(20),'front');
         taskplanner.AddTraj(via_posrpy(:,1),'cartesian',0);
         if compare_plan
             [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
