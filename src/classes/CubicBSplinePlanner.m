@@ -24,20 +24,28 @@ classdef CubicBSplinePlanner < handle
         ctrl_rpy
 
         option
+        ori_planned
     end
 
     methods
         %% Constructor of Class and Other Settings
         function obj = CubicBSplinePlanner(via_posrpy, option, uk)
-            %%%usually, uk is the final time of of planner
+            if size(via_posrpy,1)==6
+                obj.ori_planned = true;
+            else
+                obj.ori_planned = false;
+            end
+            %%%usually, uk is the final time of of planner%%%
             obj.pdegree = 3;
             obj.option = option;
             via_pos = via_posrpy(1:3,:);
             %%%input position is the control position%%%
             if strcmp(option, 'ctrlpos')
                 obj.ctrl_pos = via_pos;
-                axis_angle = RPY2AxisAngle(via_posrpy(4:6,:));
-                obj.ctrl_rpy = axis_angle;
+                if obj.ori_planned
+                    axis_angle = RPY2AxisAngle(via_posrpy(4:6,:));
+                    obj.ctrl_rpy = axis_angle;
+                end
                 obj.num_ctrlp = size(via_pos,2);
                 obj.nump = obj.num_ctrlp-2;
                 if nargin>2
@@ -65,15 +73,18 @@ classdef CubicBSplinePlanner < handle
                     obj.num_ctrlp = obj.nump+2;
                     obj.knot_vec = obj.CalcKnotVec();
                     obj.ctrl_pos = obj.CalcCtrlPos(via_pos);
-%                     axis_angle = via_posrpy(4:6,:);
-                    axis_angle = RPY2AxisAngle(via_posrpy(4:6,:));
-                    obj.ctrl_rpy = obj.CalcCtrlRot(axis_angle);
+                    if obj.ori_planned
+                        axis_angle = RPY2AxisAngle(via_posrpy(4:6,:));
+                        obj.ctrl_rpy = obj.CalcCtrlRot(axis_angle);
+                    end
                 elseif strcmp(option, 'approximation')
                     obj.num_ctrlp = 20;
                     obj.knot_vec = obj.CalcApproKnotVec();
                     obj.ctrl_pos = obj.CalcApproCtrlPos(via_pos);
-                    axis_angle = RPY2AxisAngle(via_posrpy(4:6,:));
-                    obj.ctrl_rpy = obj.CalcApproCtrlPos(axis_angle);
+                    if obj.ori_planned
+                        axis_angle = RPY2AxisAngle(via_posrpy(4:6,:));
+                        obj.ctrl_rpy = obj.CalcApproCtrlPos(axis_angle);
+                    end
                 else
                     error('error option')
                 end
@@ -262,8 +273,10 @@ classdef CubicBSplinePlanner < handle
                 [p, v, a] = obj.GenerateMotion(u, du, ddu);
                 pos = [pos,p]; vel = [vel,v]; acc = [acc,a];
             end
-            rpy = AxisAngle2RPY(pos(4:6,:));
-            pos = [pos(1:3,:); rpy];
+            if obj.ori_planned
+                rpy = AxisAngle2RPY(pos(4:6,:));
+                pos = [pos(1:3,:); rpy];
+            end
         end
         
         function [p, v, a] = GenerateMotion(obj, u, du, ddu)
@@ -284,8 +297,10 @@ classdef CubicBSplinePlanner < handle
                 end
             end
             pos = obj.ctrl_pos*b_coeff;
-            rpy = obj.ctrl_rpy*b_coeff;
-            pos = [pos;rpy];
+            if obj.ori_planned
+                rpy = obj.ctrl_rpy*b_coeff;
+                pos = [pos;rpy];
+            end
         end
 
         function vel = GenerateVel(obj, u, du)
@@ -296,7 +311,9 @@ classdef CubicBSplinePlanner < handle
             end
             % dp/dt=(dp/du)*(du/dt);
             vel = obj.ctrl_pos*diff_bcoeff*du;
-            vel = [vel;zeros(3,1)];
+            if obj.ori_planned
+                vel = [vel;zeros(3,1)];
+            end
         end
 
         function acc = GenerateAcc(obj, u, du, ddu)
@@ -309,7 +326,9 @@ classdef CubicBSplinePlanner < handle
             end
             % ddp/ddt = (dp/du)*ddu+(ddp/ddu)*du^2
             acc = obj.ctrl_pos*diff2_bcoeff*du^2+obj.ctrl_pos*diff_bcoeff*ddu;
-            acc = [acc;zeros(3,1)];
+            if obj.ori_planned
+                acc = [acc;zeros(3,1)];
+            end
         end
 
         function curve = GenerateBSpline(obj, du)

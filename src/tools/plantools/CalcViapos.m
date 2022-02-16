@@ -14,7 +14,8 @@ function via_posrpy = CalcViapos(vision_pos, type)
             pos_high(3) = center(3)+len*cot(arc_theta);
             z0 = pos_tmp-pos_high;
             z0 = z0/norm(z0);
-            y0 = CalcPlaneIntersection(z0,pos_high);
+%             y0 = CalcPlaneIntersection(z0,pos_high);
+            y0 = cross(z0,[0,1,0]');
             y0 = y0/norm(y0);
             x0 = cross(y0,z0);
 %             vec_high_center = center-pos_high;
@@ -36,3 +37,4 @@ function vec = CalcPlaneIntersection(norm_vec, via_point)
     z = -(norm_vec(1)*x+d)/norm_vec(3);
     vec = [x;y;z]-via_point;
 end
+
