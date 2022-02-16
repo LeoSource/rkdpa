@@ -105,11 +105,7 @@ classdef TaskTrajPlanner < handle
                 pos0 = obj.pre_trajpose.t;
                 rpy0 = tr2rpy(obj.pre_trajpose, 'xyz')';
                 cplanner = CartesianPlanner([pos0;rpy0],false);
-                z0 = via_pos(:,1)-obj.params_clean_toilet.peak;
-                z0 = z0/norm(z0);
-                y0 = cross(z0,[0,1,0]');
-                x0 = cross(y0,z0);
-                rpy = tr2rpy([x0,y0,z0],'xyz');
+                rpy = obj.CalcCleanToiletRPY(via_pos(:,1));
                 cplanner.AddPosRPY([via_pos(:,1);rpy'],vmax,amax);
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = cplanner;
@@ -190,13 +186,7 @@ classdef TaskTrajPlanner < handle
                 case 'bspline'
                     [p,vp,ap] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     for idx=1:size(p,2)
-                        p_tmp = p(:,idx);
-                        z0 = p_tmp-obj.params_clean_toilet.peak;
-                        z0 = z0/norm(z0);
-                        y0 = cross(z0,[0,1,0]');
-                        x0 = cross(y0,z0);
-                        rot_mat = [x0,y0,z0];
-                        r(:,idx) = tr2rpy(rot_mat,'xyz');
+                        r(:,idx) = obj.CalcCleanToiletRPY(p(:,idx));
                         vr(:,idx) = zeros(3,1);
                         ar(:,idx) = zeros(3,1);
                     end
@@ -234,7 +224,13 @@ classdef TaskTrajPlanner < handle
                     [p,v,a] = obj.Transform2Cart(jp,jv,ja);
                     cpos = [cpos, p]; cvel = [cvel, v]; cacc = [cacc, a];
                 case 'bspline'
-                    [p,vp,ap] = obj.segplanner{traj_idx}.GenerateTraj(dt);                    
+                    [p,vp,ap] = obj.segplanner{traj_idx}.GenerateTraj(dt);
+                    for idx=1:size(p,2)
+                        r(:,idx) = obj.CalcCleanToiletRPY(p(:,idx));
+                        vr(:,idx) = zeros(3,1);
+                        ar(:,idx) = zeros(3,1);
+                    end
+                    pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
 %                     uplanner = LspbPlanner([0,obj.test_tf],2,1,obj.test_tf);
 %                     for idx=1:size(obj.test_rpy,2)
 %                         rot_mat = rpy2r(180/pi*obj.test_rpy(:,idx)', 'xyz');
@@ -255,8 +251,11 @@ classdef TaskTrajPlanner < handle
 %                     vr = zeros(size(r));
 %                     ar = zeros(size(r));
 %                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
-%                     cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
-                    [cpos] = [cpos,p]; cvel = [cvel,vp]; cacc = [cacc, ap];
+                    cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
+                    obj.pre_trajpose = SE3.rpy(180/pi*cpos(4:6,end)', 'xyz');
+                    obj.pre_trajpose.t = cpos(1:3,end);
+                    obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
+                                                            obj.robot.n,1);
                 case 'arc'
                     [p,vp,ap,r,vr,ar] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
@@ -279,8 +278,16 @@ classdef TaskTrajPlanner < handle
                     jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
                 case 'bspline'
                     [p,vp,ap] = obj.segplanner{traj_idx}{1}.GenerateTraj(dt);
-                    [r,vr,ar] = obj.segplanner{traj_idx}{2}.GenerateTraj(dt);
+                    for idx=1:size(p,2)
+                        r(:,idx) = obj.CalcCleanToiletRPY(p(:,idx));
+                        vr(:,idx) = zeros(3,1);
+                        ar(:,idx) = zeros(3,1);
+                    end
                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
+                    obj.pre_trajpose = SE3.rpy(180/pi*pos_tmp(4:6,end)', 'xyz');
+                    obj.pre_trajpose.t = pos_tmp(1:3,end);
+                    obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
+                                                            obj.robot.n,1);
                     [jp,jv,ja] = obj.Transform2Joint(pos_tmp,vel_tmp,acc_tmp);
                     jpos = [jpos,jp]; jvel = [jvel,jv]; jacc = [jacc,ja];
                 case 'arc'
@@ -290,6 +297,17 @@ classdef TaskTrajPlanner < handle
                     jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
                 end
             end
+        end
+
+        function rpy = CalcCleanToiletRPY(obj,pos)
+            % the intersecting line is perpendicular to normal vectors of two intersecting surface
+            % z0 is one of normal vector
+            % [0,1,0]' is another normal vector
+            z0 = pos-obj.params_clean_toilet.peak;
+            z0 = z0/norm(z0);
+            y0 = cross(z0,[0,1,0]');
+            x0 = cross(y0,z0);
+            rpy = tr2rpy([x0,y0,z0],'xyz');
         end
         
         function [cpos,cvel,cacc] = Transform2Cart(obj,jp,jv,ja)
