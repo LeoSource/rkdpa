@@ -29,6 +29,7 @@ classdef TaskTrajPlanner < handle
     end
     
     methods
+        %% Constructor of Class and Other Settings
         function obj = TaskTrajPlanner(rbt_model,q0,cycle_time,jvmax,jamax,...
                                                         cvmax,camax,compare_plan)
             obj.robot = rbt_model;
@@ -44,6 +45,7 @@ classdef TaskTrajPlanner < handle
             obj.camax = camax;
         end
         
+        %% Add All Kinds of Trajectories
         function SetPlanningScene(obj,vertices,slant_angle)
             center = mean(vertices,2);
             for idx=1:size(vertices,2)
@@ -161,7 +163,7 @@ classdef TaskTrajPlanner < handle
             end
         end
 
-
+        %% Generate Joint-Space and Cartesian-Space Trajectory
         function [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = GenerateBothTraj(obj,dt)
             cpos=[]; cvel=[]; cacc=[];
             jpos=[]; jvel=[]; jacc=[];
