@@ -1,3 +1,10 @@
+%   Trajectory Planner Class:
+%   A specific class that contains all kinds of trajectories: joint space, line , arc and b-spline
+%   Planning scene can be updated in this class, but there will be only one
+%   planning scene, it should be reset when use another scene
+%   Author:
+%   liao zhixiang, zhixiangleo@163.com
+
 classdef TaskTrajPlanner < handle
     
     properties
@@ -17,6 +24,8 @@ classdef TaskTrajPlanner < handle
         jamax
         cvmax
         camax
+        
+        params_clean_toilet
     end
     
     methods
@@ -33,6 +42,18 @@ classdef TaskTrajPlanner < handle
             obj.jamax = jamax;
             obj.cvmax = cvmax;
             obj.camax = camax;
+        end
+        
+        function SetPlanningScene(obj,vertices,slant_angle)
+            center = mean(vertices,2);
+            for idx=1:size(vertices,2)
+                pos_tmp = vertices(:,idx);
+                center_tmp = [center(1),center(2),pos_tmp(3)]';
+                len = norm(center_tmp-pos_tmp);
+                peak(:,idx) = center_tmp;
+                peak(3,idx) = center_tmp(3)+len*cot(slant_angle);
+            end
+            obj.params_clean_toilet.peak = mean(peak,2);
         end
         
         function AddTraj(obj, via_pos, traj_type, traj_opt, vmax_arg, amax_arg)
@@ -83,7 +104,7 @@ classdef TaskTrajPlanner < handle
                 pos0 = obj.pre_trajpose.t;
                 rpy0 = tr2rpy(obj.pre_trajpose, 'xyz')';
                 pos_rpy0 = [pos0;rpy0];
-                tf_uk = CalcBSplineTime([pos_rpy0,via_pos],vmax);
+                tf_uk = CalcBSplineTime([pos0,via_pos],vmax);
                 if traj_opt==1
                     option = 'interpolation';
                 elseif traj_opt==0
@@ -91,20 +112,14 @@ classdef TaskTrajPlanner < handle
                 else
                     option = 'ctrlpos';
                 end
-                posplanner = CubicBSplinePlanner([pos_rpy0,via_pos], option, tf_uk);
-%                 rot_data = RPY2AxisAngle([rpy0,via_pos(4:6,:)]);
-%                 rotplanner = CubicBSplinePlanner(rot_data, traj_opt, tf_uk);
-%                 rotplanner = CubicBSplinePlanner([rpy0,via_pos(4:6,:)], traj_opt, tf_uk);
-%                 obj.test_rpy = [rpy0,via_pos(4:6,:)];
-%                 obj.test_tf = tf_uk;
+                posplanner = CubicBSplinePlanner([pos0,via_pos], option, tf_uk);
                 obj.ntraj = obj.ntraj+1;
-%                 obj.segplanner{obj.ntraj} = {posplanner, rotplanner};
                 obj.segplanner{obj.ntraj} = posplanner;
                 obj.traj_type{obj.ntraj} = 'bspline';
-                obj.pre_trajpose = SE3.rpy(180/pi*via_pos(4:6,end)', 'xyz');
-                obj.pre_trajpose.t = via_pos(1:3,end);
-                obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
-                                                        obj.robot.n,1);
+%                 obj.pre_trajpose = SE3.rpy(180/pi*via_pos(4:6,end)', 'xyz');
+%                 obj.pre_trajpose.t = via_pos(1:3,end);
+%                 obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
+%                                                         obj.robot.n,1);
             case 'arc'
                 %add line trajectory befor arc for transition
                 pos0 = obj.pre_trajpose.t;
@@ -160,13 +175,28 @@ classdef TaskTrajPlanner < handle
                         cpos_sim = [cpos_sim,p(1:3,:)];
                     end
                 case 'bspline'
-                    [p,vp,ap] = obj.segplanner{traj_idx}{1}.GenerateTraj(dt);
-                    [r,vr,ar] = obj.segplanner{traj_idx}{2}.GenerateTraj(dt);
+                    [p,vp,ap] = obj.segplanner{traj_idx}.GenerateTraj(dt);
+                    for idx=1:size(p,2)
+                        p_tmp = p(:,idx);
+                        z0 = p_tmp-obj.params_clean_toilet.peak;
+                        z0 = z0/norm(z0);
+                        y0 = cross(z0,[0,1,0]');
+                        x0 = cross(y0,z0);
+                        rot_mat = [x0,y0,z0];
+                        r(:,idx) = tr2rpy(rot_mat,'xyz');
+                        vr(:,idx) = zeros(3,1);
+                        ar(:,idx) = zeros(3,1);
+                    end
                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
                     cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
                     [jp,jv,ja,cp_sim] = obj.Transform2Joint(pos_tmp,vel_tmp,acc_tmp);
                     jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
                     cpos_sim=[cpos_sim,cp_sim];
+                    
+                    obj.pre_trajpose = SE3.rpy(180/pi*cpos(4:6,end)', 'xyz');
+                    obj.pre_trajpose.t = cpos(1:3,end);
+                    obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
+                                                            obj.robot.n,1);
                 case 'arc'
                     [p,vp,ap,r,vr,ar] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
@@ -310,13 +340,15 @@ function tf = CalcBSplineTime(pos_rpy,cvmax)
     rot_len = 0;
     for idx=1:np-1
         pos_len = pos_len+norm(pos_rpy(1:3,idx+1)-pos_rpy(1:3,idx));
-        r0 = rpy2r(180/pi*pos_rpy(4:6,idx)','xyz');
-        rn = rpy2r(180/pi*pos_rpy(4:6,idx+1)','xyz');
-        delta_rot = rn*r0';
-        [rpy_len,~] = tr2angvec(delta_rot);
-        rot_len = rot_len+rpy_len;
+        if size(pos_rpy,1)==6
+            r0 = rpy2r(180/pi*pos_rpy(4:6,idx)','xyz');
+            rn = rpy2r(180/pi*pos_rpy(4:6,idx+1)','xyz');
+            delta_rot = rn*r0';
+            [rpy_len,~] = tr2angvec(delta_rot);
+            rot_len = rot_len+rpy_len;
+        end
     end
-    tscale = 1.5;
+    tscale = 3;
     tf_pos = pos_len/cvmax(1)*tscale;
     tf_rot = rot_len/cvmax(2)*tscale;
     tf = max([tf_pos,tf_rot]);
