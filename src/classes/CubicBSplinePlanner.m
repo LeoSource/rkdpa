@@ -267,7 +267,9 @@ classdef CubicBSplinePlanner < handle
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
             tf = obj.uknot_vec(end);
-            uplanner = LspbPlanner([0,tf],2,1,tf);
+            vm = 1.5;
+            am = 3*vm/tf;
+            uplanner = LspbPlanner([0,tf],vm,am,tf);
             for t=0:dt:tf
                 [u, du, ddu] = uplanner.GenerateMotion(t);
                 [p, v, a] = obj.GenerateMotion(u, du, ddu);
