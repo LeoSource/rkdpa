@@ -107,17 +107,16 @@ classdef LinePlanner < handle
         function [p,vp,ap,r,vr,ar] = GenerateMotion(obj,t)
             if strcmp(obj.option,'pos')
                 [p,vp,ap] = obj.GeneratePosMotion(t);
-                r = obj.rpy_initial;
-                vr = zeros(3,1);
-                ar = zeros(3,1);
+                r = obj.rpy_initial; vr = zeros(3,1); ar = zeros(3,1);
             elseif strcmp(obj.option,'rot')
                 [r,vr,ar] = obj.GenerateRotMotion(t);
-                p = obj.pos_initial;
-                vp = zeros(3,1);
-                ap = zeros(3,1);
+                p = obj.pos_initial; vp = zeros(3,1); ap = zeros(3,1);
             elseif strcmp(obj.option,'both')
                 [p,vp,ap] = obj.GeneratePosMotion(t);
                 [r,vr,ar] = obj.GenerateRotMotion(t);
+            else
+                p = obj.pos_initial; vp = zeros(3,1); ap = zeros(3,1);
+                r = obj.rpy_initial; vr = zeros(3,1); ar = zeros(3,1);
             end
         end
                
