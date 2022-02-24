@@ -1,4 +1,4 @@
-clear all
+clear
 close all
 clc
 
@@ -180,7 +180,7 @@ end
 function [output_pos,joint_plot,compare_cpp] = PlanToilet(rbt,dt)
         global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
         joint_plot = 1;
-        compare_cpp = 0;
+        compare_cpp = 1;
         compare_plan = 1;
         q0 = deg2rad([20,30,40,-70,-90,0]');
         taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
@@ -193,31 +193,31 @@ function [output_pos,joint_plot,compare_cpp] = PlanToilet(rbt,dt)
         p15 = [0.675789,0.48262,-0.50]'; p16 = [0.635475,0.355141,-0.51]';
         p19 = [0.548193,0.454853,-0.66386]';
         vision_pos = [p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16];
-        figure
-        plot2(vision_pos','r*'); axis equal;
-        grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+%         figure
+%         plot2(vision_pos','r*'); axis equal;
+%         grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
         
         via_posrpy = PlanToiletInlierPath(vision_pos(:,1:8),deg2rad(20),'front');
         taskplanner.AddTraj(via_posrpy(:,1),'cartesian',0);
+        slant_angle = deg2rad(20);
+        taskplanner.SetPlanningScene(vision_pos(:,1:8),slant_angle);
+        taskplanner.AddTraj([p1,p2,p3,p4],'bspline',1);
         if compare_plan
-            [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+            [cpos,~,~,jpos,~,~,cpos_sim] = taskplanner.GenerateBothTraj(dt);
             output_pos = jpos;
         else
             [cpos,~,~] = taskplanner.GenerateCartTraj(dt);
         end
-
-        slant_angle = deg2rad(20);
+        
         taskplanner.Reset(jpos(:,end));
-        taskplanner.SetPlanningScene(vision_pos,slant_angle);
-        taskplanner.AddTraj(vision_pos,'bspline',1);
+        taskplanner.AddTraj([p4,p5,p6,p7],'bspline',1);
         if compare_plan
             [cpos_tmp,~,~,jpos_tmp,~,~,cpos_sim_tmp] = taskplanner.GenerateBothTraj(dt);
             output_pos = [output_pos,jpos_tmp];
-            cpos = [cpos,cpos_tmp];
-            jpos = [jpos,jpos_tmp];
+            cpos = [cpos,cpos_tmp]; jpos = [jpos,jpos_tmp]; cpos_sim = [cpos_sim,cpos_sim_tmp];
         else
-            [cpos_tmp,~,~] = taskplanner.GenerateCartTraj(dt);
-            cpo = [cpos,cpos_tmp];
+            [cpos,~,~] = taskplanner.GenerateCartTraj(dt);
+            cpos = [cpos,cpos_tmp];
         end
 
         figure
