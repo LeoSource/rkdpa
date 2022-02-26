@@ -224,6 +224,14 @@ classdef TaskTrajPlanner < handle
                     [jp,jv,ja,cp_sim] = obj.Transform2Joint(pos_tmp,vel_tmp,acc_tmp);
                     jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
                     cpos_sim=[cpos_sim,cp_sim];
+                case 'dyniden'
+                    [jp,jv,ja] = obj.segplanner{traj_idx}.GenerateTraj(dt);
+                    jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
+                    [p,v,a] = obj.Transform2Cart(jp,jv,ja);
+                    cpos = [cpos, p]; cvel = [cvel, v]; cacc = [cacc, a];
+                    if obj.compare_plan
+                        cpos_sim = [cpos_sim,p(1:3,:)];
+                    end
                 end
             end
         end
@@ -277,6 +285,10 @@ classdef TaskTrajPlanner < handle
                     [p,vp,ap,r,vr,ar] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
                     cpos = [cpos,pos_tmp]; cvel = [cvel,vel_tmp]; cacc = [cacc,acc_tmp];
+                case 'dyniden'
+                   [jp,jv,ja] = obj.segplanner{traj_idx}.GenerateTraj(dt);
+                   [p,v,a] = obj.Transform2Cart(jp,jv,ja);
+                   cpos = [cpos, p]; cvel = [cvel, v]; cacc = [cacc, a];
                 end
             end
         end
