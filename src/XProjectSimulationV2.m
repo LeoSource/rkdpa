@@ -12,21 +12,22 @@ g_cvmax = [0.4, 0.6]; g_camax = [0.8, 1.2];
 g_cycle_time = 0.005;
 
 func_map = containers.Map;
-simu_name = {'workspace','common','toilet_lid','toilet','table','friction','gravity'};
+simu_name = {'workspace','common','toilet_lid','toilet','table','friction','gravity','dynamics'};
 simu_func = {@PlotWorkspace,...
                     @PlanCommon,...
                     @PlanToiletlid,...
                     @PlanToilet,...
                     @PlanTable,...
                     @GenerateFricIdenTraj,...
-                    @GenerateGravIdenTraj};
+                    @GenerateGravIdenTraj,...
+                    @GenerateDynIdenTraj};
 for idx=1:length(simu_name)
     func_map(simu_name{idx}) = simu_func{idx};
 end
 
 rbt = CreateRobot();
 dt = 0.01;
-test_name = 'toilet';
+test_name = 'dynamics';
 if strcmp(test_name, 'workspace')
     PlotWorkspace(rbt)
 else
@@ -83,7 +84,7 @@ function PlotJointPosition(jpos,compare_cpp,dt)
 
     if compare_cpp
         q_cpp = load('./data/mirrortask_jpos1.csv');
-        q_cpp = reshape(q_cpp, 6, []);
+        q_cpp = reshape(q_cpp, 6, []);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
         global g_cycle_time
         tt = g_cycle_time*[0:size(q_cpp,2)-1];
         for idx=1:6
@@ -383,4 +384,22 @@ function [output_pos,joint_plot,compare_cpp] = GenerateGravIdenTraj(rbt, dt)
     output_pos = jpos;
 end
 
+%% simulate robot dynamics identification trajectory
+function [output_pos,joint_plot,compare_cpp] = GenerateDynIdenTraj(rbt,dt)
+    global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
+    joint_plot = 1;
+    compare_cpp = 1;
+    compare_plan = 0;
+    q0 = zeros(6,1);
+    taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+                                    g_cvmax,g_camax,compare_plan);
+    traj_params_half1hz = load('./data/traj_0.5hz.csv');
+    traj_params_1hz = load('./data/traj_1hz.csv');
+    dyniden_planner = DynIdenTrajPlanner(traj_params_half1hz,traj_params_1hz);
+    dyniden_planner.AddTraj(5,2);
+    taskplanner.AddDynIdenTraj(dyniden_planner);
+    
+    [jpos,~,~] = taskplanner.GenerateJointTraj(dt);
+    output_pos = jpos;
 
+end

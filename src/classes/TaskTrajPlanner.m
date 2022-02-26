@@ -162,6 +162,21 @@ classdef TaskTrajPlanner < handle
                 end                              
             end
         end
+        
+        function AddDynIdenTraj(obj,planner)
+            % add joint trajectory before dynamic identification trajectory
+            jplanner = JointPlanner(obj.pre_trajq,1);
+            jplanner.AddJntPos(planner.q0,obj.jvmax,obj.jamax);
+            obj.ntraj = obj.ntraj+1;
+            obj.segplanner{obj.ntraj} = jplanner;
+            obj.traj_type{obj.ntraj} = 'joint';
+            obj.pre_trajq = planner.q0;
+            obj.pre_trajpose = obj.robot.fkine(obj.pre_trajq);
+            % add robot dynamic identification trajectory
+            obj.ntraj = obj.ntraj+1;
+            obj.segplanner{obj.ntraj} = planner;
+            obj.traj_type{obj.ntraj} = 'dyniden';
+        end
 
         %% Generate Joint-Space and Cartesian-Space Trajectory
         function [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = GenerateBothTraj(obj,dt)
@@ -296,6 +311,11 @@ classdef TaskTrajPlanner < handle
                     [p,vp,ap,r,vr,ar] = obj.segplanner{traj_idx}.GenerateTraj(dt);
                     pos_tmp = [p;r]; vel_tmp = [vp;vr]; acc_tmp = [ap;ar];
                     [jp,jv,ja] = obj.Transform2Joint(pos_tmp,vel_tmp,acc_tmp);
+                    jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
+                case 'dyniden'
+                    [jp,jv,ja] = obj.segplanner{traj_idx}.GenerateTraj(dt);
+                    obj.pre_trajq = jp(:,end);
+                    obj.pre_trajpose = obj.robot.fkine(obj.pre_trajq);
                     jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
                 end
             end

@@ -2,10 +2,8 @@ clear
 close all
 clc
 
-addpath('classes');
-addpath(genpath('tools'));
-dt = 0.005;
 
+dt = 0.005;
 rbt = CreateRobot();
 td_rbt = load('./data/fatigue_test0222_174543.csv');
 td_vision = textread('./data/res.txt');
