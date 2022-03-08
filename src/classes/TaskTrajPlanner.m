@@ -47,15 +47,17 @@ classdef TaskTrajPlanner < handle
         
         %% Add All Kinds of Trajectories
         function SetPlanningScene(obj,vertices,slant_angle)
-            center = mean(vertices,2);
-            for idx=1:size(vertices,2)
-                pos_tmp = vertices(:,idx);
-                center_tmp = [center(1),center(2),pos_tmp(3)]';
-                len = norm(center_tmp-pos_tmp);
-                peak(:,idx) = center_tmp;
-                peak(3,idx) = center_tmp(3)+len*cot(slant_angle);
-            end
-            obj.params_clean_toilet.peak = mean(peak,2);
+            obj.params_clean_toilet.center = mean(vertices,2);
+            obj.params_clean_toilet.slant = slant_angle;
+%             center = mean(vertices,2);
+%             for idx=1:size(vertices,2)
+%                 pos_tmp = vertices(:,idx);
+%                 center_tmp = [center(1),center(2),pos_tmp(3)]';
+%                 len = norm(center_tmp-pos_tmp);
+%                 peak(:,idx) = center_tmp;
+%                 peak(3,idx) = center_tmp(3)+len*cot(slant_angle);
+%             end
+%             obj.params_clean_toilet.peak = mean(peak,2);
         end
         
         function AddTraj(obj, via_pos, traj_type, traj_opt, vmax_arg, amax_arg)
@@ -114,10 +116,10 @@ classdef TaskTrajPlanner < handle
                 obj.traj_type{obj.ntraj} = 'cartesian';
                 obj.pre_trajpose = SE3.rpy(180/pi*rpy,'xyz');
                 obj.pre_trajpose.t = via_pos(:,1);
-                if obj.compare_plan
-                    obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
-                                                            obj.robot.n,1);
-                end
+%                 if obj.compare_plan
+%                     obj.pre_trajq = reshape(obj.robot.ikine(obj.pre_trajpose,'q0',obj.pre_trajq','tol',1e-5),...
+%                                                             obj.robot.n,1);
+%                 end
                 %add b-spline trajectory
                 tf_uk = CalcBSplineTime(via_pos,vmax);
                 if traj_opt==1
@@ -202,6 +204,7 @@ classdef TaskTrajPlanner < handle
                     end
                 case 'bspline'
                     [p,vp,ap] = obj.segplanner{traj_idx}.GenerateTraj(dt);
+                    clear r vr ar;
                     for idx=1:size(p,2)
                         r(:,idx) = obj.CalcCleanToiletRPY(p(:,idx));
                         vr(:,idx) = zeros(3,1);
@@ -337,9 +340,17 @@ classdef TaskTrajPlanner < handle
             % the intersecting line is perpendicular to normal vectors of two intersecting surface
             % z0 is one of normal vector
             % [0,1,0]' is another normal vector
-            z0 = pos-obj.params_clean_toilet.peak;
+%             z0 = pos-obj.params_clean_toilet.peak;
+            height = 0.1;
+            len = height*tan(obj.params_clean_toilet.slant);
+            vec_tmp = obj.params_clean_toilet.center-pos;
+            pos_tmp = pos+len*vec_tmp/norm(vec_tmp);
+            peak = [pos_tmp(1);pos_tmp(2);pos_tmp(3)+height];
+            z0 = pos-peak;
             z0 = z0/norm(z0);
-            y0 = cross(z0,[0,1,0]');
+            % TO DO: there is a risk in calculating y0 when z0 is changing
+            % because that y0 has 2 directions
+            y0 = cross(z0,[-1,0,0]');
             x0 = cross(y0,z0);
             rpy = tr2rpy([x0,y0,z0],'xyz');
         end

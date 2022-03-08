@@ -27,7 +27,7 @@ end
 
 rbt = CreateRobot();
 dt = 0.01;
-test_name = 'dynamics';
+test_name = 'toilet';
 if strcmp(test_name, 'workspace')
     PlotWorkspace(rbt)
 else
@@ -181,26 +181,26 @@ end
 function [output_pos,joint_plot,compare_cpp] = PlanToilet(rbt,dt)
         global g_jvmax g_jamax g_cvmax g_camax g_cycle_time
         joint_plot = 1;
-        compare_cpp = 1;
+        compare_cpp = 0;
         compare_plan = 1;
         q0 = deg2rad([20,30,40,-70,-90,0]');
         taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                                     g_cvmax,g_camax,compare_plan);
-        p1 = [ 0.519909,0.309211,-0.456355]'; p2 = [0.391413,0.314306,-0.468476]'; p3 = [0.336517,0.393079,-0.468602]';
-        p4 = [0.362503,0.477856,-0.466479]'; p5 = [ 0.473135,0.55325,-0.451316]'; p6 = [0.606719,0.556308,-0.440232]';
-        p7 = [0.675789,0.48262,-0.429367]'; p8 = [0.635475,0.355141,-0.440339]';
-        p9 = [0.519909,0.329211,-0.526355]'; p10 = [0.401413,0.334306,-0.53]'; p11 = [0.366517,0.393079,-0.54]';
-        p12 = [0.392503,0.477856,-0.536]'; p13 = [0.473135,0.53325,-0.521316]'; p14 = [0.606719,0.536308,-0.510232]';
-        p15 = [0.675789,0.48262,-0.50]'; p16 = [0.635475,0.355141,-0.51]';
+        p1 = [ 0.523063,0.0671301,-0.451756]'; p2 = [0.532622,0.189069,-0.449019]'; p3 = [0.628787,0.256844,-0.445255]';
+        p4 = [0.770462,0.208325,-0.438582]'; p5 = [  0.845802,0.142217,-0.433995]'; p6 = [0.800494,0.0301943,-0.449299]';
+        p7 = [0.722686,-0.061485,-0.441482]'; p8 = [0.627474,-0.0225126,-0.447813]';
+        p9 = [0.714925,0.0960708,-0.585581]'; p10 = [ 0.714925,0.0960708,-0.585581]'; p11 = [0.714925,0.0960708,-0.585581]';
+        p12 = [ 0.714925,0.0960708,-0.585581]'; p13 = [0.714925,0.0960708,-0.585581]'; p14 = [0.714925,0.0960708,-0.585581]';
+        p15 = [0.750471,0.115512,-0.559841]'; p16 = [0.854383,0.0735621,-0.556036]';
         p19 = [0.548193,0.454853,-0.66386]';
         vision_pos = [p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16];
 %         figure
 %         plot2(vision_pos','r*'); axis equal;
 %         grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
         
-        via_posrpy = PlanToiletInlierPath(vision_pos(:,1:8),deg2rad(20),'front');
+        via_posrpy = PlanToiletInlierPath(vision_pos(:,1:8),deg2rad(20),'left');
         taskplanner.AddTraj(via_posrpy(:,1),'cartesian',0);
-        slant_angle = deg2rad(20);
+        slant_angle = deg2rad(10);
         taskplanner.SetPlanningScene(vision_pos(:,1:8),slant_angle);
         taskplanner.AddTraj([p1,p2,p3,p4],'bspline',1);
         if compare_plan
@@ -220,6 +220,39 @@ function [output_pos,joint_plot,compare_cpp] = PlanToilet(rbt,dt)
             [cpos,~,~] = taskplanner.GenerateCartTraj(dt);
             cpos = [cpos,cpos_tmp];
         end
+        
+%         taskplanner.Reset(jpos(:,end));
+%         taskplanner.AddTraj([p7,p8,p9,p10],'bspline',1);
+%         if compare_plan
+%             [cpos_tmp,~,~,jpos_tmp,~,~,cpos_sim_tmp] = taskplanner.GenerateBothTraj(dt);
+%             output_pos = [output_pos,jpos_tmp];
+%             cpos = [cpos,cpos_tmp]; jpos = [jpos,jpos_tmp]; cpos_sim = [cpos_sim,cpos_sim_tmp];
+%         else
+%             [cpos,~,~] = taskplanner.GenerateCartTraj(dt);
+%             cpos = [cpos,cpos_tmp];
+%         end
+%         
+%         taskplanner.Reset(jpos(:,end));
+%         taskplanner.AddTraj([p10,p11,p12,p13],'bspline',1);
+%         if compare_plan
+%             [cpos_tmp,~,~,jpos_tmp,~,~,cpos_sim_tmp] = taskplanner.GenerateBothTraj(dt);
+%             output_pos = [output_pos,jpos_tmp];
+%             cpos = [cpos,cpos_tmp]; jpos = [jpos,jpos_tmp]; cpos_sim = [cpos_sim,cpos_sim_tmp];
+%         else
+%             [cpos,~,~] = taskplanner.GenerateCartTraj(dt);
+%             cpos = [cpos,cpos_tmp];
+%         end
+%         
+%         taskplanner.Reset(jpos(:,end));
+%         taskplanner.AddTraj([p13,p14,p15,p16],'bspline',1);
+%         if compare_plan
+%             [cpos_tmp,~,~,jpos_tmp,~,~,cpos_sim_tmp] = taskplanner.GenerateBothTraj(dt);
+%             output_pos = [output_pos,jpos_tmp];
+%             cpos = [cpos,cpos_tmp]; jpos = [jpos,jpos_tmp]; cpos_sim = [cpos_sim,cpos_sim_tmp];
+%         else
+%             [cpos,~,~] = taskplanner.GenerateCartTraj(dt);
+%             cpos = [cpos,cpos_tmp];
+%         end
 
         figure
         plot2(cpos(1:3,:)', 'r--'); hold on;
@@ -396,7 +429,7 @@ function [output_pos,joint_plot,compare_cpp] = GenerateDynIdenTraj(rbt,dt)
     traj_params_half1hz = load('./data/traj_0.5hz.csv');
     traj_params_1hz = load('./data/traj_1hz.csv');
     dyniden_planner = DynIdenTrajPlanner(traj_params_half1hz,traj_params_1hz);
-    dyniden_planner.AddTraj(5,2);
+    dyniden_planner.AddTraj(10,8);
     taskplanner.AddDynIdenTraj(dyniden_planner);
     
     [jpos,~,~] = taskplanner.GenerateJointTraj(dt);
