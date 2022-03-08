@@ -5,7 +5,7 @@ clc
 addpath('classes');
 addpath(genpath('tools'));
 dt = 0.005;
-simu_mode = 'friction';
+simu_mode = 'gravity';
 switch simu_mode
     case 'gravity'
         GravityIden(dt);
@@ -15,22 +15,25 @@ end
 
 %% robot gravity identification
 function GravityIden(dt)
-    [jpos,jvel,jtor,t] = LoadTestFile('./data/test_data_1229_132846.csv',dt);
+    [jpos,jvel,jtor,t] = LoadTestFile('./data/test_data_0110_092357.csv',dt);
     % PlotJointData(jpos,jvel,jtor,[1,2,3,4,5,6],[2,3,4,5],[2,3,4,5],t);
     rbtdef = CreateRobot();
     grav_iden = RobotDynamics(rbtdef);
     grav_iden.GravityIden(jpos,jtor);
     %%save gravity identification parameters%%
     time_tmp = datevec(now);
-    time_stamp = [num2str(time_tmp(2)),num2str(time_tmp(3)),num2str(time_tmp(4)),num2str(time_tmp(5))];
+    time_stamp = [num2str(time_tmp(2),'%02d'),...
+                            num2str(time_tmp(3),'%02d'),...
+                            num2str(time_tmp(4),'%02d'),...
+                            num2str(time_tmp(5),'%02d')];
     file_name = ['gravity/gravity_parameters_',time_stamp,'.txt'];
     dlmwrite(file_name,grav_iden.barycenter_params,'precision',12);
 end
 
 %% robot friction identification
 function FrictionIden(dt)
-    [~,jvel1,jtor1,~] = LoadTestFile('./data/test_data_1229_144307.csv',dt);
-    [~,jvel2,jtor2,~] = LoadTestFile('./data/test_data_1229_145039.csv',dt);
+    [~,jvel1,jtor1,~] = LoadTestFile('./data/test_data_0110_091511.csv',dt);% joint1 data
+    [~,jvel2,jtor2,~] = LoadTestFile('./data/test_data_0110_091013.csv',dt);% joint5 data
     rbtdef = CreateRobot();
     rbtdyn = RobotDynamics(rbtdef);
     rbtdyn.FrictionIden(jvel1(:,1),jtor1(:,1),jvel2(:,5),jtor2(:,5));
