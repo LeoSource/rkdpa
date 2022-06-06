@@ -128,8 +128,14 @@ classdef RobotDynamics < handle
         
         function [jpos_grav,jtau_grav] = ProcessGravJointData(obj,jpos,jtau)
             %%process identification data%%
-            start_idx = [1000,22339];
-            stop_idx = [20341,41680];
+%             start_idx = [1000,22339];
+%             stop_idx = [20341,41680];
+            [~,middle_idx] = max(jpos(:,5));
+            drop_num = 500;
+            start_idx(1) = drop_num;
+            stop_idx(1) = middle_idx-(start_idx(1)-1);
+            start_idx(2) = middle_idx+(start_idx(1)+1);
+            stop_idx(2) = start_idx(2)+(stop_idx(1)-start_idx(1));
             jpos_grav = jpos(start_idx(1):stop_idx(1),:);
             tau1 = jtau(start_idx(1):stop_idx(1),:);
             tau2_tmp = jtau(start_idx(2):stop_idx(2),:);
