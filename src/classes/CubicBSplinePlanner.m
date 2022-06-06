@@ -123,6 +123,7 @@ classdef CubicBSplinePlanner < handle
             p(:,3:n) = p_tmp';
         end
 
+        %%%%%TO DO: fix the error in solving the control orientation 
         function p = CalcCtrlRot(obj, q)
             n = obj.nump; m = obj.num_ctrlp; u_hat = obj.uknot_vec;
             dim = size(q,1);
