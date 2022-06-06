@@ -7,20 +7,20 @@ addpath(genpath('tools'));
 dt = 0.005;
 %% analyse test data
 nj = 6;
-td = load('./data/test_data_1229_145039.csv');
+td = load('./data/test_data_0101_121609.csv');
 jpos_idx = 1; jvel_idx = 2; jtor_idx = 3;
 jpos = td(:,1:jpos_idx*nj);
 jvel = td(:,nj+1:jvel_idx*nj);
 jtor = td(:,2*nj+1:jtor_idx*nj);
 t = 0:dt:dt*(size(td,1)-1);
 
-analysis_mode = 'acceleration';
+analysis_mode = 'dynamic_ground';
 switch analysis_mode
     case 'common'
 %% plot joint position, velocity and torque
 jpos_plot = [1,2,3,4,5,6];
-jvel_plot = [1,2,3,4,5,6];
-jtor_plot = [1,2,3,4,5,6];
+jvel_plot = [1,2,3];
+jtor_plot = [1,2,3];
 figure;
 for idx=jpos_plot
     plot(t,jpos(:,idx),'DisplayName',['jpos',num2str(idx)]); grid on;
@@ -135,6 +135,41 @@ end
 %     plot(t,jvel(:,jidx),'r', t,jvel_diff(jidx,:),'k'); grid on;
 %     title(['joint',num2str(jidx)]);
 % end
+
+    case 'dynamic_ground'
+%% dynamic analysis during cleaning ground
+rbtdef = CreateRobot();
+rbtdef.tool = SE3(rotx(0), [0,0,0.51]);
+rbtdyn = RobotDynamics(rbtdef);
+rbtdyn.LoadParams('gravity/gravity_parameters.txt','gravity/friction_parameters.txt');
+load('jointdata.mat');
+force_ext = [0,0,-30,0,0,0]';
+for idx=1:size(jpos,2)
+    tau_iden(:,idx) = rbtdyn.GenerateIdenTorque(jpos(:,idx),jvel(:,idx));
+    jaco = rbtdef.jacob0(jpos(:,idx));
+    tau_ext(:,idx) = jaco'*force_ext;
+    tau_test(:,idx) = tau_iden(:,idx)-tau_ext(:,idx);
+    tau_test_up(:,idx) = tau_test(:,idx)+15*ones(6,1);
+    tau_test_down(:,idx) = tau_test(:,idx)-15*ones(6,1);
+end
+
+pnts = 1:size(jpos,2);
+for jidx=1:6
+    if jidx<=3
+        tau_rated = 52;
+    else
+        tau_rated = 10;
+    end
+    figure
+    plot(tau_test(jidx,:),'k-'); grid on; hold on;
+%     plot(pnts, ones(size(pnts))*tau_rated,'r');
+    if jidx==2
+        plot(pnts, -ones(size(pnts))*tau_rated,'r');
+        plot(tau_test_up(jidx,:),'b--');
+        plot(tau_test_down(jidx,:),'b--');
+    end
+    ylabel('tau(Nm)'); title(['joint',num2str(jidx)]);
+end
 
 end
 
