@@ -1,12 +1,13 @@
-# 机械臂运动控制仿真
+# 机器人运动学动力学以及规划算法
+本仓库包含串联机器人（六轴机械臂）的运动学和动力学建模，笛卡尔空间和关节空间的轨迹规划，以及机器人阻抗和导纳控制算法(`robot kinematic dynamic planning algorithm`)，并建立了simscape模型进行可视化仿真。
 
 ## 运行环境
 Matlab2018b
 
 ## 依赖
-Robotics ToolBox    --  v10.4
-MQTT in MATLAB  --  v1.4
-Real-Time Pacer for Simulink    --  v1.0.0.1
+- Robotics ToolBox    --  v10.4
+- MQTT in MATLAB  --  v1.4
+- Real-Time Pacer for Simulink    --  v1.0.0.1
 
 ## 架构说明
 1. docs/  
