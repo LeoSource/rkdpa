@@ -27,7 +27,7 @@ end
 
 rbt = CreateRobot();
 dt = 0.01;
-test_name = 'toilet';
+test_name = 'common';
 if strcmp(test_name, 'workspace')
     PlotWorkspace(rbt)
 else
@@ -51,7 +51,8 @@ function rbt = CreateRobot()
                         0, d5, 0, -pi/2, 0, 0;...
                         0, d6, 0, pi/2, 0, 0];
     % pose_tool = SE3(rotx(-10), [0,0,0.116]);
-    tool_toiletlid = SE3(rotx(0), [0,-0.035,0.23]);
+%     tool_toiletlid = SE3(rotx(0), [0,-0.035,0.23]);
+    tool_toiletlid = SE3(rotx(0), [0,0,0]);
     qmin = [-pi, -pi/2, -4*pi/3, -pi, -pi, -2*pi]';
     qmax = [pi, pi/2, pi/3, pi, pi, 2*pi]';
     rbt = SerialLink(mdh_table, 'modified', 'name', 'CleanRobot', 'tool',tool_toiletlid);
@@ -103,33 +104,42 @@ function [output_pos,joint_plot,compare_cpp] = PlanCommon(rbt, dt)
     compare_cpp = 0;
     compare_plan = 0;
 
-    q0 =  deg2rad([0, -35, 50, -100, -90, 0]');
+%     q0 =  deg2rad([0, -35, 50, -100, -90, 0]');
+%     taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+%                                                 g_cvmax,g_camax,compare_plan);
+%     
+%     qtable = deg2rad([-5,-2,-12,9,-93,-3]');
+%     q00 = zeros(6,1);
+%     q1 = deg2rad([90,-30,20,-90,-110,-90]');
+%     q2 = deg2rad([45,30,20,-20,-90,90]');
+%     q3 = deg2rad([0,-50,-30,0,90,0]');
+%     q4 = deg2rad([-90,-30,20,-90,-110,-90]');
+%     q5 = deg2rad([-45,30,20,-20,-90,-90]');
+%     q6 = deg2rad([0,-50,-30,0,90,0]');
+%     qfatigue = [q00,q1,q2,q3,q4,q5,q6,q00];
+%     qstandby = deg2rad([0,-35,20,65,-90,0]');
+%     
+%     taskplanner.AddTraj([qtable,qfatigue,qstandby], 'joint', 1);
+    q0 = deg2rad([0,0,0,0,-90,0]');
     taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                                 g_cvmax,g_camax,compare_plan);
-    
-    qtable = deg2rad([-5,-2,-12,9,-93,-3]');
-    q00 = zeros(6,1);
-    q1 = deg2rad([90,-30,20,-90,-110,-90]');
-    q2 = deg2rad([45,30,20,-20,-90,90]');
-    q3 = deg2rad([0,-50,-30,0,90,0]');
-    q4 = deg2rad([-90,-30,20,-90,-110,-90]');
-    q5 = deg2rad([-45,30,20,-20,-90,-90]');
-    q6 = deg2rad([0,-50,-30,0,90,0]');
-    qfatigue = [q00,q1,q2,q3,q4,q5,q6,q00];
-    qstandby = deg2rad([0,-35,20,65,-90,0]');
-    
-    taskplanner.AddTraj([qtable,qfatigue,qstandby], 'joint', 1);
+    pos_rpy1 = [0.8,0,0.23,-pi,-pi/6,0]';
+    pos_rpy2 = [0.3,0.2,0.23,-pi,-pi/6,0]';
+    pos_rpy3 = [0.8,0,0.1,-pi,-pi/6,0]';
+    pos_rpy4 = [0.2,0.6,0.23,-pi,-pi/6,0]';
+    via_posrpy = [pos_rpy1,pos_rpy2,pos_rpy3,pos_rpy4];
+    taskplanner.AddTraj(via_posrpy,'cartesian',true);
 
-%     [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
+    [cpos,cvel,cacc,jpos,jvel,jacc,cpos_sim] = taskplanner.GenerateBothTraj(dt);
     % [cpos,cve,cacc] = taskplanner.GenerateCartTraj(dt);
-    [jpos,~,~] = taskplanner.GenerateJointTraj(dt);
+%     [jpos,~,~] = taskplanner.GenerateJointTraj(dt);
     output_pos = jpos;
     
-%     figure
-%     plot2(cpos(1:3,:)', 'r--'); hold on;%plot2(cpos_sim', 'k');
-%     plot2(via_posrpy(1:3,:)', 'bo'); axis equal;%axis square vis3d;
+    figure
+    plot2(cpos(1:3,:)', 'r--'); hold on;%plot2(cpos_sim', 'k');
+    plot2(via_posrpy(1:3,:)', 'bo'); axis equal;%axis square vis3d;
 %     PlotRPY(cpos, 60); hold off;
-%     grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+    grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
 end
 
 %% simulate toilet lifting

@@ -169,7 +169,7 @@ classdef ArcPlanner < handle
                 r = obj.rpy_initial;
                 vr = zeros(3,1);
                 ar = zeros(3,1);
-            elseif strcmp(obj.option,'rot')
+            elseif strcmp(obj.option,'rot') 
                 [r,vr,ar] = obj.GenerateRotMotion(t);
                 p = obj.pos_initial;
                 vp = zeros(3,1);

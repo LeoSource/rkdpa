@@ -17,6 +17,10 @@ classdef CartesianPlanner < handle
     properties
         segpath_planner
         ntraj
+        seg_idx
+        t
+        cycle_time
+        plan_completed
 
         pos_corner
         rpy_corner
@@ -31,12 +35,16 @@ classdef CartesianPlanner < handle
     end
 
     methods
-        function obj = CartesianPlanner(pos_rpy0, conti_type)
+        function obj = CartesianPlanner(pos_rpy0, conti_type, cycle_time)
             obj.pos_corner = pos_rpy0(1:3);
             obj.rpy_corner = pos_rpy0(4:6);
             obj.ntraj = 0;
             obj.continuity = conti_type;
             obj.trans_ratio = 0.3;
+            obj.seg_idx = 1; 
+            obj.t = 0;
+            obj.cycle_time = cycle_time;
+            obj.plan_completed = false;
         end
         
         function AddPosRPY(obj,pos_rpy,cvmax,camax)
@@ -165,6 +173,67 @@ classdef CartesianPlanner < handle
                 [p,vp,ap,r,vr,ar] = obj.segpath_planner{idx}.GenerateTraj(dt);
                 pos = [pos,p]; pvel = [pvel,vp]; pacc = [pacc, ap];
                 rpy = [rpy,r]; rvel = [rvel, vr]; racc = [racc, ar];
+            end
+        end
+        
+        function [p,pv,pa,r,rv,ra] = GenerateMotion(obj)
+            if obj.continuity
+                [p,pv,pa,r,rv,ra] = obj.GenerateContiMotion();
+            else
+                [p,pv,pa,r,rv,ra] = obj.GenerateDiscontiMotion();
+            end
+        end
+        
+        function [p,pv,pa,r,rv,ra] = GenerateContiMotion(obj)
+            [p,pv,pa,r,rv,ra] = obj.segpath_planner{obj.seg_idx}.GenerateMotion(obj.t);
+            if (obj.seg_idx==obj.ntraj) && (abs(obj.t-obj.segpath_planner{obj.seg_idx}.tf)<1e-5)
+                obj.plan_completed = true;
+            else
+                tf = obj.segpath_planner{obj.seg_idx}.tf;
+                tf_int = floor(tf/obj.cycle_time)*obj.cycle_time;
+                if (mod(obj.seg_idx,2)==1) && (abs(obj.t-tf_int+obj.cycle_time)<1e-5) && (obj.seg_idx~=obj.ntraj)
+                    % plan the next trajectory: arc segment
+                    [pos1,v1,~,rpy1,~,~] = obj.segpath_planner{obj.seg_idx}.GenerateMotion(tf_int);
+                    pos2 = obj.pos_corner(:,(obj.seg_idx+1)/2+1);
+                    pos3 = obj.UpdateSegPos(pos1,pos2,obj.pos_corner(:,(obj.seg_idx+1)/2+2));
+                    vcons = norm(v1(:,end));
+                    obj.segpath_planner{obj.seg_idx+1} = ArcPlanner(pos1,pos2,pos3,vcons,obj.amax(1),[vcons,vcons],...
+                                                            rpy1,rpy1,[],[],[], 'arctrans');
+                    obj.seg_idx = obj.seg_idx+1;
+                    obj.t = -obj.cycle_time;
+                elseif (mod(obj.seg_idx,2)==0) && (abs(obj.t-tf_int+obj.cycle_time)<1e-5)
+                    % plan the next trajectory: line segment
+                    [pos0,vp,~,rpy0,~,~] = obj.segpath_planner{obj.seg_idx}.GenerateMotion(tf_int);
+                    rpyn = obj.rpy_corner(:,obj.seg_idx/2+2);
+                    v0 = norm(vp);
+                    if obj.seg_idx==obj.ntraj-1
+                        posn = obj.pos_corner(:,end);
+                        vf = 0;
+                    else
+                        posn = obj.pos_seg(:,obj.seg_idx+1);
+                        vf = obj.varc(obj.seg_idx/2+1);
+                    end
+                    obj.segpath_planner{obj.seg_idx+1} = LinePlanner(pos0,posn,obj.vmax(1),obj.amax(1),[v0,vf],...
+                                        rpy0,rpyn,obj.vmax(2),obj.amax(2),[0,0]);
+                    obj.seg_idx = obj.seg_idx+1;
+                    obj.t = -obj.cycle_time;
+                end
+                obj.t = obj.t+obj.cycle_time;
+                obj.t = LimitNumber(0,obj.t,obj.segpath_planner{obj.seg_idx}.tf);
+            end
+        end
+        
+        function [p,pv,pa,r,rv,ra] = GenerateDiscontiMotion(obj)
+            [p,pv,pa,r,rv,ra] = obj.segpath_planner{obj.seg_idx}.GenerateMotion(obj.t);
+            obj.t = obj.t + obj.cycle_time;
+            obj.t = LimitNumber(0,obj.t,obj.segpath_planner{obj.seg_idx}.tf);
+            if (obj.seg_idx==obj.ntraj) && (abs(obj.t-obj.segpath_planner{obj.seg_idx}.tf)<1e-5)
+                obj.plan_completed = true;
+            else
+                if (abs(obj.t-obj.segpath_planner{obj.seg_idx}.tf)<1e-5)
+                    obj.seg_idx  = obj.seg_idx + 1;
+                    obj.t = 0;
+                end
             end
         end
         

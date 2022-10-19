@@ -12,6 +12,8 @@ classdef TaskTrajPlanner < handle
         traj_type
 %         tf
         segplanner
+        seg_idx
+        task_completed
 
         robot
         pre_q
@@ -36,6 +38,8 @@ classdef TaskTrajPlanner < handle
             obj.pre_q = q0;
             obj.compare_plan = compare_plan;
             obj.ntraj = 0;
+            obj.seg_idx = 1;
+            obj.task_completed = false;
             obj.pre_trajq = q0;
             obj.pre_trajpose = obj.robot.fkine(q0);
             obj.cycle_time = cycle_time;
@@ -85,7 +89,7 @@ classdef TaskTrajPlanner < handle
             case 'cartesian'
                 pos0 = obj.pre_trajpose.t;
                 rpy0 = tr2rpy(obj.pre_trajpose,'xyz')';
-                cplanner = CartesianPlanner([pos0;rpy0], traj_opt);
+                cplanner = CartesianPlanner([pos0;rpy0], traj_opt, obj.cycle_time);
                 cplanner.AddPosRPY(via_pos,vmax,amax);
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = cplanner;
@@ -332,6 +336,28 @@ classdef TaskTrajPlanner < handle
                     obj.pre_trajq = jp(:,end);
                     obj.pre_trajpose = obj.robot.fkine(obj.pre_trajq);
                     jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
+                end
+            end
+        end
+        
+        function [cp,cv,ca,jp,jv,ja] = GenerateBothMotion(obj,t)
+            switch obj.traj_type{obj.seg_idx}
+                case 'cartesian'
+                    [p,vp,ap,r,vr,ar] = obj.segplanner{obj.seg_idx}.GenerateMotion();
+                    cp = [p;r]; cv = [vp;vr]; ca = [ap;ar];
+                    [jp,jv,ja,~] = obj.Transform2Joint(cp,cv,ca);
+                
+                
+            end
+            
+            if obj.segplanner{obj.seg_idx}.plan_completed
+                if obj.seg_idx==obj.ntraj
+                    obj.task_completed = true;
+                    obj.pre_trajq = jp;
+                    obj.pre_trajpose = SE3.rpy(180/pi*cp(4:6)', 'xyz');
+                    obj.pre_trajpose.t = cp(1:3);
+                else
+                    obj.seg_idx = obj.seg_idx+1;
                 end
             end
         end
