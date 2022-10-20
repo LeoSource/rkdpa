@@ -8,17 +8,25 @@ classdef JointPlanner < handle
         segplanner
         plan_idx
         unplan_idx
+        seg_idx
+        t
+        cycle_time
+        plan_completed
 
         sync
     end
 
     methods
-        function obj = JointPlanner(q0,sync)
+        function obj = JointPlanner(q0,sync,cycle_time)
             obj.jpos = q0;
             obj.sync = sync;
             obj.nj = length(q0);
             obj.plan_idx = [];
             obj.unplan_idx = [];
+            obj.seg_idx = 1;
+            obj.t = 0;
+            obj.cycle_time = cycle_time;
+            obj.plan_completed = false;
         end
 
         function AddJntPos(obj,q,jvmax,jamax)
@@ -54,8 +62,30 @@ classdef JointPlanner < handle
             end
         end
 
-
-        function [p,v,a] = GenerateMotion(obj,traj_idx,t)
+        function [p,v,a] = GenerateMotion(obj)
+            [p,v,a] = obj.GenerateSegMotion(obj.seg_idx,obj.t);
+            obj.t = obj.t+obj.cycle_time;       
+            if (obj.seg_idx==obj.ntraj) && (abs(obj.t-obj.tf(obj.seg_idx)<1e-5))
+                obj.plan_completed = true;
+            else
+                if (abs(obj.t-obj.tf(obj.seg_idx)<1e-5))
+                    obj.seg_idx  = obj.seg_idx + 1;
+                    obj.t = 0;
+                end
+            end
+        end
+        
+        function [pos,vel,acc] = GenerateTraj(obj,dt)
+            pos = []; vel = []; acc = [];
+            for traj_idx=1:obj.ntraj
+                for t=0:dt:obj.tf(traj_idx)
+                    [p,v,a] = obj.GenerateSegMotion(traj_idx,t);
+                    pos = [pos,p]; vel = [vel,v]; acc = [acc, a];
+                end
+            end
+        end
+        
+        function [p,v,a] = GenerateSegMotion(obj,traj_idx,t)
             p = zeros(obj.nj,1); v = zeros(obj.nj,1); a = zeros(obj.nj,1);
             if ~isempty(obj.plan_idx{traj_idx})
                 for idx=obj.plan_idx{traj_idx}
@@ -70,15 +100,7 @@ classdef JointPlanner < handle
             end
         end
 
-        function [pos,vel,acc] = GenerateTraj(obj,dt)
-            pos = []; vel = []; acc = [];
-            for traj_idx=1:obj.ntraj
-                for t=0:dt:obj.tf(traj_idx)
-                    [p,v,a] = obj.GenerateMotion(traj_idx,t);
-                    pos = [pos,p]; vel = [vel,v]; acc = [acc, a];
-                end
-            end
-        end
+
 
     end
 

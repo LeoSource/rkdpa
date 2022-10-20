@@ -101,7 +101,7 @@ classdef TaskTrajPlanner < handle
                                                             obj.robot.n,1);
                 end
             case 'joint'
-                jplanner = JointPlanner(obj.pre_trajq, traj_opt);
+                jplanner = JointPlanner(obj.pre_trajq, traj_opt,obj.cycle_time);
                 jplanner.AddJntPos(via_pos, vmax, amax);
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = jplanner;
@@ -342,8 +342,11 @@ classdef TaskTrajPlanner < handle
             end
         end
         
-        function [cp,cv,ca,jp,jv,ja] = GenerateBothMotion(obj,t)
+        function [cp,cv,ca,jp,jv,ja] = GenerateBothMotion(obj)
             switch obj.traj_type{obj.seg_idx}
+                case 'joint'
+                    [jp,jv,ja] = obj.segplanner{obj.seg_idx}.GenerateMotion();
+                    [cp,cv,ca] = obj.Transform2Cart(jp,jv,ja);
                 case 'cartesian'
                     [p,vp,ap,r,vr,ar] = obj.segplanner{obj.seg_idx}.GenerateMotion();
                     cp = [p;r]; cv = [vp;vr]; ca = [ap;ar];
