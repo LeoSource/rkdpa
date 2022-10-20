@@ -141,7 +141,7 @@ classdef TaskTrajPlanner < handle
                 %add line trajectory befor arc for transition
                 pos0 = obj.pre_trajpose.t;
                 rpy0 = tr2rpy(obj.pre_trajpose, 'xyz')';
-                cplanner = CartesianPlanner([pos0;rpy0], false);
+                cplanner = CartesianPlanner([pos0;rpy0], false, obj.cycle_time);
                 cplanner.AddPosRPY(via_pos(:,1),vmax,amax);
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = cplanner;
@@ -155,8 +155,10 @@ classdef TaskTrajPlanner < handle
                 %add arc trajectory
                 pos1 = via_pos(1:3,1); pos2 = via_pos(1:3,2); pos3 = via_pos(1:3,3);
                 rpy1 = via_pos(4:6,1); rpy3 = via_pos(4:6,3);
-                arcplanner = ArcPlanner(pos1,pos2,pos3,vmax(1),amax(1),[0,0],...
-                                        rpy1,rpy3,vmax(2),amax(2),[0,0], 'arc');
+                arcplanner = CartesianPlanner([],[],obj.cycle_time);
+                arcplanner.AddArc(pos1,pos2,pos3,vmax(1),amax(1),rpy1,rpy3,vmax(2),amax(2));
+%                 arcplanner = ArcPlanner(pos1,pos2,pos3,vmax(1),amax(1),[0,0],...
+%                                         rpy1,rpy3,vmax(2),amax(2),[0,0], 'arc');
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = arcplanner;
                 obj.traj_type{obj.ntraj} = 'arc';
@@ -346,8 +348,10 @@ classdef TaskTrajPlanner < handle
                     [p,vp,ap,r,vr,ar] = obj.segplanner{obj.seg_idx}.GenerateMotion();
                     cp = [p;r]; cv = [vp;vr]; ca = [ap;ar];
                     [jp,jv,ja,~] = obj.Transform2Joint(cp,cv,ca);
-                
-                
+                case 'arc'
+                    [p,vp,ap,r,vr,ar] = obj.segplanner{obj.seg_idx}.GenerateMotion();
+                    cp = [p;r]; cv = [vp;vr]; ca = [ap;ar];
+                    [jp,jv,ja,~] = obj.Transform2Joint(cp,cv,ca);
             end
             
             if obj.segplanner{obj.seg_idx}.plan_completed

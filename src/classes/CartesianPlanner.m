@@ -36,15 +36,33 @@ classdef CartesianPlanner < handle
 
     methods
         function obj = CartesianPlanner(pos_rpy0, conti_type, cycle_time)
-            obj.pos_corner = pos_rpy0(1:3);
-            obj.rpy_corner = pos_rpy0(4:6);
-            obj.ntraj = 0;
-            obj.continuity = conti_type;
-            obj.trans_ratio = 0.3;
-            obj.seg_idx = 1; 
-            obj.t = 0;
-            obj.cycle_time = cycle_time;
-            obj.plan_completed = false;
+            if ~isempty(pos_rpy0)
+                obj.pos_corner = pos_rpy0(1:3);
+                obj.rpy_corner = pos_rpy0(4:6);
+                obj.ntraj = 0;
+                obj.continuity = conti_type;
+                obj.trans_ratio = 0.3;
+                obj.seg_idx = 1; 
+                obj.t = 0;
+                obj.cycle_time = cycle_time;
+                obj.plan_completed = false;
+            else
+                obj.ntraj = 0;
+                obj.continuity = false;
+                obj.seg_idx = 1;
+                obj.t = 0;
+                obj.plan_completed = false;
+                obj.cycle_time = cycle_time;
+            end
+        end
+        
+        function AddArc(obj,pos1,pos2,pos3,line_vmax,line_amax,rpy1,rpy3,ang_vmax,ang_amax)
+            obj.pos_corner = [obj.pos_corner,pos3];
+            obj.rpy_corner = [obj.rpy_corner,rpy3];
+            obj.ntraj = obj.ntraj+1;                      
+            obj.segpath_planner{obj.ntraj} = ArcPlanner(pos1,pos2,pos3,line_vmax,line_amax,[0,0],...
+                                                                    rpy1,rpy3,ang_vmax,ang_amax,[0,0], 'arc');
+            
         end
         
         function AddPosRPY(obj,pos_rpy,cvmax,camax)
