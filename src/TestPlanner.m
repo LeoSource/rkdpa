@@ -11,13 +11,15 @@ g_jamax = [pi/4, pi/4, pi/2, pi/4, pi/4, pi/4];
 g_cvmax = [0.4, 0.6]; g_camax = [0.8, 1.2];
 g_cycle_time = 0.005;
 
-test_case = 'cartesian';
+test_case = 'taskplanner';
 switch test_case
     case 'lspb'
         % test for lspb planner
 %         lspbplanner = LspbPlanner(-10,3,4,3,[-2,3]);
         lspbplanner = LspbPlanner(0,0.5,0.5,[],[0.5,0]);
         lspbplanner.PlotAVP(g_cycle_time);
+        
+        
     case 'line'
         lineplanner = LinePlanner([0,0,0]',[],0.5,0.5,[[0.1,0,0]',[0,0,0.1]'],...
                             [0,0,0]',[0,0,0]',0.5,0.5,[0,0]);
@@ -29,6 +31,8 @@ switch test_case
         figure
         plot2(cpos(1:3,:)', 'r--'); hold on;
         grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+        
+        
     case 'cartesian'
         pos0 = [0,0,0]'; rpy0 = tr2rpy(rotx(0));
         cplanner = CartesianPlanner([pos0;rpy0'],false,g_cycle_time);
@@ -52,37 +56,42 @@ switch test_case
         plot2(cpos(1:3,:)', 'r--'); hold on;
         plot2(via_posrpy(1:3,:)', 'bo'); axis equal;
         grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+        
+        
     case 'taskplanner'
         rbt = CreateRobot();
         q0 = deg2rad([0,0,0,0,-90,0]');
         % q0 = deg2rad([-40,65,40,-35,-90,0]');
         compare_plan = false;
-        taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+        taskplanner = TaskTrajPlanner([],rbt.fkine(q0),g_cycle_time,g_jvmax,g_jamax,...
                                                     g_cvmax,g_camax,compare_plan);
-        taskplanner.AddTraj(zeros(6,1),'joint',true);
+%         taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
+%                                                     g_cvmax,g_camax,compare_plan);
+%         taskplanner.AddTraj(zeros(6,1),'joint',true);
         % test for cartesian planner
-        % pos_rpy1 = [0.8,0,0.23,-pi,-pi/6,0]';
-        % pos_rpy2 = [0.3,0.2,0.23,-pi,-pi/6,0]';
-        % pos_rpy3 = [0.8,0,0.1,-pi,-pi/6,0]';
-        % pos_rpy4 = [0.2,0.6,0.23,-pi,-pi/6,0]';
-        % via_posrpy = [pos_rpy1,pos_rpy2,pos_rpy3,pos_rpy4];
-        % taskplanner.AddTraj(via_posrpy,'cartesian',true);
+        pos_rpy1 = [0.8,0,0.23,-pi,-pi/6,0]';
+        pos_rpy2 = [0.3,0.2,0.23,-pi,-pi/6,0]';
+        pos_rpy3 = [0.8,0,0.1,-pi,-pi/6,0]';
+        pos_rpy4 = [0.2,0.6,0.23,-pi,-pi/6,0]';
+        via_posrpy = [pos_rpy1,pos_rpy2,pos_rpy3,pos_rpy4];
+        taskplanner.AddTraj(via_posrpy,'cartesian',true);
 
         % test for joint and arc planner
-        a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
-        vision_pos = [a,b,c];
-        via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, -110*pi/180, 90*pi/180, 0.05);
-        tmp_jpos = [-40,65,40,-35,-90,0]'*pi/180;
-        taskplanner.AddTraj(tmp_jpos, 'joint', true);
-        taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', false);
-        taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', false);
+%         a = [0.89, 0.178, -0.3627]'; b = [0.87426, -0.19926, -0.36788]'; c = [0.5006, -0.1645, -0.3838]';
+%         vision_pos = [a,b,c];
+%         via_posrpy = PlanToiletlidPath(vision_pos, 110*pi/180, -110*pi/180, 90*pi/180, 0.05);
+%         tmp_jpos = [-40,65,40,-35,-90,0]'*pi/180;
+%         taskplanner.AddTraj(tmp_jpos, 'joint', true);
+%         taskplanner.AddTraj(via_posrpy(:,1), 'cartesian', false);
+%         taskplanner.AddTraj(via_posrpy(:,2:end), 'arc', false);
 
         cpos=[]; cvel=[]; cacc=[];
         jpos=[]; jvel=[]; jacc=[];
         while ~taskplanner.task_completed
-            [cp,cv,ca,jp,jv,ja] = taskplanner.GenerateBothMotion();
+%             [cp,cv,ca,jp,jv,ja] = taskplanner.GenerateBothMotion();
+            [cp,cv,ca] = taskplanner.GenerateCartMotion();
             cpos = [cpos,cp]; cvel = [cvel,cv]; cacc = [cacc,ca];
-            jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
+%             jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
         end
 
         figure
