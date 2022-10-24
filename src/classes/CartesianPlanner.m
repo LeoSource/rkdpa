@@ -65,6 +65,7 @@ classdef CartesianPlanner < handle
             
         end
         
+        %% Add line, arc and their mixture trajectories
         function AddPosRPY(obj,pos_rpy,cvmax,camax)
             obj.vmax = cvmax;
             obj.amax = camax;
@@ -136,6 +137,20 @@ classdef CartesianPlanner < handle
                                                         rpy0,rpyn,obj.vmax(2),obj.amax(2),[0,0]);
         end
 
+        function Stop(obj,cp,cv)
+            obj.continuity = false;
+            obj.plan_completed = false;
+            obj.pos_corner = cp(1:3);
+            obj.rpy_corner = cp(4:6);
+            obj.ntraj = 1;
+            obj.seg_idx = 1;
+            obj.t = 0;
+            obj.segpath_planner = {};
+            obj.segpath_planner{1} = LinePlanner(obj.pos_corner,[],obj.vmax(1),obj.amax(1),[cv(1:3),zeros(3,1)],...
+                            obj.rpy_corner,obj.rpy_corner,obj.vmax(2),obj.amax(2),[0,0]);
+            
+        end
+        %% Generate trajectory
         function [pos,pvel,pacc,rpy,rvel,racc] = GenerateTraj(obj,dt)
             if obj.continuity
                 [pos,pvel,pacc,rpy,rvel,racc] = obj.GenerateContiTraj(dt);
@@ -194,6 +209,7 @@ classdef CartesianPlanner < handle
             end
         end
         
+        %% Generate motion
         function [p,pv,pa,r,rv,ra] = GenerateMotion(obj)
             if obj.continuity
                 [p,pv,pa,r,rv,ra] = obj.GenerateContiMotion();
@@ -255,6 +271,7 @@ classdef CartesianPlanner < handle
             end
         end
         
+        %% mached tool function
         function pos = UpdateSegPos(obj,p1,p2,p3_corner)
             line_len = norm(p2-p1);
             dir_p2p3 = (p3_corner-p2)/norm(p3_corner-p2);
