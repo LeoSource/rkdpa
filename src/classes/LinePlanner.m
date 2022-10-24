@@ -68,13 +68,20 @@ classdef LinePlanner < handle
 %                 obj.pos_dir = (vel_cons(:,2)-vel_cons(:,1))/vel_len;
 %                 obj.pos_uplanner = LspbPlanner(0,line_vmax,line_amax,[],[v0,vf]);
 %                 obj.tf_pos = obj.pos_uplanner.ta;
-                obj.pvel_uplanner{1} = LspbPlanner(pos0(1),line_vmax,line_amax,[],vel_cons(1,:));
-                obj.pvel_uplanner{2} = LspbPlanner(pos0(2),line_vmax,line_amax,[],vel_cons(2,:));
-                obj.pvel_uplanner{3} = LspbPlanner(pos0(3),line_vmax,line_amax,[],vel_cons(3,:));
-                obj.tf_pos = max([obj.pvel_uplanner{1}.ta,obj.pvel_uplanner{2}.ta,obj.pvel_uplanner{3}.ta]);
-                obj.pvel_uplanner{1} = LspbPlanner(pos0(1),line_vmax,line_amax,obj.tf_pos,vel_cons(1,:));
-                obj.pvel_uplanner{2} = LspbPlanner(pos0(2),line_vmax,line_amax,obj.tf_pos,vel_cons(2,:));
-                obj.pvel_uplanner{3} = LspbPlanner(pos0(3),line_vmax,line_amax,obj.tf_pos,vel_cons(3,:));
+                if isempty(tf)
+                    obj.pvel_uplanner{1} = LspbPlanner(pos0(1),line_vmax,line_amax,[],vel_cons(1,:));
+                    obj.pvel_uplanner{2} = LspbPlanner(pos0(2),line_vmax,line_amax,[],vel_cons(2,:));
+                    obj.pvel_uplanner{3} = LspbPlanner(pos0(3),line_vmax,line_amax,[],vel_cons(3,:));
+                    obj.tf_pos = max([obj.pvel_uplanner{1}.ta,obj.pvel_uplanner{2}.ta,obj.pvel_uplanner{3}.ta]);
+                    obj.pvel_uplanner{1} = LspbPlanner(pos0(1),line_vmax,line_amax,obj.tf_pos,vel_cons(1,:));
+                    obj.pvel_uplanner{2} = LspbPlanner(pos0(2),line_vmax,line_amax,obj.tf_pos,vel_cons(2,:));
+                    obj.pvel_uplanner{3} = LspbPlanner(pos0(3),line_vmax,line_amax,obj.tf_pos,vel_cons(3,:));
+                else
+                    obj.tf_pos = tf;
+                    obj.pvel_uplanner{1} = LspbPlanner(pos0(1),line_vmax,line_amax,obj.tf_pos,vel_cons(1,:));
+                    obj.pvel_uplanner{2} = LspbPlanner(pos0(2),line_vmax,line_amax,obj.tf_pos,vel_cons(2,:));
+                    obj.pvel_uplanner{3} = LspbPlanner(pos0(3),line_vmax,line_amax,obj.tf_pos,vel_cons(3,:));
+                end
             else
                 line_len = norm(posn-pos0);
                 obj.pos_len = line_len;
@@ -89,16 +96,33 @@ classdef LinePlanner < handle
         end
 
         function InitRotPlanner(obj, rpy0, rpyn, ang_vmax, ang_amax, tf,vel_cons)
-            delta_rot = rpy2r(180/pi*rpyn','xyz')*rpy2r(180/pi*rpy0','xyz')';
-            [rpy_len, obj.rot_dir] = tr2angvec(delta_rot);
-            obj.rot_dir = reshape(obj.rot_dir, 3,1);
-            obj.rot_len = rpy_len;
-            if isempty(tf)
-                obj.rot_uplanner = LspbPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
+            if isempty(rpyn)
+                if isempty(tf)
+                    obj.rvel_uplanner{1} = LspbPlanner(0,ang_vmax,ang_amax,[],vel_cons(1,:));
+                    obj.rvel_uplanner{2} = LspbPlanner(0,ang_vmax,ang_amax,[],vel_cons(2,:));
+                    obj.rvel_uplanner{3} = LspbPlanner(0,ang_vmax,ang_amax,[],vel_cons(3,:));
+                    obj.tf_rot = max([obj.rvel_uplanner{1}.ta,obj.rvel_uplanner{2}.ta,obj.rvel_uplanner{3}.ta]);
+                    obj.rvel_uplanner{1} = LspbPlanner(0,ang_vmax,ang_amax,obj.tf_rot,vel_cons(1,:));
+                    obj.rvel_uplanner{2} = LspbPlanner(0,ang_vmax,ang_amax,obj.tf_rot,vel_cons(2,:));
+                    obj.rvel_uplanner{3} = LspbPlanner(0,ang_vmax,ang_amax,obj.tf_rot,vel_cons(3,:));
+                else
+                    obj.tf_rot = tf;
+                    obj.rvel_uplanner{1} = LspbPlanner(0,ang_vmax,ang_amax,obj.tf_rot,vel_cons(1,:));
+                    obj.rvel_uplanner{2} = LspbPlanner(0,ang_vmax,ang_amax,obj.tf_rot,vel_cons(2,:));
+                    obj.rvel_uplanner{3} = LspbPlanner(0,ang_vmax,ang_amax,obj.tf_rot,vel_cons(3,:));
+                end
             else
-                obj.rot_uplanner = LspbPlanner([0,rpy_len], ang_vmax, ang_amax, tf,vel_cons);
+                delta_rot = rpy2r(180/pi*rpyn','xyz')*rpy2r(180/pi*rpy0','xyz')';
+                [rpy_len, obj.rot_dir] = tr2angvec(delta_rot);
+                obj.rot_dir = reshape(obj.rot_dir, 3,1);
+                obj.rot_len = rpy_len;
+                if isempty(tf)
+                    obj.rot_uplanner = LspbPlanner([0,rpy_len], ang_vmax, ang_amax, [], vel_cons);
+                else
+                    obj.rot_uplanner = LspbPlanner([0,rpy_len], ang_vmax, ang_amax, tf,vel_cons);
+                end
+                obj.tf_rot = obj.rot_uplanner.tf;
             end
-            obj.tf_rot = obj.rot_uplanner.tf;
         end
         
         function CalcTrajOption(obj, pos_rpy1, pos_rpy2)
