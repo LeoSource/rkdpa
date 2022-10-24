@@ -11,12 +11,19 @@ g_jamax = [pi/4, pi/4, pi/2, pi/4, pi/4, pi/4];
 g_cvmax = [0.4, 0.6]; g_camax = [0.8, 1.2];
 g_cycle_time = 0.005;
 
+
+lspbplanner = LspbPlanner(-10,3,4,3,[-2,3]);
+lspbplanner.PlotAVP(g_cycle_time)
+
+
+
 rbt = CreateRobot();
 q0 = deg2rad([0,0,0,0,-90,0]');
 % q0 = deg2rad([-40,65,40,-35,-90,0]');
 compare_plan = false;
 taskplanner = TaskTrajPlanner(rbt,q0,g_cycle_time,g_jvmax,g_jamax,...
                                             g_cvmax,g_camax,compare_plan);
+taskplanner.AddTraj(zeros(6,1),'joint',true);
 % test for cartesian planner
 % pos_rpy1 = [0.8,0,0.23,-pi,-pi/6,0]';
 % pos_rpy2 = [0.3,0.2,0.23,-pi,-pi/6,0]';

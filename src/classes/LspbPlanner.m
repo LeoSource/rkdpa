@@ -24,29 +24,44 @@ classdef LspbPlanner < handle
             % assume that: jmin = -jmax, amin = -amax, vmin = -vmax, t0 = 0
             % generic initial and final values of velocity
             % initial and final accelerations set to zeros
-            obj.np = length(pos);
-            obj.dir = sign(pos(2)-pos(1));
-            h = abs(pos(2)-pos(1));
-            if h>max_vel^2/max_acc
-                obj.maxvel_reached = 1;
+            % add feature: plan only for velocity
+            if isscalar(pos)
+                if vel_cons(2)>max_vel
+                    error('final velocity is greater than maximum limit velocity');
+                end
+                obj.dir = sign(vel_cons(2)-vel_cons(1));
+                vel_h = abs(vel_cons(2)-vel_cons(1));
+                obj.TransformPVA(pos, vel_cons, abs(vel_cons(2)), max_acc);
+                obj.SetVelPlan(vel_h,duration);
             else
-                obj.maxvel_reached = 0;
-            end
-            if nargin==3
-                obj.TransformPVA(pos, [0,0], max_vel, max_acc);
-                obj.SetNoTimeLimit(h);
-            elseif nargin==4
-                obj.TransformPVA(pos, [0,0], max_vel, max_acc);
-                obj.SetTimeLimit(h, duration);
-            elseif nargin==5
-                obj.TransformPVA(pos, vel_cons, max_vel, max_acc);
-                obj.SetVelConstraint(h, duration);
+                obj.np = length(pos);
+                obj.dir = sign(pos(2)-pos(1));
+                h = abs(pos(2)-pos(1));
+                if h>max_vel^2/max_acc
+                    obj.maxvel_reached = 1;
+                else
+                    obj.maxvel_reached = 0;
+                end
+                if nargin==3
+                    obj.TransformPVA(pos, [0,0], max_vel, max_acc);
+                    obj.SetNoTimeLimit(h);
+                elseif nargin==4
+                    obj.TransformPVA(pos, [0,0], max_vel, max_acc);
+                    obj.SetTimeLimit(h, duration);
+                elseif nargin==5
+                    obj.TransformPVA(pos, vel_cons, max_vel, max_acc);
+                    obj.SetVelConstraint(h, duration);
+                end
             end
         end
 
         function TransformPVA(obj, pos, vel, max_vel, max_acc)
-            obj.q0 = pos(1)*obj.dir;
-            obj.qf = pos(2)*obj.dir;
+            if isscalar(pos)
+                obj.q0 = pos(1)*obj.dir;
+            else
+                obj.q0 = pos(1)*obj.dir;
+                obj.qf = pos(2)*obj.dir;
+            end
             obj.v0 = vel(1)*obj.dir;
             obj.vf = vel(2)*obj.dir;
             obj.vmax = 0.5*(obj.dir+1)*max_vel-0.5*(obj.dir-1)*max_vel;
@@ -135,6 +150,17 @@ classdef LspbPlanner < handle
             end
         end
         
+        function SetVelPlan(obj,h,duration)
+            obj.t0 = 0;
+            if isempty(duration)
+                obj.ta = h/abs(obj.amax);
+            else
+                obj.ta = duration;
+                obj.amax = h/duration;
+            end
+            obj.tf = 3*obj.ta;
+        end
+        
         function [pos, vel, acc] = GenerateTraj(obj, dt)
             pos = []; vel = []; acc = [];
             time_pnts = (obj.tf-obj.t0)/dt;
@@ -148,34 +174,46 @@ classdef LspbPlanner < handle
         end
         
         function [p, v, a] = GenerateMotion(obj, t)
-            if obj.maxvel_reached
-                if t>=obj.t0 && t<obj.ta+obj.t0
-                    p = obj.q0+obj.v0*(t-obj.t0)+0.5*(obj.vmax-obj.v0)/obj.ta*(t-obj.t0)^2;
-                    v = obj.v0+(obj.vmax-obj.v0)/obj.ta*(t-obj.t0);
+            if isempty(obj.qf)
+                if t>=obj.t0 && t<obj.t0+obj.ta
                     a = obj.amax;
-                elseif t>=obj.ta+obj.t0 && t<obj.tf-obj.td
-                    p = obj.q0+0.5*obj.v0*obj.ta+obj.vmax*(t-obj.t0-0.5*obj.ta);
-                    v = obj.vmax;
+                    v = obj.v0+obj.amax*(t-obj.t0);
+                    p = obj.q0+0.5*(t-obj.t0)*(obj.v0+v);
+                else
                     a = 0;
-                elseif t>=obj.tf-obj.td && t<=obj.tf
-                    p = obj.qf-obj.vf*(obj.tf-t)-0.5*(obj.vmax-obj.vf)/obj.td*(obj.tf-t)^2;
-                    v = obj.vf+(obj.vmax-obj.vf)/obj.td*(obj.tf-t);
-                    a = -obj.amax;
+                    v = obj.vmax;
+                    p = obj.q0+0.5*obj.ta*(obj.v0+obj.vmax)+obj.vmax*(t-obj.t0-obj.ta);
                 end
             else
-                if abs(obj.tf-obj.t0)<1e-5
-                    p = obj.q0;
-                    v = 0; 
-                    a = 0;
-                else
-                    if t>=obj.t0 && t<=obj.t0+obj.ta
+                if obj.maxvel_reached
+                    if t>=obj.t0 && t<obj.ta+obj.t0
                         p = obj.q0+obj.v0*(t-obj.t0)+0.5*(obj.vmax-obj.v0)/obj.ta*(t-obj.t0)^2;
                         v = obj.v0+(obj.vmax-obj.v0)/obj.ta*(t-obj.t0);
                         a = obj.amax;
-                    elseif t> obj.tf-obj.td && t<=obj.tf
+                    elseif t>=obj.ta+obj.t0 && t<obj.tf-obj.td
+                        p = obj.q0+0.5*obj.v0*obj.ta+obj.vmax*(t-obj.t0-0.5*obj.ta);
+                        v = obj.vmax;
+                        a = 0;
+                    elseif t>=obj.tf-obj.td && t<=obj.tf
                         p = obj.qf-obj.vf*(obj.tf-t)-0.5*(obj.vmax-obj.vf)/obj.td*(obj.tf-t)^2;
                         v = obj.vf+(obj.vmax-obj.vf)/obj.td*(obj.tf-t);
                         a = -obj.amax;
+                    end
+                else
+                    if abs(obj.tf-obj.t0)<1e-5
+                        p = obj.q0;
+                        v = 0; 
+                        a = 0;
+                    else
+                        if t>=obj.t0 && t<=obj.t0+obj.ta
+                            p = obj.q0+obj.v0*(t-obj.t0)+0.5*(obj.vmax-obj.v0)/obj.ta*(t-obj.t0)^2;
+                            v = obj.v0+(obj.vmax-obj.v0)/obj.ta*(t-obj.t0);
+                            a = obj.amax;
+                        elseif t> obj.tf-obj.td && t<=obj.tf
+                            p = obj.qf-obj.vf*(obj.tf-t)-0.5*(obj.vmax-obj.vf)/obj.td*(obj.tf-t)^2;
+                            v = obj.vf+(obj.vmax-obj.vf)/obj.td*(obj.tf-t);
+                            a = -obj.amax;
+                        end
                     end
                 end
             end
