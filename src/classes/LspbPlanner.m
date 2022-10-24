@@ -158,7 +158,7 @@ classdef LspbPlanner < handle
                 obj.ta = duration;
                 obj.amax = h/duration;
             end
-            obj.tf = 3*obj.ta;
+            obj.tf = 3*obj.ta;%change the ratio when testing
         end
         
         function [pos, vel, acc] = GenerateTraj(obj, dt)
