@@ -137,7 +137,7 @@ classdef CartesianPlanner < handle
                                                         rpy0,rpyn,obj.vmax(2),obj.amax(2),[0,0]);
         end
 
-        function Stop(obj,cp,cv)
+        function Stop(obj,cp,cv,cvmax,camax)
             obj.continuity = false;
             obj.plan_completed = false;
             obj.pos_corner = cp(1:3);
@@ -146,8 +146,8 @@ classdef CartesianPlanner < handle
             obj.seg_idx = 1;
             obj.t = 0;
             obj.segpath_planner = {};
-            obj.segpath_planner{1} = LinePlanner(obj.pos_corner,[],obj.vmax(1),obj.amax(1),[cv(1:3),zeros(3,1)],...
-                            obj.rpy_corner,obj.rpy_corner,obj.vmax(2),obj.amax(2),[0,0]);
+            obj.segpath_planner{1} = LinePlanner(obj.pos_corner,[],cvmax(1),camax(1),[cv(1:3),zeros(3,1)],...
+                            obj.rpy_corner,obj.rpy_corner,cvmax(2),camax(2),[0,0]);
             
         end
         %% Generate trajectory
@@ -225,7 +225,7 @@ classdef CartesianPlanner < handle
             else
                 tf = obj.segpath_planner{obj.seg_idx}.tf;
                 tf_int = floor(tf/obj.cycle_time)*obj.cycle_time;
-                if (mod(obj.seg_idx,2)==1) && (abs(obj.t-tf_int+obj.cycle_time)<1e-5) && (obj.seg_idx~=obj.ntraj)
+                if (mod(obj.seg_idx,2)==1) && (abs(obj.t-tf_int+obj.cycle_time)<obj.cycle_time) && (obj.seg_idx~=obj.ntraj)
                     % plan the next trajectory: arc segment
                     [pos1,v1,~,rpy1,~,~] = obj.segpath_planner{obj.seg_idx}.GenerateMotion(tf_int);
                     pos2 = obj.pos_corner(:,(obj.seg_idx+1)/2+1);
@@ -235,7 +235,7 @@ classdef CartesianPlanner < handle
                                                             rpy1,rpy1,[],[],[], 'arctrans');
                     obj.seg_idx = obj.seg_idx+1;
                     obj.t = -obj.cycle_time;
-                elseif (mod(obj.seg_idx,2)==0) && (abs(obj.t-tf_int+obj.cycle_time)<1e-5)
+                elseif (mod(obj.seg_idx,2)==0) && (abs(obj.t-tf_int+obj.cycle_time)<obj.cycle_time)
                     % plan the next trajectory: line segment
                     [pos0,vp,~,rpy0,~,~] = obj.segpath_planner{obj.seg_idx}.GenerateMotion(tf_int);
                     rpyn = obj.rpy_corner(:,obj.seg_idx/2+2);
@@ -261,7 +261,7 @@ classdef CartesianPlanner < handle
             [p,pv,pa,r,rv,ra] = obj.segpath_planner{obj.seg_idx}.GenerateMotion(obj.t);
             obj.t = obj.t + obj.cycle_time;
             obj.t = LimitNumber(0,obj.t,obj.segpath_planner{obj.seg_idx}.tf);
-            if (obj.seg_idx==obj.ntraj) && (abs(obj.t-obj.segpath_planner{obj.seg_idx}.tf)<1e-5)
+            if (obj.seg_idx==obj.ntraj) && (abs(obj.t-obj.segpath_planner{obj.seg_idx}.tf)<obj.cycle_time)
                 obj.plan_completed = true;
             else
                 if (abs(obj.t-obj.segpath_planner{obj.seg_idx}.tf)<1e-5)

@@ -11,16 +11,17 @@ g_jamax = [pi/4, pi/4, pi/2, pi/4, pi/4, pi/4];
 g_cvmax = [0.4, 0.6]; g_camax = [0.8, 1.2];
 g_cycle_time = 0.005;
 
-test_case = 'taskplanner';
+test_case = 'joint';
 switch test_case
     case 'lspb'
-        % test for lspb planner
+        %% test for lspb planner
 %         lspbplanner = LspbPlanner(-10,3,4,3,[-2,3]);
         lspbplanner = LspbPlanner(0,0.5,0.5,[],[0.5,0]);
         lspbplanner.PlotAVP(g_cycle_time);
         
-        
+
     case 'line'
+        %% test for line planner
         lineplanner = LinePlanner([0,0,0]',[],0.5,0.5,[[0.1,0,0]',[0,0,0.1]'],...
                             [0,0,0]',[0,0,0]',0.5,0.5,[0,0]);
         cpos=[]; cvel=[]; cacc=[];
@@ -33,7 +34,27 @@ switch test_case
         grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
         
         
+    case 'joint'
+        %% test for joint planner
+        q0 = deg2rad([0,0,0,0,-90,0]');
+        qf = deg2rad([-30,55,0,-60,-80,0]');
+        jplanner = JointPlanner(q0,true,g_cycle_time);
+        jplanner.AddJntPos(qf,g_jvmax,g_jamax);
+        
+        jpos = []; jvel = []; jacc = [];
+        time_idx = 0;
+        while ~jplanner.plan_completed
+            [jp,jv,ja] = jplanner.GenerateMotion();
+            jpos = [jpos,jp]; jvel = [jvel,jv]; jacc = [jacc,ja];
+            if time_idx==230
+                jplanner.Stop(jp,jv,g_jvmax,g_jamax);
+            end
+            time_idx = time_idx+1;
+        end
+        
+        
     case 'cartesian'
+        %% test for cartesian planner
         pos0 = [0,0,0]'; rpy0 = tr2rpy(rotx(0));
         cplanner = CartesianPlanner([pos0;rpy0'],false,g_cycle_time);
         pos1 = [2,3,2]'; rpy1 = tr2rpy(rotx(0));
@@ -47,7 +68,7 @@ switch test_case
             [p,pv,pa,r,rv,ra] = cplanner.GenerateMotion();
             cpos = [cpos,[p;r]]; cvel = [cvel,[pv;rv]]; cacc = [cacc,[pa;ra]];
             if time_idx==1000
-                cplanner.Stop([p;r],[pv;rv]);
+                cplanner.Stop([p;r],[pv;rv],[0.5,0.5],[0.5,0.5]);
             end
             time_idx = time_idx+1;
         end
@@ -59,6 +80,7 @@ switch test_case
         
         
     case 'taskplanner'
+        %% test for task planner
         rbt = CreateRobot();
         q0 = deg2rad([0,0,0,0,-90,0]');
         % q0 = deg2rad([-40,65,40,-35,-90,0]');
@@ -87,11 +109,16 @@ switch test_case
 
         cpos=[]; cvel=[]; cacc=[];
         jpos=[]; jvel=[]; jacc=[];
+        time_idx = 0;
         while ~taskplanner.task_completed
 %             [cp,cv,ca,jp,jv,ja] = taskplanner.GenerateBothMotion();
             [cp,cv,ca] = taskplanner.GenerateCartMotion();
             cpos = [cpos,cp]; cvel = [cvel,cv]; cacc = [cacc,ca];
 %             jpos = [jpos,jp]; jvel = [jvel, jv]; jacc = [jacc,ja];
+            if time_idx==1200
+                taskplanner.Stop(cp,cv);
+            end
+            time_idx = time_idx+1;
         end
 
         figure

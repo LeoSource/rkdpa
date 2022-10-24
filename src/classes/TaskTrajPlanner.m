@@ -194,7 +194,18 @@ classdef TaskTrajPlanner < handle
         end
         
         function Stop(obj,p,v)
-            
+            obj.ntraj = 0;
+            obj.task_completed = false;
+            switch obj.traj_type{obj.seg_idx}
+                case 'cartesian'
+                    obj.traj_type = {};
+                    obj.traj_type{1} = 'cartesian';
+                    cplanner = obj.segplanner{obj.seg_idx};
+                    cplanner.Stop(p,v,obj.cvmax,obj.camax);
+                    obj.segplanner{1} = cplanner;
+            end
+            obj.seg_idx = 1;
+            obj.ntraj = 1;
         end
 
         %% Generate Joint-Space and Cartesian-Space Trajectory
@@ -359,6 +370,7 @@ classdef TaskTrajPlanner < handle
             end
         end
         
+        %% Generate Joint-Space and Cartesian-Space Trajectory
         function [cp,cv,ca,jp,jv,ja] = GenerateBothMotion(obj)
             switch obj.traj_type{obj.seg_idx}
                 case 'joint'
@@ -413,6 +425,7 @@ classdef TaskTrajPlanner < handle
             end
         end
 
+        %% matched tool function
         function rpy = CalcCleanToiletRPY(obj,pos)
             % the intersecting line is perpendicular to normal vectors of two intersecting surface
             % z0 is one of normal vector
