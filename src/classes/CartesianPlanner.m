@@ -271,7 +271,7 @@ classdef CartesianPlanner < handle
             end
         end
         
-        %% mached tool function
+        %% related tool function
         function pos = UpdateSegPos(obj,p1,p2,p3_corner)
             line_len = norm(p2-p1);
             dir_p2p3 = (p3_corner-p2)/norm(p3_corner-p2);

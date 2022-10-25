@@ -11,7 +11,7 @@ g_jamax = [pi/4, pi/4, pi/2, pi/4, pi/4, pi/4];
 g_cvmax = [0.4, 0.6]; g_camax = [0.8, 1.2];
 g_cycle_time = 0.005;
 
-test_case = 'joint';
+test_case = 'taskplanner-joint';
 switch test_case
     case 'lspb'
         %% test for lspb planner
@@ -78,6 +78,28 @@ switch test_case
         plot2(via_posrpy(1:3,:)', 'bo'); axis equal;
         grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
         
+        
+        
+    case 'taskplanner-joint'
+        %% test for task planner with only joint trajectory
+        rbt = CreateRobot();
+        q0 = deg2rad([0,0,0,0,-90,0]');
+        compare_plan = false;
+        taskplanner = TaskTrajPlanner([],q0,g_cycle_time,g_jvmax,g_jamax,...
+                                                    g_cvmax,g_camax,compare_plan);
+        qf = deg2rad([-30,55,0,-60,-80,0]');
+        taskplanner.AddTraj(qf,'joint',true);
+         jpos = []; jvel = []; jacc = [];
+        time_idx = 0;
+        while ~taskplanner.task_completed
+            [jp,jv,ja] = taskplanner.GenerateJointMotion();
+            jpos = [jpos,jp]; jvel = [jvel,jv]; jacc = [jacc,ja];
+            if time_idx==230
+                taskplanner.Stop(jp,jv);
+            end
+            time_idx = time_idx+1;
+        end       
+                                                
         
     case 'taskplanner'
         %% test for task planner

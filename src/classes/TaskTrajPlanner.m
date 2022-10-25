@@ -35,7 +35,12 @@ classdef TaskTrajPlanner < handle
         function obj = TaskTrajPlanner(rbt_model,q0,cycle_time,jvmax,jamax,...
                                                         cvmax,camax,compare_plan)
             if isempty(rbt_model)
-                obj.pre_trajpose = q0;
+                if isa(q0,'double')
+                    obj.pre_q = q0;
+                    obj.pre_trajq = q0;
+                else
+                    obj.pre_trajpose = q0;
+                end
             else
                 obj.robot = rbt_model;
                 obj.pre_q = q0;
@@ -105,16 +110,15 @@ classdef TaskTrajPlanner < handle
                                                             obj.robot.n,1);
                 end
             case 'joint'
-                if isempty(obj.robot)
-                    error('there is no robot model for adding joint trajectory');
-                end
                 jplanner = JointPlanner(obj.pre_trajq, traj_opt,obj.cycle_time);
                 jplanner.AddJntPos(via_pos, vmax, amax);
                 obj.ntraj = obj.ntraj+1;
                 obj.segplanner{obj.ntraj} = jplanner;
                 obj.traj_type{obj.ntraj} = 'joint';
-                obj.pre_trajq = reshape(via_pos(:,end),obj.robot.n,1);
-                obj.pre_trajpose = obj.robot.fkine(obj.pre_trajq);
+                obj.pre_trajq = reshape(via_pos(:,end),size(obj.pre_trajq));
+                if ~isempty(obj.robot)
+                    obj.pre_trajpose = obj.robot.fkine(obj.pre_trajq);
+                end
             case 'bspline'
                 %add line trajectory before b-spline for transition
                 pos0 = obj.pre_trajpose.t;
@@ -203,6 +207,12 @@ classdef TaskTrajPlanner < handle
                     cplanner = obj.segplanner{obj.seg_idx};
                     cplanner.Stop(p,v,obj.cvmax,obj.camax);
                     obj.segplanner{1} = cplanner;
+                case 'joint'
+                    obj.traj_type = {};
+                    obj.traj_type{1} = 'joint';
+                    jplanner = obj.segplanner{obj.seg_idx};
+                    jplanner.Stop(p,v,obj.jvmax,obj.jamax);
+                    obj.segplanner{1} = jplanner;
             end
             obj.seg_idx = 1;
             obj.ntraj = 1;
@@ -372,6 +382,9 @@ classdef TaskTrajPlanner < handle
         
         %% Generate Joint-Space and Cartesian-Space Trajectory
         function [cp,cv,ca,jp,jv,ja] = GenerateBothMotion(obj)
+            if isempty(obj.robot)
+                error('there is no robot model for generating joint trajectory');
+            end
             switch obj.traj_type{obj.seg_idx}
                 case 'joint'
                     [jp,jv,ja] = obj.segplanner{obj.seg_idx}.GenerateMotion();
@@ -418,6 +431,33 @@ classdef TaskTrajPlanner < handle
                     obj.pre_trajpose.t = cp(1:3);
                     if ~isempty(obj.robot)
                         [obj.pre_trajq,~,~] = obj.Transform2Joint(cp,cv,ca);
+                    end
+                else
+                    obj.seg_idx = obj.seg_idx+1;
+                end
+            end
+        end
+        
+        function [jp,jv,ja] = GenerateJointMotion(obj)
+            switch obj.traj_type{obj.seg_idx}
+                case 'joint'
+                    [jp,jv,ja] = obj.segplanner{obj.seg_idx}.GenerateMotion();
+                case 'cartesian'
+                    [p,vp,ap,r,vr,ar] = obj.segplanner{obj.seg_idx}.GenerateMotion();
+                    cp = [p;r]; cv = [vp;vr]; ca = [ap;ar];
+                    [jp,jv,ja,~] = obj.Transform2Joint(cp,cv,ca);
+                case 'arc'
+                    [p,vp,ap,r,vr,ar] = obj.segplanner{obj.seg_idx}.GenerateMotion();
+                    cp = [p;r]; cv = [vp;vr]; ca = [ap;ar];
+                    [jp,jv,ja,~] = obj.Transform2Joint(cp,cv,ca);
+            end
+            
+            if obj.segplanner{obj.seg_idx}.plan_completed
+                if obj.seg_idx==obj.ntraj
+                    obj.task_completed = true;
+                    obj.pre_trajq = jp;
+                    if ~isempty(obj.robot)
+                        obj.pre_trajpose = obj.robot.fkine(jp);
                     end
                 else
                     obj.seg_idx = obj.seg_idx+1;
