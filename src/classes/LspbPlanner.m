@@ -155,8 +155,12 @@ classdef LspbPlanner < handle
             if isempty(duration)
                 obj.ta = h/abs(obj.amax);
             else
-                obj.ta = duration;
-                obj.amax = h/duration;
+                if obj.amax*duration<h
+                    error('the final velocity is too large');
+                else
+                    obj.ta = duration;
+                    obj.amax = h/duration;
+                end
             end
             obj.tf = 3*obj.ta;%change the ratio when testing
         end
