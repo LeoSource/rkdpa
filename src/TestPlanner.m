@@ -11,14 +11,25 @@ g_jamax = [pi/4, pi/4, pi/2, pi/4, pi/4, pi/4];
 g_cvmax = [0.4, 0.6]; g_camax = [0.8, 1.2];
 g_cycle_time = 0.005;
 
-test_case = 'taskplanner-joint';
+test_case = 'lspb';
 switch test_case
     case 'lspb'
         %% test for lspb planner
 %         lspbplanner = LspbPlanner(-10,3,4,3,[-2,3]);
         lspbplanner = LspbPlanner(0,0.5,0.5,[],[0.5,0]);
         lspbplanner.PlotAVP(g_cycle_time);
-        
+        compare_cpp = true;
+        if compare_cpp
+            [p,v,a] = lspbplanner.GenerateTraj(g_cycle_time);
+            q_cpp = load('F:/0_project/rkdpl/mirrortask_jpos1.csv');
+            q_cpp = q_cpp';
+            t = 0:g_cycle_time:g_cycle_time*(length(p)-1);
+            t_cpp = 0:g_cycle_time:g_cycle_time*(size(q_cpp,2)-1);
+            figure
+            subplot(3,1,1); plot(t, p, t_cpp,q_cpp(1,:)); grid on; ylabel('position');     
+            subplot(3,1,2); plot(t, v, t_cpp,q_cpp(2,:)); grid on; ylabel('velocity');
+            subplot(3,1,3); plot(t, a, t_cpp,q_cpp(3,:)); grid on; ylabel('acceleration');
+        end
 
     case 'line'
         %% test for line planner
