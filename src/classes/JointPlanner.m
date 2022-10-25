@@ -63,6 +63,8 @@ classdef JointPlanner < handle
         end
         
         function Stop(obj,jp,jv,jvmax,jamax)
+            obj.jpos = jp;
+            obj.ntraj = 1;
             obj.segplanner = {};
             obj.plan_idx = {};
             obj.unplan_idx = {};
