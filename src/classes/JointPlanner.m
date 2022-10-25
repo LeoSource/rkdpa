@@ -100,7 +100,7 @@ classdef JointPlanner < handle
             if (obj.seg_idx==obj.ntraj) && (abs(obj.t-obj.tf(obj.seg_idx))<obj.cycle_time)
                 obj.plan_completed = true;
             else
-                if (abs(obj.t-obj.tf(obj.seg_idx))<1e-5)
+                if (abs(obj.t-obj.tf(obj.seg_idx))<obj.cycle_time)
                     obj.seg_idx  = obj.seg_idx + 1;
                     obj.t = 0;
                 end
