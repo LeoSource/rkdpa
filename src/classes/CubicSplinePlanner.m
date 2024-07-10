@@ -92,7 +92,7 @@ classdef CubicSplinePlanner < handle
             obj.poly_params = obj.CalcPolyParams(obj.pos);
         end
 
-        function SetTimeOptimizedConstrtaints(obj, vmax, amax)
+        function SetTimeOptimizedConstrtaints(obj, vmax, amax)%seems like lspb interpolation
             obj.vmax = vmax;
             obj.amax = amax;
             obj.duration = obj.CalcOptimizedIntervals();

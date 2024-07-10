@@ -186,7 +186,6 @@ classdef PolyTrajPlanner < handle
             t = time(1):dt:time(end);
             motion_data = [pos; vel; acc];
             motion_name = {'position', 'velocity', 'acceleration'};
-            figure
             for idx=1:3
                 subplot(3, 1, idx);
                 plot(t, motion_data(idx, :)); grid on

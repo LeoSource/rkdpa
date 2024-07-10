@@ -11,7 +11,7 @@ g_jamax = [pi/4, pi/4, pi/2, pi/4, pi/4, pi/4];
 g_cvmax = [0.4, 0.6]; g_camax = [0.8, 1.2];
 g_cycle_time = 0.005;
 
-test_case = 'lspb';
+test_case = 'cubic-spline';
 switch test_case
     case 'lspb'
         %% test for lspb planner
@@ -33,8 +33,10 @@ switch test_case
 
     case 'line'
         %% test for line planner
-        lineplanner = LinePlanner([0,0,0]',[],0.5,0.5,[[0.1,0,0]',[0,0,0.1]'],...
-                            [0,0,0]',[0,0,0]',0.5,0.5,[0,0]);
+%         lineplanner = LinePlanner([0,0,0]',[],0.5,0.5,[[0.1,0,0]',[0,0,0.1]'],...
+%                             [0,0,0]',[0,0,0]',0.5,0.5,[0,0]);
+        lineplanner = LinePlanner([0,0,0]', [1,1,0]', 0.5,0.5,[0,0],...
+                                [0,0,0]',[0,0,0]',0.5,0.5,[0,0]);
         cpos=[]; cvel=[]; cacc=[];
         for t=0:g_cycle_time:4
             [p,pv,pa,r,rv,ra] = lineplanner.GenerateMotion(t);
@@ -43,6 +45,50 @@ switch test_case
         figure
         plot2(cpos(1:3,:)', 'r--'); hold on;
         grid on; xlabel('X(m)'); ylabel('Y(m)'); zlabel('Z(m)');
+        
+        
+    case 'cubic-spline'
+        %% test for cubic spline planner
+        q = [0, 0.5, 0.8, 1.1, 1.6, 1.9, 2.2, 2.5, 3];
+        t = [0, 0.4, 0.8, 1.05, 1.4, 1.8, 2.4, 2.6, 3];
+        dt = 0.005;
+        planner1 = PolyTrajPlanner(q,t,[0,0],3);
+        [p1,v1,a1] = planner1.GenerateTraj(dt);
+        planner2 = CubicSplinePlanner(q,t,'clamped',[0,0]);
+        [p2,v2,a2] = planner2.GenerateTraj(dt);
+        planner3 = CubicSplinePlanner(q,t,'natural');
+        [p3,v3,a3] = planner3.GenerateTraj(dt);
+        planner4 = CubicSplinePlanner(q,t,'cyclic');
+        [p4,v4,a4] = planner4.GenerateTraj(dt);
+        
+        tt = 0:dt:t(end);
+        figure(1); subplot(3,1,1); scatter(t,q); hold on;
+        h{1} = plot(tt,p1,'b',tt,p2,'r',tt,p3,'g',tt,p4,'k'); grid on; ylabel('pos');
+        subplot(3,1,2); h{2} = plot(tt,v1,'b',tt,v2,'r',tt,v3,'g',tt,v4,'k'); grid on; ylabel('vel');
+        subplot(3,1,3); h{3} = plot(tt,a1,'b',tt,a2,'r',tt,a3,'g',tt,a4,'k'); grid on; ylabel('acc');
+        legend('poly','clamped','natural','cyclic');
+        
+        planner5 = CubicSplinePlanner(q,t,'clamped',[0,0]);
+        planner5.SetTimeOptimizedStyle('gentle');
+        [p5,v5,a5] = planner5.GenerateTraj(dt);
+        planner6 = CubicSplinePlanner(q,t,'clamped',[0,0]);
+        planner6.SetTimeOptimizedStyle('fast');
+        [p6,v6,a6] = planner6.GenerateTraj(dt);
+        planner7 = CubicSplinePlanner(q,t,'clamped',[0,0]);
+        planner7.SetTimeOptimizedStyle('middle');
+        [p7,v7,a7] = planner7.GenerateTraj(dt);
+        planner8 = CubicSplinePlanner(q,t,'clamped',[0,0]);
+        planner8.SetTimeOptimizedConstrtaints(1.5,10);
+        [p8,v8,a8] = planner8.GenerateTraj(dt);
+        t8 = 0:dt:(length(p8)-1)*dt;
+        
+        figure(2); subplot(3,1,1); scatter(t,q,'b'); hold on; scatter(planner5.duration,planner5.pos,'r');
+        scatter(planner6.duration,planner6.pos,'g'); scatter(planner7.duration,planner7.pos,'k');
+        scatter(planner8.duration,planner8.pos,'m');
+        plot(tt,p2,'b',tt,p5,'r',tt,p6,'g',tt,p7,'k',t8,p8,'m'); grid on; ylabel('pos');
+        subplot(3,1,2); h{2} = plot(tt,v2,'b',tt,v5,'r',tt,v6,'g',tt,v7,'k',t8,v8,'m'); grid on; ylabel('vel');
+        subplot(3,1,3); h{3} = plot(tt,a2,'b',tt,a5,'r',tt,a6,'g',tt,a7,'k',t8,a8,'m'); grid on; ylabel('acc');
+        legend('clamped','gentle','fast','middle','con-v-a');
         
         
     case 'joint'
