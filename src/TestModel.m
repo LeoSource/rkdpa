@@ -12,7 +12,7 @@ g_jamax = [2*pi, 0.3, 1.6*pi, 1, 1.6*pi]*0.5;
 g_cvmax = [0.15,0.15]; g_camax = [0.3,0.3];
 g_stowed_pos = [0;0.6;0;0;0];
 g_cycle_time = 0.005;
-test_mode = 'jtrajlspb';
+test_mode = 'jtrajpoly';
 switch test_mode
     case 'dhmodel'
 %% validation for robot model by simscape
@@ -82,7 +82,9 @@ planner1 = CubicSplinePlanner(q, t, 'clamped', [0, 0]);
 planner1.SetTimeOptimizedStyle('gentle');
 % planner1.SetSmoothWeight(0.7);
 % planner1.SetSmoothTolerance(0.2);
-planner1.PlotAVP(0.001);
+figure; planner1.PlotAVP(0.001);
+planner2 = PolyTrajPlanner(q,t,[0,0],3);
+figure; planner2.PlotAVP(0.001);
 
     case 'jonlinetraj'
 %%  joint online trajectory plan
