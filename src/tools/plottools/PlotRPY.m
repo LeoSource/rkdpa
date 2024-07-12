@@ -1,4 +1,4 @@
-function PlotRPY(pos_rpy,step_size)
+function PlotRPY(pos_rpy,step_size,arrow_size)
 % quiver3(0,0,0,1,0,0,0.5,'r','filled','LineWidth',2);
 % hold on
 % quiver3(0,0,0,0,1,0,1,'g','filled','LineWidth',2);
@@ -7,7 +7,7 @@ function PlotRPY(pos_rpy,step_size)
 % isa(pose_tool, 'SE3')
     np = size(pos_rpy,2);
     nrot = floor(np/step_size);
-    arrow_scale = 0.05;
+    arrow_scale = arrow_size;
 %     figure
     PlotRPYAxis(pos_rpy(:,1), arrow_scale);
     PlotRPYAxis(pos_rpy(:,end), arrow_scale);
@@ -15,7 +15,7 @@ function PlotRPY(pos_rpy,step_size)
         rpy_tmp = pos_rpy(:,step_size*idx);
         PlotRPYAxis(rpy_tmp, arrow_scale);
     end
-    
+    hold off;
 end
 
 function PlotRPYAxis(pos_rpy,scale)
